@@ -52,7 +52,9 @@ extern "C" {
 #  include <mmreg.h>
 #  include <dsound.h>
 #  include <ks.h>
+# ifdef WAVEFORMATEXTENSIBLE
 #  include <ksmedia.h>
+# endif
 #endif
 
 #ifdef IRIX
@@ -130,8 +132,8 @@ typedef struct ADesc {
 #ifdef ALSA
   snd_pcm_t *handle;
   int       freq;
-  int       nWritten;
-  int       nPlayed;
+  long      nWritten;
+  long      nPlayed;
 #endif
 
 #ifdef Solaris
@@ -161,8 +163,8 @@ typedef struct ADesc {
   LPDIRECTSOUNDBUFFER lplpDsPB;
   unsigned int BufPos;
   int BufLen;
-  int written;
-  int lastWritten;
+  long written;
+  long lastWritten;
 #endif
 
 #ifdef IRIX
@@ -204,6 +206,7 @@ typedef struct ADesc {
   int rpos, wpos;
   double time;
   int tot;
+  int encoding;
 #endif /* OS_X_CORE_AUDIO */
 
   int bytesPerSample;
@@ -223,14 +226,14 @@ extern int  SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 			   int mode, int freq, int channels,
 			   int encoding);
 extern int  SnackAudioClose(ADesc *A);
-extern int  SnackAudioPause(ADesc *A);
+extern long SnackAudioPause(ADesc *A);
 extern void SnackAudioResume(ADesc *A);
 extern void SnackAudioFlush(ADesc *A);
 extern void SnackAudioPost(ADesc *A);
 extern int  SnackAudioRead(ADesc *A, void *buf, int nSamples);
 extern int  SnackAudioWrite(ADesc *A, void *buf, int nSamples);
 extern int  SnackAudioReadable(ADesc *A);
-extern int  SnackAudioPlayed(ADesc *A);
+extern long SnackAudioPlayed(ADesc *A);
 extern int  SnackAudioWriteable(ADesc *A);
 
 extern int SnackAudioGetEncodings(char *device);

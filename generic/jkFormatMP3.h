@@ -28,6 +28,7 @@ typedef struct mp3Info {
   int gotHeader;
   int bytesPerFrame;
   int id;
+  int fullID;
   int cnt;
   char rest[18][32][8][4];
   int restlen;
@@ -46,7 +47,7 @@ typedef struct mp3Info {
   int nch;
   int scalefac_l[2][2][22];
   int scalefac_s[2][2][13][3];
-  
+
   int is[2][578];
   float xr[2][32][18];
   int *t_l,*t_s;
@@ -55,7 +56,7 @@ typedef struct mp3Info {
                    * it's sloppy but i'm sick of waisting storage. blaah...
                    */
   int intensity_scale;
-  
+
   float stereo_samples[18][32][2];
   float mono_samples[18][32];
   float s[2][32][18];
@@ -68,6 +69,7 @@ typedef struct mp3Info {
 
 struct AUDIO_HEADER {
         int ID;
+        int fullID;
         int layer;
         int protection_bit;
         int bitrate_index;
@@ -98,9 +100,10 @@ struct SIDE_INFO {
         int preflag[2][2];
         int scalefac_scale[2][2];
         int count1table_select[2][2];
+        int error[2];
 };
 
-/* 
+/*
  * These three are changed as we access a specific sound
 */
 unsigned char *gblBuffer;
@@ -110,11 +113,19 @@ int gblData;
 
 /* win is pre loaded with window data, read-only*/
 float win[4][36];
-
-
+/*
 int t_sampling_frequency[2][3] = {
-{ 22050 , 24000 , 16000},
-{ 44100 , 48000 , 32000}
+   { 22050 , 24000 , 16000},
+   { 44100 , 48000 , 32000}
+};
+
+*/
+/* id=row,sr_index=element*/
+int t_sampling_frequency[4][3] = {
+{ 11025 , 12000 , 8000},  /* 0=v2.5*/
+{ 0,0,0},                 /*1=invalid*/
+{ 22050 , 24000 , 16000}, /*2=v2*/
+{ 44100 , 48000 , 32000}, /*3=v1 */
 };
 #if 0
 int SHOW_HEADER,SHOW_HEADER_DETAIL;
@@ -128,6 +139,7 @@ int A_AUDIO_PLAY;
 int A_SET_VOLUME, A_SHOW_TIME;
 int A_MSG_STDOUT;
 #endif
+int sr_lookup[2] = {72000, 144000};
 short t_bitrate[2][3][15] = {{
 {0,32,48,56,64,80,96,112,128,144,160,176,192,224,256},
 {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160},
@@ -225,7 +237,7 @@ static void alias_reduction(mp3Info *ext, int ch);
 
 static  float fras_l(int sfb,int global_gain,int scalefac_scale,int scalefac,int preflag);
 static  float fras_s(int global_gain,int subblock_gain,int scalefac_scale,int scalefac);
-static  float fras2(int is,float a);
+/*static  float fras2(int is,float a);*/
 static int find_isbound(mp3Info *ext, int isbound[3],int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *header);
 static  void stereo_s(mp3Info *ext, int l,float a[2],int pos,int ms_flag,int is_pos,struct AUDIO_HEADER *header);
 static  void stereo_l(mp3Info *ext, int l,float a[2],int ms_flag,int is_pos,struct AUDIO_HEADER *header);
@@ -438,10 +450,10 @@ static const short t_reorder[2][3][576]={{
  540, 541, 542, 543, 544, 545, 558, 559, 560, 561, 562, 563, 546, 547, 548, 549, 550, 551, 564, 565,
  566, 567, 568, 569, 552, 553, 554, 555, 556, 557, 570, 571, 572, 573, 574, 575}
 }};
-/* TFW: increased size from 8192 to 8206 to accomodate some encoders that use additional 14 lookups 
+/* TFW: increased size from 8192 to 8206 to accomodate some encoders that use additional 14 lookups
         also changed static initializer with function to improve accuracy and reduce chance of typo
 */
-static float t_43[8206];
+static float t_43[8207];
 
 /* huffman.h  */
 

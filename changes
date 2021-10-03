@@ -915,3 +915,11 @@ build Snack on the Macintosh.
 
 3/5/03 (change) Updated the release to use Tcl/Tk 8.4 as default
 
+3/6/03 (bug fix) Fixed convert command for conversions involving Lin24 and Lin32 sample encodings.
+
+5/8/03 (enhancement) Several improvements to the MP3 decoder. (Wilkason)
+
+5/8/03 (enhancement) Enhanced streaming support regarding slow networks and playback of long tracks. (Wilkason)
+
+----------------- Released 2.2.2, 5/9/03 -----------------------
+

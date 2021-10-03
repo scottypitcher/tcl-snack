@@ -52,7 +52,7 @@ You must have Tcl/Tk installed on your system. Both Tcl and Tk must have
 been configured with the "--enable-shared" flag at build time (this is 
 default for the 8.4 versions). Build them before Snack.
 
-Unpack Snack and change directory to the snack2.2.1/unix directory.
+Unpack Snack and change directory to the snack2.2.2/unix directory.
 
 Type "./configure".
 
@@ -83,7 +83,7 @@ cd tcl8.4.1/unix
 ./configure --enable-shared
 cd ../../tk8.4.1/unix
 ./configure --enable-shared
-cd ../../snack2.2.1/unix
+cd ../../snack2.2.2/unix
 ./configure
 make
 
@@ -95,9 +95,9 @@ When you have succesfully compiled Snack it's time to look at the demos.
 In order to run these you will have to set the environment variable 
 TCLLIBPATH to the directory containing the Snack library files (you don't 
 need this step if you install Snack as described below). If you have 
-compiled Snack in /u/kare/snack2.2.1/unix, this would be:
+compiled Snack in /u/kare/snack2.2.2/unix, this would be:
 
-setenv TCLLIBPATH /u/kare/snack2.2.1/unix
+setenv TCLLIBPATH /u/kare/snack2.2.2/unix
 
 Change to the demos/tcl/ directory and type ./widget.tcl:
 
@@ -309,3 +309,5 @@ Albert Visagie
 Helmut Hissen
 Daniel A. Steffen
 Hans Werner Strube
+David McClosky
+Russell Owen

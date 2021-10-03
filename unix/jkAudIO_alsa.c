@@ -164,14 +164,14 @@ SnackAudioClose(ADesc *A)
   return(0);
 }
 
-int
+long
 SnackAudioPause(ADesc *A)
 {
   if (A->mode == RECORD) {
     snd_pcm_drop(A->handle);
     return(-1);
   } else {
-    int res = SnackAudioPlayed(A);
+    long res = SnackAudioPlayed(A);
     A->nPlayed = res;
     snd_pcm_drop(A->handle);
     return(res);
@@ -265,10 +265,10 @@ SnackAudioWriteable(ADesc *A)
   return (avail);
 }
 
-int
+long
 SnackAudioPlayed(ADesc *A)
 {
-  int avail = _snd_pcm_mmap_hw_ptr(A->handle);
+  long avail = _snd_pcm_mmap_hw_ptr(A->handle);
   
   if (avail < 0)
     avail = 0;

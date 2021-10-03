@@ -1167,12 +1167,16 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 
       switch (s->encoding) {
       case LIN16:
-      case LIN24:
-      case LIN32:
       case SNACK_FLOAT:
       case ALAW:
       case MULAW:
 	value = FSAMPLE(s, i);
+	break;
+      case LIN32:
+	value = FSAMPLE(s, i) / 65536.0f;
+	break;
+      case LIN24:
+	value = FSAMPLE(s, i) / 256.0f;
 	break;
       case LIN8OFFSET:
 	value = (FSAMPLE(s, i) - 128.0f) * 256.0f;
@@ -1184,10 +1188,14 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 
       switch (encoding) {
       case LIN16:
-      case LIN24:
-      case LIN32:
       case SNACK_FLOAT:
 	FSAMPLE(t, i) = value;
+	break;
+      case LIN32:
+	FSAMPLE(t, i) = value * 65536.0f;
+	break;
+      case LIN24:
+	FSAMPLE(t, i) = value * 256.0f;
 	break;
       case ALAW:
 	FSAMPLE(t, i) = (float) Snack_Alaw2Lin(Snack_Lin2Alaw((short)value));

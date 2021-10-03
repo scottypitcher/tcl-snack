@@ -14,7 +14,7 @@
 <hr></h1>
 
 <h1>
-<b>Snack v2.2.1 manual</b></h1>
+<b>Snack v2.2.2 manual</b></h1>
 <font color="#FF6600">Last updated </font><!--#config timefmt="%B %d, %Y" --><!--#flastmod file="tcl-man.html"-->
 
 <dl>
@@ -320,7 +320,7 @@ sample? ?-framelength t? ?-numformants n? ?-windowlength length?
 
 <dd>
 <a href="#smix"><i>soundName </i><b>mix sound</b> <b>?-start start? ?-end
-end? ?-mixscale factor? ?-prescale factor? ?-progress callback?</b></a></dd>
+end? ?-mixscaling factor? ?-prescaling factor? ?-progress callback?</b></a></dd>
 
 <dd>
 <a href="#spause"><i>soundName </i><b>pause</b></a></dd>
@@ -434,8 +434,7 @@ more information on these.</ul>
 <a NAME="schanged"></a><i>soundName </i><b>changed flag</b>
 <ul>This command is used to inform Snack that the sound object has been
 modified. Normally Snack tracks changes to sound objects automatically,
-but in a few cases this must be performed explicitly. For example, setting
-of samples using the sample command is not tracked for preformance reasons.
+but in a few cases this must be performed explicitly. For example, if individual samples are changed using the sample command these will not be tracked for preformance reasons.
 Here a <b>changed</b> command might be necessary. <b>flag</b> can be either
 <i>New</i>
 or <i>More</i>. <i>New</i> is used for any type of change while
@@ -551,7 +550,7 @@ check all channels and return the maximum value.</ul>
 samples and a channel to be examined can be specified. The default is to
 check all channels and return the minimum value.</ul>
 <a NAME="smix"></a><i>soundName</i> <b>mix sound</b> <b>?-start start?
-?-end end? ?-mixscale factor? ?-prescale factor? ?-progress callback?</b>
+?-end end? ?-mixscaling factor? ?-prescaling factor? ?-progress callback?</b>
 <ul>Copies sample data from <b>sound</b>. Optionally a range of samples,
 where the mix operation will be applied, can be specified. The <b>-mixscaling</b> option controls how much to scale <i>soundName</i> before mixing. The option <b>-prescaling</b> controls how much to scale the original sound before mixing.
 This command applies to in-memory sounds only.</ul>
@@ -569,8 +568,8 @@ the <b>-progress</b> option.</ul>
 <a NAME="splay"></a><i>soundName </i><b>play ?-start start? ?-end end?
 ?-output jack??-blocking boolean? ?-command callback? ?-device outputDevice?
 ?-filter filter? ?-devicerate f? ?-devicechannels n?</b>
-<ul>Plays a sound. A range of samples to be played can be specified
-using the <b>-start</b> and <b>-end</b> options. The <b>-output</b>
+<ul>Plays a sound. A start position can be specified
+using the <b>-start</b> option and an end position using the <b>-end</b> option. The values should be given in samples and the end of the sound can be given as <b>-1</b>. The <b>-output</b>
 option is used to specify any of the possible output ports returned
 by the <a href="#outputs">audio outputs</a> command.
 The <b>-blocking</b> option is used to specify whether playback

@@ -875,7 +875,7 @@ WriteSound(writeSamplesProc *writeProc, Sound *s, Tcl_Interp *interp,
 	    if (littleEndian) {
 	      offset = 1;
 	    } else {
-	      offset = 0;
+	      offset = 1;
 	    }
 	    pack.i = (int) is;
 	    if (Tcl_Write(ch, (char *) &pack.c[offset], 3) == -1) {
@@ -3519,8 +3519,21 @@ GetSample(SnackLinkedFileInfo *infoPtr, int index)
 	  nRead = Tcl_Read(infoPtr->linkCh, b, size * s->sampsize);
 	  infoPtr->validSamples = nRead / s->sampsize;
 	} else {
-	  nRead = (ff->readProc)(s, s->interp, infoPtr->linkCh, NULL,
-				 junkBuffer, size);
+	  int tries=10,maxt=tries;
+	  /* TFW: Workaround for streaming issues:
+	   * Make sure we get something from the channel if possible
+	   * on some (e.g. ogg) streams, we sometime get a -1 back for length
+	   * typically on the second retry we get it right.
+           */
+	  for (;tries>0;tries--) {
+	    nRead = (ff->readProc)(s, s->interp, infoPtr->linkCh, NULL,
+				   junkBuffer, size);
+	    if (nRead > 0) break;
+	  }
+	  if (s->debug > 1 && tries < maxt) {
+	    Snack_WriteLogInt("  Read Tries", maxt-tries);
+	    Snack_WriteLogInt("  Read Samples", nRead);
+	  }
 	  infoPtr->validSamples = nRead;
 	  memcpy(infoPtr->buffer, junkBuffer, nRead * sizeof(float));
 	}

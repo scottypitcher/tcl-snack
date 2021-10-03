@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.3 "$0" "$@"
+exec wish8.4 "$0" "$@"
 
 # 'info sharedlibext' returns '.dll' on Windows and '.so' on most Unix systems
 

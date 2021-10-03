@@ -237,7 +237,7 @@ SnackAudioClose(ADesc *A)
   return(0);
 }
 
-int
+long
 SnackAudioPause(ADesc *A)
 {
   APauseAudio(A->audio, A->transid, NULL, NULL);
@@ -328,7 +328,7 @@ SnackAudioWriteable(ADesc *A)
   return -1;
 }
 
-int
+long
 SnackAudioPlayed(ADesc *A)
 {
   ATransStatus trans_stat;

@@ -183,7 +183,7 @@ SnackAudioClose(ADesc *A)
   return(0);
 }
 
-int
+long
 SnackAudioPause(ADesc *A)
 {
   switch (A->mode) {
@@ -276,7 +276,7 @@ SnackAudioWriteable(ADesc *A)
   return alGetFillable(A->port);
 }
 
-int
+long
 SnackAudioPlayed(ADesc *A)
 {
   unsigned long long fnum;

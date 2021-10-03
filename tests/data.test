@@ -36,7 +36,7 @@ test data-1.2 {data command, read sound from binary string} {
 
 test data-2.1 {data command, write sound to binary variable} {
   set s [snack::sound snd -load ex1.wav]
-  set var [$s data -start 5000 -end 5000 -fileformat raw -byteorder bigEndian]
+  set var [$s data -start 5000 -end 5001 -fileformat raw -byteorder bigEndian]
   binary scan $var S out
   $s destroy
   set out

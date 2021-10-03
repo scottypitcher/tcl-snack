@@ -328,6 +328,12 @@ audioStopCmd(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   if (wop == WRITE || wop == PAUSED) {
     for (p = soundQueue; p != NULL; p = p->next) {
       Snack_StopSound(p->sound, interp);
+      /*
+       * The soundQueue can be remooved during a stop, so check it
+       * otherwise p is garbage
+       */
+      if (soundQueue == NULL)
+	break;
     }
   }
 

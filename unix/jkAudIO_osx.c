@@ -142,8 +142,18 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   A->deviceFormat.mBytesPerFrame = format.mBytesPerFrame;
   A->nChannels = nchannels;
   A->mode = mode;
+  A->encoding = encoding;
   rate = (float) freq;
   usageCount = 1;
+
+  switch (encoding) {
+  case LIN24:
+    A->bytesPerSample = sizeof(int);
+    break;
+  case LIN16:
+    A->bytesPerSample = sizeof(short);
+    break;
+  }
 
   return TCL_OK;
 }
@@ -181,7 +191,7 @@ SnackAudioClose(ADesc *A)
   return(0);
 }
 
-int
+long
 SnackAudioPause(ADesc *A)
 {
   return(-1);
@@ -223,9 +233,15 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
       ij = (int) dj;
       f = dj - ij;
       pos = ij * 2 + c;
-      smp1 = (short) (32768.0*itmp[(A->rpos*2 + pos) % (BUFLEN)]);
-      smp2 = (short) (32768.0*itmp[(A->rpos*2 + pos + A->nChannels)%(BUFLEN)]);
-      ((short *)buf)[i * A->nChannels + c] = smp1 * (1.0f - f) + smp2 * f;
+      if (A->encoding == LIN24) {
+	smp1 = (2147483647.0*itmp[(A->rpos*2 + pos) % (BUFLEN)]);
+	smp2 = (2147483647.0*itmp[(A->rpos*2 + pos + A->nChannels)%(BUFLEN)]);
+	((int *)buf)[i * A->nChannels + c] = smp1 * (1.0f - f) + smp2 * f;
+      } else {
+	smp1 = (short) (32767.0*itmp[(A->rpos*2 + pos) % (BUFLEN)]);
+	smp2 = (short) (32767.0*itmp[(A->rpos*2 + pos + A->nChannels)%(BUFLEN)]);
+	((short *)buf)[i * A->nChannels + c] = smp1 * (1.0f - f) + smp2 * f;
+      }
     }
   }
   A->rpos = (A->rpos + (int)(nFrames/frac)) % (BUFLEN/2);
@@ -263,10 +279,10 @@ SnackAudioWriteable(ADesc *A)
   return -1;
 }
 
-int
+long
 SnackAudioPlayed(ADesc *A)
 {
-  int res;
+  long res;
 
   res = (int) (44100 * (SnackCurrentTime() - A->time) +.5);
 

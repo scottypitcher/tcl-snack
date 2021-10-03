@@ -100,7 +100,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/MACHINE:I386"
-				AdditionalDependencies="tclstub84.lib tkstub84.lib odbc32.lib odbccp32.lib winmm.lib"
+				AdditionalDependencies="tclstub84.lib tkstub84.lib winmm.lib"
 				OutputFile="C:\Tcl\lib\snack2.2\libsnack.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="TRUE"
@@ -177,6 +177,13 @@
 			</File>
 			<File
 				RelativePath="..\generic\jkGetF0.c">
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						WarningLevel="3"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\generic\jkMixer.c">

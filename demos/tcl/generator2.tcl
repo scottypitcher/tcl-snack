@@ -18,9 +18,9 @@ pack [frame .fb] -side bottom
 pack [button .fb.a -bitmap snackPlay -command Play] -side left
 pack [button .fb.b -bitmap snackStop -command "snack::audio stop"] -side left
 
-set left(freq) 440.0
+set left(freq) 1000.0
 set left(ampl) 20000
-set right(freq) 440.0
+set right(freq) 2200.0
 set right(ampl) 20000
 
 pack [frame .left] -expand yes -fill both -side top

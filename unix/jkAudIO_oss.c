@@ -219,10 +219,10 @@ SnackAudioClose(ADesc *A)
   return(0);
 }
 
-int
+long
 SnackAudioPause(ADesc *A)
 {
-  int res = SnackAudioPlayed(A);
+  long res = SnackAudioPlayed(A);
 
   A->timep = SnackCurrentTime();
   ioctl(A->afd, SNDCTL_DSP_RESET, 0);
@@ -345,7 +345,7 @@ SnackAudioReadable(ADesc *A)
   if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioReadable\n");
 
   ioctl(A->afd, SNDCTL_DSP_GETISPACE, &info);
-
+  if (info.bytes > 60*44100*4) info.bytes = 0;
   if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioReadable", info.bytes);
 
   return (info.bytes / (A->bytesPerSample * A->nChannels));
@@ -361,7 +361,7 @@ SnackAudioWriteable(ADesc *A)
   return (info.bytes / (A->bytesPerSample * A->nChannels));
 }
 
-int
+long
 SnackAudioPlayed(ADesc *A)
 {
   /*
@@ -376,7 +376,7 @@ SnackAudioPlayed(ADesc *A)
     }
   }
   */
-  int res;
+  long res;
   
   res = (A->freq * (SnackCurrentTime() - A->time) +.5);
   

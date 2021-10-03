@@ -39,7 +39,9 @@ static HWAVEOUT      hWaveOut;
 static HWAVEIN       hWaveIn;
 static HMIXER        hMixer;
 static WAVEFORMATEX  wFormatIn;
-static WAVEFORMATEXTENSIBLE  wFormatIn2;
+#ifdef WAVEFORMATEXTENSIBLE
+ static WAVEFORMATEXTENSIBLE  wFormatIn2;
+#endif
 static WAVEHDR       waveHdrIn[NBUFS];
 static char          *blockIn[NBUFS];
 static WAVEFORMATEX  wFormatOut;
@@ -342,8 +344,10 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 	break;
       case LIN24:
 	A->bytesPerSample = sizeof(int);
+#ifdef WAVEFORMATEXTENSIBLE
 	memset(&wFormatIn2, 0, sizeof(WAVEFORMATEXTENSIBLE));
 	wFormatIn2.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+#endif
 	break;
       case ALAW:
 	A->bytesPerSample = sizeof(char);
@@ -359,6 +363,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 	break;
       }
       if (mode == LIN24) {
+#ifdef WAVEFORMATEXTENSIBLE
 	wFormatIn2.Format.nChannels       = nchannels;
 	wFormatIn2.Format.nSamplesPerSec  = freq;
 	wFormatIn2.Format.nAvgBytesPerSec = freq * A->bytesPerSample * nchannels;
@@ -372,6 +377,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 
 	res = waveInOpen(&hWaveIn, devIndex, 
 			 (WAVEFORMATEX *)&wFormatIn2, 0, 0L, CALLBACK_NULL);
+#endif
       } else {
 	wFormatIn.nChannels       = nchannels;
 	wFormatIn.nSamplesPerSec  = freq;
@@ -403,7 +409,11 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 	waveHdrIn[i].dwFlags = 0L;
 	waveHdrIn[i].dwLoops = 0L;
 	res = waveInPrepareHeader(hWaveIn, &waveHdrIn[i], sizeof(WAVEHDR));
+	if (res != MMSYSERR_NOERROR && A->debug>1)
+	  Snack_WriteLogInt("    waveInPrepareHeader error", res);
 	res = waveInAddBuffer(hWaveIn, &waveHdrIn[i], sizeof(WAVEHDR));
+	if (res != MMSYSERR_NOERROR && A->debug>1)
+	  Snack_WriteLogInt("    waveInAddBuffer error", res);
       }
       res = waveInStart(hWaveIn);
       break;
@@ -446,6 +456,9 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 	  wFormatOut.nBlockAlign     = A->bytesPerSample * nchannels;
 	  wFormatOut.wBitsPerSample  = A->bytesPerSample * 8;
 	  if (A->debug > 2) Snack_WriteLogInt("    Converting", encoding);
+	} else {
+	  if (A->debug>1)
+	    Snack_WriteLogInt("    waveOutOpen error", res);
 	}
       }
       
@@ -454,7 +467,10 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
       if (res) {
 	Tcl_AppendResult(interp, "waveOutOpen failed!", NULL);
 	return TCL_ERROR;
+      } else if (A->debug > 0) {
+	Snack_WriteLog("    waveOutOpened ok\n");
       }
+      
       for (i = 0; i < NBUFS; i++) {
 	blockOut[i] = NULL;
 	blockSizeOut[i] = 0;
@@ -520,10 +536,16 @@ SnackAudioClose(ADesc *A)
 
     switch (A->mode) {
     case RECORD:
-      waveInStop(hWaveIn);
-      waveInReset(hWaveIn);
+      res = waveInStop(hWaveIn);
+      if (res != MMSYSERR_NOERROR && A->debug>1)
+	Snack_WriteLogInt("    waveInStop error", res);
+      res = waveInReset(hWaveIn);
+      if (res != MMSYSERR_NOERROR && A->debug>1)
+	Snack_WriteLogInt("    waveInReset error", res);
       for (i = 0; i < NBUFS; i++) {
-	waveInUnprepareHeader(hWaveIn, &waveHdrIn[i], sizeof(WAVEHDR));
+	res = waveInUnprepareHeader(hWaveIn, &waveHdrIn[i], sizeof(WAVEHDR));
+	if (res != MMSYSERR_NOERROR && A->debug>1)
+	  Snack_WriteLogInt("    waveInUnprepareHeader error", res);
 	if (blockIn[i]) {
 	  ckfree(blockIn[i]);
 	  if (A->debug > 2) Snack_WriteLogInt("    freeing", (int) blockIn[i]);
@@ -537,19 +559,24 @@ SnackAudioClose(ADesc *A)
     
     case PLAY:
       for (i = 0; i < NBUFS; i++) {
-	res = waveOutUnprepareHeader(hWaveOut, &waveHdrOut[i], sizeof(WAVEHDR));
-	if (A->debug > 2) Snack_WriteLogInt("    waveOutUnprepareHeader", res);
-	if (res == WAVERR_STILLPLAYING) return(-1);
+	if (waveHdrOut[i].lpData != NULL) {
+	  res = waveOutUnprepareHeader(hWaveOut, &waveHdrOut[i], sizeof(WAVEHDR));
+	  if (res != MMSYSERR_NOERROR && A->debug>1)
+	    Snack_WriteLogInt("    waveOutUnprepareHeader error", res);
+	  if (res == WAVERR_STILLPLAYING) return(-1);
+	}
 	if (blockOut[i]) {
 	  ckfree(blockOut[i]);
 	  blockOut[i] = NULL;
 	  blockSizeOut[i] = 0;
+	  waveHdrOut[i].lpData = NULL;
 	}
       }
-      if (A->debug > 2) Snack_WriteLog("    Attempting waveOutClose\n");
       res = waveOutClose(hWaveOut);
-      if (A->debug > 2) Snack_WriteLogInt("    waveOutClose", res);
+      if (res != MMSYSERR_NOERROR && A->debug>1)
+	Snack_WriteLogInt("    waveOutClose error", res);
       if (res == WAVERR_STILLPLAYING) return(-1);
+      hWaveOut = NULL;
       if (A->debug > 2) Snack_WriteLog("    waveOutClose ok\n");
       A->mode = 0;
       break;
@@ -564,7 +591,7 @@ SnackAudioClose(ADesc *A)
   return(0);
 }
 
-int
+long
 SnackAudioPause(ADesc *A)
 {
   if (useDSound) {
@@ -587,6 +614,8 @@ SnackAudioPause(ADesc *A)
       
     case PLAY:
       res = waveOutPause(hWaveOut);
+      if (res != MMSYSERR_NOERROR && A->debug>1)
+	Snack_WriteLogInt("    waveOutPause error", res);
       break;
     }
   }
@@ -902,6 +931,7 @@ SnackAudioWrite(ADesc *A, void *buf, int nFrames)
     for (i = 0; i < NBUFS; i++) {
       if (waveHdrOut[i].dwFlags & WHDR_DONE) {
 	if (size > blockSizeOut[i]) {
+	  waveHdrOut[i].lpData = NULL;
 	  if (blockSizeOut[i]) {
 	    ckfree(blockOut[i]);
 	  }
@@ -913,7 +943,11 @@ SnackAudioWrite(ADesc *A, void *buf, int nFrames)
 	  /*if (A->debug == 1) Snack_WriteLogInt("Reusing", size);*/
 	  /*if (A->debug == 1) Snack_WriteLogInt("Block", i);*/
 	}
-	waveOutUnprepareHeader(hWaveOut, &waveHdrOut[i], sizeof(WAVEHDR));
+	if (waveHdrOut[i].lpData != NULL) {
+	  res=waveOutUnprepareHeader(hWaveOut, &waveHdrOut[i], sizeof(WAVEHDR));
+	  if (res != MMSYSERR_NOERROR && A->debug>1)
+	    Snack_WriteLogInt("    waveOutUnprepareHeader error", i);
+	}
 	
 	if (A->convert) {
 	  int j;
@@ -934,7 +968,11 @@ SnackAudioWrite(ADesc *A, void *buf, int nFrames)
 	waveHdrOut[i].dwFlags = 0L;
 	waveHdrOut[i].dwLoops = 0L;
 	res = waveOutPrepareHeader(hWaveOut, &waveHdrOut[i], sizeof(WAVEHDR));
+	if (res != MMSYSERR_NOERROR && A->debug>1)
+	  Snack_WriteLogInt("    waveOutPrepareHeader error", res);
 	res = waveOutWrite(hWaveOut, &waveHdrOut[i], sizeof(WAVEHDR));
+	if (res != MMSYSERR_NOERROR && A->debug>1)
+	  Snack_WriteLogInt("    waveOutWrite error", res);
 	break;
       }
     }
@@ -1033,14 +1071,15 @@ SnackAudioWriteable(ADesc *A)
   }
 }
 
-int
+long
 SnackAudioPlayed(ADesc *A)
 {
   if (useDSound) {
     HRESULT hr;
     DWORD ppos = 0;
     DWORD status = 0;
-    int bytesPerFrame = A->bytesPerSample * A->nChannels, nWritten;
+    int bytesPerFrame = A->bytesPerSample * A->nChannels;
+    long nWritten;
     
     if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioPlayed\n");
     
@@ -1058,9 +1097,15 @@ SnackAudioPlayed(ADesc *A)
     A->lastWritten = nWritten;
     return(nWritten / bytesPerFrame);
   } else { /* Windows multimedia library */
-    int sample;
+    long sample;
     MMTIME mmtime;
     MMRESULT worval;
+
+    if (hWaveOut == NULL) {
+      Snack_WriteLog("  SnackAudioPlayed: No Wave Handle\n");
+      return -1;
+    }
+
     /* Read bytes (which doesn't roll over, and if driver doesn't support
        that then read samples (which does roll over)*/
     mmtime.wType = TIME_BYTES;

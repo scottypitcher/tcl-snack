@@ -151,11 +151,11 @@ SnackAudioClose(ADesc *A)
   return(0);
 }
 
-int
+long
 SnackAudioPause(ADesc *A)
 {
   /*  int count;*/
-  int res = SnackAudioPlayed(A);
+  int long = SnackAudioPlayed(A);
 
   AUDIO_INITINFO(&A->ainfo);
 
@@ -289,13 +289,13 @@ SnackAudioWriteable(ADesc *A)
   return -1;
 }
 
-int
+long
 SnackAudioPlayed(ADesc *A)
 {
   /*  ioctl(A->afd, AUDIO_GETINFO, &A->ainfo);
 
       return(A->ainfo.play.samples);*/
-  int res;
+  long res;
   
   res = (A->freq * (SnackCurrentTime() - A->time) +.5);
   return(res);

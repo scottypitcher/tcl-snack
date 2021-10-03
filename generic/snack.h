@@ -34,4 +34,4 @@
 #include "jkAudIO.h"
 
 #define SNACK_VERSION     "2.2"
-#define SNACK_PATCH_LEVEL "2.2.1"
+#define SNACK_PATCH_LEVEL "2.2.2"

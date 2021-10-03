@@ -39,7 +39,7 @@ static ADesc ado;
 static int globalRate = 16000;
 static int globalOutWidth = 0;
 static int globalStreamWidth = 0;
-static int globalNWritten = 0;
+static long globalNWritten = 0;
 static int globalNFlowThrough = 0;
 
 short shortBuffer[PBSIZE];
@@ -72,6 +72,9 @@ RecCallback(ClientData clientData)
   if (sampsleft > size * 2) size *= 2;
   if (sampsleft > size * 2) size = sampsleft;
   if (sampsleft < size) size = sampsleft;
+  if (size > PBSIZE / globalStreamWidth) {
+    size = PBSIZE / globalStreamWidth;
+  }
 
 #ifdef FIXED_READ_CHUNK
   size = globalRate / 16;
@@ -242,7 +245,8 @@ static int
 AssembleSoundChunk(int inSize)
 {
   int chunkWritten = 1, writeSize = 0, size = inSize, i, j;
-  int longestChunk = 0, startPos, endPos, totLen, nWritten;
+  int longestChunk = 0, startPos, endPos, totLen;
+  long nWritten;
   int emptyQueue = 1;
   jkQueuedSound *p;
   Sound *s;
@@ -385,6 +389,8 @@ AssembleSoundChunk(int inSize)
 	  if (s->storeType == SOUND_IN_FILE) {
 	    if (s->linkInfo.linkCh != NULL) {
 	      CloseLinkedFile(&s->linkInfo);
+              if (s->debug > 1)
+		Snack_WriteLogInt("    Closing File, len= ", s->length);
 	      s->linkInfo.linkCh = NULL;
 	    }
 	  } else {
@@ -530,7 +536,8 @@ static int inPlayCB = 0;
 static void
 PlayCallback(ClientData clientData)
 {
-  int currPlayed, writeable, totPlayed = 0, closedDown = 0, size;
+  long currPlayed, writeable, totPlayed = 0;
+  int closedDown = 0, size;
   int playgrain, blockingPlay = sCurr->blockingPlay, lastid;
   jkQueuedSound *p, *last;
   Tcl_Interp *interp = sCurr->interp;
@@ -543,6 +550,11 @@ PlayCallback(ClientData clientData)
     writeable = SnackAudioWriteable(&ado);
 
     if (debugLevel > 2) Snack_WriteLogInt("    totPlayed", totPlayed);
+
+    if (totPlayed == -1) { /* error in SnackAudioPlayed */
+      closedDown = 1;
+      break;
+    }
 
     if (globalNWritten - currPlayed < globalLatency * globalRate ||
 	blockingPlay) {
@@ -558,6 +570,7 @@ PlayCallback(ClientData clientData)
       
       if (AssembleSoundChunk(size) < size && globalNFlowThrough == 0) {
 	static int oplayed = -1;
+	double stCheck =(SnackCurrentTime() - startDevTime )*(double)globalRate;
 	jkQueuedSound *p;
 	int hw = 0, canCloseDown = 1;
 
@@ -575,55 +588,43 @@ PlayCallback(ClientData clientData)
 	}
 
 	lastid = playid;
-	for (p = soundQueue; p!=NULL && p->status == SNACK_QS_DONE; p=p->next) {
-	  if ((p->startPos + p->nWritten >= p->endPos &&
-	       p->sound->linkInfo.eof == 0) ||
-	      (p->sound->linkInfo.eof &&
-	       p->nWritten < (SnackCurrentTime() - startDevTime)*globalRate)) {
-	    if (p->cmdPtr != NULL) {
-	      ExecSoundCmd(p->sound, p->cmdPtr);
-	      if (soundQueue == NULL) break;
-	      if (p->cmdPtr != NULL) Tcl_DecrRefCount(p->cmdPtr);
-	      p->cmdPtr = NULL;
-	    }
-	  }
-	}
-	/*if (0&&lastid != playid) {
-	  inPlayCB = globalNWritten;
-	  for (p = soundQueue; p != NULL; p = p->next) {
-	    if (p->status != SNACK_QS_DONE &&
-		p->startTime < globalNWritten + size) {
+	for (p = soundQueue; p!=NULL; p=p->next) {
+	  if (p->status == SNACK_QS_DONE) {
+	    if ((p->sound->linkInfo.eof == 0 && p->startPos + p->nWritten >=
+		 p->endPos) ||
+		(p->sound->linkInfo.eof && p->nWritten < (int)stCheck) ||
+		(p->nWritten - currPlayed <= 0 || currPlayed == oplayed)) {
+	      /*
+		(SnackCurrentTime() - startDevTime)*globalRate)
+		often never makes it to p->nWritten before object is ready to
+		be closed down, so we have the last check above to make sure
+	      */
 	      if (p->cmdPtr != NULL) {
 		ExecSoundCmd(p->sound, p->cmdPtr);
-		if (p->cmdPtr != NULL) Tcl_DecrRefCount(p->cmdPtr);
+		if (debugLevel > 0)
+		  Snack_WriteLogInt("   a ExecSoundCmd", (int)stCheck);
+		if (p->cmdPtr != NULL)
+		  Tcl_DecrRefCount(p->cmdPtr);
 		p->cmdPtr = NULL;
-		inPlayCB += (p->endPos - p->startPos + 1);
+		if (soundQueue == NULL)
+		  break;
 	      }
 	    }
-	  }
-	  inPlayCB = 0;    
-	  }*/
-
-	for (p = soundQueue; p != NULL; p = p->next) {
-	  if (p->status != SNACK_QS_DONE) {
+	  } else {
 	    canCloseDown = 0;
 	  }
 	}
 	if (canCloseDown) {
 	  SnackAudioPost(&ado);
 	  if (globalNWritten - currPlayed <= 0 || currPlayed == oplayed) {
+	    if (debugLevel > 0)
+	      Snack_WriteLogInt("    Closing Down",(int)SnackCurrentTime());
 	    if (SnackAudioClose(&ado) != -1) {
 	      if (snackDumpCh) {
 		Tcl_Close(interp, snackDumpCh);
 	      }
 	      closedDown = 1;
 	      oplayed = -1;
-	      /*for (p = soundQueue; p != NULL && p->cmdPtr != NULL; p=p->next) {
-		ExecSoundCmd(p->sound, p->cmdPtr);
-		if (soundQueue == NULL) break;
-		if (p->cmdPtr != NULL) Tcl_DecrRefCount(p->cmdPtr);
-		p->cmdPtr = NULL;
-		}*/
 	      break;
 	    }
 	  } else {
@@ -664,7 +665,7 @@ PlayCallback(ClientData clientData)
   }
 
   if (!blockingPlay) {
-    playgrain = 50;/*max(min(PLAYGRAIN, (int) (globalLatency * 500.0)), 1);*/
+    playgrain = 100;/*max(min(PLAYGRAIN, (int) (globalLatency * 500.0)), 1);*/
     
     ptoken = Tcl_CreateTimerHandler(playgrain, (Tcl_TimerProc *) PlayCallback,
 				    (int *) NULL);
@@ -1072,8 +1073,8 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
   if (s->storeType == SOUND_IN_CHANNEL) {
     int tlen = 0, rlen = 0;
 
-    s->buffersize = 1024;
-    if ((s->tmpbuf = (short *) ckalloc(1024)) == NULL) {
+    s->buffersize = CHANNEL_HEADER_BUFFER;
+    if ((s->tmpbuf = (short *) ckalloc(CHANNEL_HEADER_BUFFER)) == NULL) {
       Tcl_AppendResult(interp, "Could not allocate buffer!", NULL);
       return TCL_ERROR;
     }
@@ -1483,6 +1484,7 @@ recordCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   if (s->writeStatus == WRITE && s->readStatus == READ) {
     globalNFlowThrough++;
   }
+  globalStreamWidth = s->nchannels;
   numRec++;
   rop = READ;
   if (wop == IDLE) {
@@ -1531,7 +1533,7 @@ pauseCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 
     if (hw == 1 || wop == PAUSED) {
       if (wop == WRITE) {
-	int tmp = SnackAudioPause(&ado);
+	long tmp = SnackAudioPause(&ado);
 
 	startDevTime = SnackCurrentTime() - startDevTime;
 	wop = PAUSED;
@@ -1539,11 +1541,11 @@ pauseCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
         Tcl_DeleteTimerHandler(ptoken);
 	if (tmp != -1) {
 	  jkQueuedSound *p;
-	  int count = 0;
+	  long count = 0;
 
 	  for (p = soundQueue; p != NULL && p->status == SNACK_QS_PAUSED;
 	       p = p->next) {
-	    int totLen;
+	    long totLen;
 
             if (p->endPos == -1) {
 	      totLen = (p->sound->length - p->startPos);
@@ -1666,7 +1668,7 @@ current_positionCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
   jkQueuedSound *p;
 
   if (soundQueue != NULL) {
-    for (p = soundQueue; p->sound != s; p = p->next);
+    for (p = soundQueue; p != NULL && p->sound != s; p = p->next);
     if (p->sound == s) {
       n = p->startPos + p->nWritten;
     }

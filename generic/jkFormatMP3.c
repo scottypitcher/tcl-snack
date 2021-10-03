@@ -29,6 +29,8 @@ must retain this copyright notice.
 #include "snack.h"
 #include "jkFormatMP3.h"
 #include <string.h>
+#define FRAS2(is,a) ((is) > 0 ? t_43[(is)]*(a):-t_43[-(is)]*(a))
+#define MAXFRAMESIZE 2106  /* frame size starting at header */
 
 static char *gblOutputbuf;
 static char *gblReadbuf;
@@ -36,7 +38,6 @@ static int gblBufind = 0;
 static Tcl_Channel gblGch;
 static int fool_opt = 0;
 extern int debugLevel;
-#define NFIRSTSAMPLES 80000
 
 extern int useOldObjAPI;
 /* "getbits.c" */
@@ -136,31 +137,75 @@ getbits(int n)
 static int
 gethdr(struct AUDIO_HEADER *header)
 {
-  int s;
-
-  if ((s=_getbits(12)) != 0xfff) {
-    if (s==0xffe) return GETHDR_NS;
-    else return GETHDR_ERR;  /* possible sync error */
+  int s,br;
+  int bitrate,fs,mean_frame_size;
+  /* check for frame sync first */
+  if ((s=_getbits(11)) != 0x7ff) {
+    return GETHDR_ERR;
   }
-  header->ID=_getbits(1);
+  header->fullID = _getbits(2);
+  if (header->fullID == 1) {
+    return GETHDR_ERR;  /* invalid ID */
+  }
+  header->ID    =header->fullID&0x1;
   header->layer=_getbits(2);
+  /* only support layer3
   if (header->layer == 0) {
-    return GETHDR_ERR;  /* TFW: new, only Layer 3 accepted */
+    return GETHDR_ERR;
+  }
+  */
+  if (header->layer != 1) {
+    return GETHDR_ERR;
   }
   header->protection_bit=_getbits(1);
   header->bitrate_index=_getbits(4);
-  if (header->bitrate_index == 0xFF) {
-    return GETHDR_ERR;     /* TFW: new, note MAD doesn't check aginst a 0, just 0xFF */  
+  if (header->bitrate_index == 0xFF || header->bitrate_index == 0) {  
+    /* free bitrate=0 is also invalid */
+    return GETHDR_ERR;
   }
   header->sampling_frequency=_getbits(2);
-  if (header->sampling_frequency >= 3) {
-    return GETHDR_ERR;       /* Used as an index, corrupt head if >= 3 */
+  if (header->sampling_frequency == 3) {
+    return GETHDR_ERR;       /* 3 is invalid */
   }
   header->padding_bit=_getbits(1);
   header->private_bit=_getbits(1);
-  header->mode=_getbits(2);
+  header->mode=_getbits(2); /* channel mode */
+  bitrate=t_bitrate[header->ID][3-header->layer][header->bitrate_index];
+  fs=t_sampling_frequency[header->fullID][header->sampling_frequency];
+  mean_frame_size = (bitrate * sr_lookup[header->ID] / fs);   /* This frame size */
+  if (mean_frame_size > MAXFRAMESIZE) {
+     return GETHDR_ERR;
+  }
+  /*
+   * Validate bitrate channel mode combinations for layer 2
+   * layer 2 not yet supported.
+   */
+  if (header->layer == 2) {
+     br=bitrate;
+     switch (header->mode) {
+        case 0x00: /* stereo */
+        case 0x01: /* intensity */
+        case 0x02: /* dual channel */
+           if (br==32 || br==48 || br==56 || br == 80) {
+              if (debugLevel > 0) {
+                 Snack_WriteLogInt("1 Invalid channel/mode combo",header->mode);
+              }
+               return GETHDR_ERR;
+           };
+           break;
+        case 0x03: /* single channel */
+           if (br>=224) {
+              if (debugLevel > 0) {
+                 Snack_WriteLogInt("2 Invalid channel/mode combo",header->mode);
+              }
+               return GETHDR_ERR;
+           };
+           break;
+     }
+  }
+
   header->mode_extension=_getbits(2);
-  if (!header->mode) header->mode_extension=0; /* ziher je.. */
+  if (header->mode!=1) header->mode_extension=0; /* ziher je.. */
   header->copyright=_getbits(1);
   header->original=_getbits(1);
   header->emphasis=_getbits(2);
@@ -186,6 +231,8 @@ getinfo(struct AUDIO_HEADER *header,struct SIDE_INFO *info)
 {
   int gr,ch,scfsi_band,region,window;
   int nch,bv;
+  info->error[0]=0;
+  info->error[1]=0;
   if (header->mode==3) {
     nch=1;
     if (header->ID) {
@@ -215,23 +262,32 @@ getinfo(struct AUDIO_HEADER *header,struct SIDE_INFO *info)
       info->scfsi[ch][scfsi_band]=_getbits(1);
   for (gr=0;gr<(header->ID ? 2:1);gr++)
     for (ch=0;ch<nch;ch++) {
-     /* 
-      * Number of bits used for scalefactors (part2) 
+     /*
+      * Number of bits used for scalefactors (part2)
       * Huffman encoded data (part3) of the appropriate granule/channel
       */
       info->part2_3_length[gr][ch]=_getbits(12);
-      /* big_value can't be > 576 > 1 */
-      bv = _getbits(9);
-      if (bv > 288) {
-#ifdef _DEBUG
-            Snack_WriteLogInt("  Invalid big value ",bv);
-#endif
-         bv = 288;
+      if (info->part2_3_length[gr][ch] == 0 && debugLevel > 1) {
+         Snack_WriteLogInt("  blank part 2/3 length gr=",gr);
       }
-      info->big_values[gr][ch]=bv;
+      bv = _getbits(9);
       info->global_gain[gr][ch]=_getbits(8);
-      if (header->ID) info->scalefac_compress[gr][ch]=_getbits(4);
-      else info->scalefac_compress[gr][ch]=_getbits(9);
+      /* big_value can't be > 576 (288 << 1), usually denotes a stream error */
+      if (bv > 288) {
+         if (debugLevel > 0) {
+            Snack_WriteLogInt("  Invalid big value ",bv);
+            Snack_WriteLogInt("         on channel ",ch);
+         }
+         for (ch=0;ch<nch;ch++)
+            info->error[ch] = 1; /* force error on all channels */
+         info->big_values[gr][ch]=0;
+      } else {
+         info->big_values[gr][ch]=bv;
+      }
+      if (header->ID)
+         info->scalefac_compress[gr][ch]=_getbits(4);
+      else
+         info->scalefac_compress[gr][ch]=_getbits(9);
       info->window_switching_flag[gr][ch]=_getbits(1);
 
       if (info->window_switching_flag[gr][ch]) {
@@ -435,6 +491,12 @@ decode_scalefactors(mp3Info *ext, struct SIDE_INFO *info,struct AUDIO_HEADER *he
           sfb++;
         }
       }
+      /* There may be a bug here, sfb is left at 21
+         indicating there are 21 scale factors,
+         last one is ?always? blank and
+         later causes a crash if garbage
+         scalefac_l[0][ch][21] is not used.
+      */
     } else if (info->block_type[0][ch]==2) {
       if (!info->mixed_block_flag[0][ch]) {
         sfb=0;
@@ -501,7 +563,7 @@ _qsign(int x,int *q)
 static int
 decode_huffman_data(mp3Info *ext,struct SIDE_INFO *info,int gr,int ch,int ssize)
 {
-  int l,i,cnt,x=0,y=0;
+  int l,i,cnt,x=0,y=0, cmp=0;
   int q[4],r[3],linbits[3],tr[4]={0,0,0,0};
   int big_value = info->big_values[gr][ch] << 1;
   for (l=0;l<3;l++) {
@@ -570,36 +632,59 @@ decode_huffman_data(mp3Info *ext,struct SIDE_INFO *info,int gr,int ch,int ssize)
       ext->is[ch][l+1]=y;
     }
   }
-  if (debugLevel > 0) 
-     if (cnt > (info->part2_3_length[gr][ch] - ssize) )
-           Snack_WriteLogInt(" ERROR in BIGVALUES ", cnt-info->part2_3_length[gr][ch]+ssize);
-
-  while ((cnt < info->part2_3_length[gr][ch]-ssize) && (l<576)) {
+  cmp = (info->part2_3_length[gr][ch] - ssize);
+  while ((cnt < cmp) && (l<576)) {
     cnt+=huffman_decode(tr[3],&x,&y);
     cnt+=_qsign(x,q);
-    for (i=0;i<4;i++) ext->is[ch][l+i]=q[i]; /* ziher je ziher, is[578]*/
+    for (i=0;i<4;i++)
+      ext->is[ch][l+i]=q[i]; /* ziher je ziher, is[578]*/
     l+=4;
-    /*    if (SHOW_HUFFBITS)
-          printf(" (%d,%d,%d,%d)\n",q[0],q[1],q[2],q[3]);*/
+    /* if (SHOW_HUFFBITS) printf(" (%d,%d,%d,%d)\n",q[0],q[1],q[2],q[3]); */
   }
-   if (debugLevel > 1) {
-     /* Either corrupted or poorly encoded files don't provided the expected number of bits */
-       if (cnt > (info->part2_3_length[gr][ch] - ssize) )
-         Snack_WriteLogInt ("BITS DISCARDED",cnt-info->part2_3_length[gr][ch]+ssize);
-       else if (cnt < (info->part2_3_length[gr][ch] - ssize) )
-         Snack_WriteLogInt ("BITS NOT USED",info->part2_3_length[gr][ch]+ssize-cnt);
+  /*
+   * If we detected an error in the header for this frame, blank it out
+   * to prevent audible spikes.
+   */
+   if (info->error[ch]) {
+      if (debugLevel > 0) {
+         Snack_WriteLogInt ("  blanking gain",cnt-cmp);
+      }
+      info->global_gain[gr][ch]=0;
+   } else {
+     /*
+      * Debug code to print out excessive mismatches in bits
+      */
+      if (cnt > cmp) {
+         if ((cnt - cmp) > 100) {
+            if (debugLevel > 0)
+               Snack_WriteLogInt ("  BITS DISCARDED",cnt - cmp);
+         }
+      }
+      else if (cnt < cmp) {
+         if ((cmp-cnt) > 800) {
+            if (debugLevel > 0) {
+               Snack_WriteLogInt ("  BITS NOT USED",cmp - cnt);
+               Snack_WriteLogInt ("           GAIN",info->global_gain[gr][ch]);
+            }
+
+         }
+      }
    }
   /*  set position to start of the next gr/ch, only needed on a mismatch
    */
-  if (cnt != info->part2_3_length[gr][ch] - ssize ) {
-    gblData-=cnt-(info->part2_3_length[gr][ch] - ssize);
+  if (cnt != cmp ) {
+    gblData-=cnt-cmp;
     gblData&= 8*BUFFER_SIZE - 1;
   }
-  if (l<576) ext->non_zero[ch]=l;
-  else ext->non_zero[ch]=576;
+  if (l<576) {
+     ext->non_zero[ch]=l;
      /* zero out everything else
       */
-  for (;l<576;l++) ext->is[ch][l]=0;
+     for (;l<576;l++)
+        ext->is[ch][l]=0;
+  } else {
+     ext->non_zero[ch]=576;
+  }
   return 1;
 }
 
@@ -642,13 +727,14 @@ fras_s(int global_gain,int subblock_gain,int scalefac_scale,int scalefac)
 
 /* this should be faster than pow()
  */
+/*
 static float
 fras2(int is,float a)
 {
   if (is > 0) return t_43[is]*a;
   else return -t_43[-is]*a;
 }
-
+*/
 /*
  * requantize_mono *************************************************************
  */
@@ -682,7 +768,7 @@ requantize_mono(mp3Info *ext, int gr,int ch,struct SIDE_INFO *info,struct AUDIO_
       l=0;sfb=0;
       a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
       while (l<36) {
-        ext->xr[ch][0][l]=fras2(ext->is[ch][l],a);
+        ext->xr[ch][0][l]=FRAS2(ext->is[ch][l],a);
         if (l==ext->t_l[sfb]) {
           scalefac=ext->scalefac_l[gr][ch][++sfb];
           a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
@@ -700,7 +786,7 @@ requantize_mono(mp3Info *ext, int gr,int ch,struct SIDE_INFO *info,struct AUDIO_
           int subblock_gain=info->subblock_gain[gr][ch][window];
           a=fras_s(global_gain,subblock_gain,scalefac_scale,scalefac);
           for (i=0;i<window_len;i++) {
-            ext->xr[ch][0][t_reorder[header->ID][sfreq][l]]=fras2(ext->is[ch][l],a);
+            ext->xr[ch][0][t_reorder[header->ID][sfreq][l]]=FRAS2(ext->is[ch][l],a);
             l++;
           }
         }
@@ -722,7 +808,7 @@ requantize_mono(mp3Info *ext, int gr,int ch,struct SIDE_INFO *info,struct AUDIO_
           int subblock_gain=info->subblock_gain[gr][ch][window];
           float a=fras_s(global_gain,subblock_gain,scalefac_scale,scalefac);
           for (i=0;i<window_len;i++) {
-            ext->xr[ch][0][t_reorder[header->ID][sfreq][l]]=fras2(ext->is[ch][l],a);
+            ext->xr[ch][0][t_reorder[header->ID][sfreq][l]]=FRAS2(ext->is[ch][l],a);
             l++;
           }
         }
@@ -739,7 +825,7 @@ requantize_mono(mp3Info *ext, int gr,int ch,struct SIDE_INFO *info,struct AUDIO_
     sfb=0; l=0;
     a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
     while (l<ext->non_zero[ch]) {
-      ext->xr[ch][0][l]=fras2(ext->is[ch][l],a);
+      ext->xr[ch][0][l]=FRAS2(ext->is[ch][l],a);
       if (l==ext->t_l[sfb]) {
         scalefac=ext->scalefac_l[gr][ch][++sfb];
         a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
@@ -848,17 +934,22 @@ stereo_s(mp3Info *ext, int l,float a[2],int pos,int ms_flag,int is_pos,struct AU
 {
   float ftmp,Mi,Si;
 
-  if (l>=576) return; /* brrr... */
+  if (l>=576) {
+     if (debugLevel > 0) {
+        Snack_WriteLogInt("stereo_s: big value too big",l);
+     }
+     return; /* brrr... */
+  }
 
   if ((is_pos != IS_ILLEGAL) && (header->ID==1)) {
-    ftmp=fras2(ext->is[0][l],a[0]);
+    ftmp=FRAS2(ext->is[0][l],a[0]);
     ext->xr[0][0][pos]=(1-t_is[is_pos])*ftmp;
     ext->xr[1][0][pos]=t_is[is_pos]*ftmp;
     return;
   }
 
   if ((is_pos != IS_ILLEGAL) && (header->ID==0)) {
-    ftmp=fras2(ext->is[0][l],a[0]);
+    ftmp=FRAS2(ext->is[0][l],a[0]);
     if (is_pos&1) {
       ext->xr[0][0][pos]= t_is2[ext->intensity_scale][(is_pos+1)>>1] * ftmp;
       ext->xr[1][0][pos]= ftmp;
@@ -870,13 +961,13 @@ stereo_s(mp3Info *ext, int l,float a[2],int pos,int ms_flag,int is_pos,struct AU
   }
 
   if (ms_flag) {
-    Mi=fras2(ext->is[0][l],a[0]);
-    Si=fras2(ext->is[1][l],a[1]);
+    Mi=FRAS2(ext->is[0][l],a[0]);
+    Si=FRAS2(ext->is[1][l],a[1]);
     ext->xr[0][0][pos]=(float) ((Mi+Si)*i_sq2);
     ext->xr[1][0][pos]=(float) ((Mi-Si)*i_sq2);
   } else {
-    ext->xr[0][0][pos]=fras2(ext->is[0][l],a[0]);
-    ext->xr[1][0][pos]=fras2(ext->is[1][l],a[1]);
+    ext->xr[0][0][pos]=FRAS2(ext->is[0][l],a[0]);
+    ext->xr[1][0][pos]=FRAS2(ext->is[1][l],a[1]);
   }
 }
 
@@ -884,16 +975,22 @@ static void
 stereo_l(mp3Info *ext, int l,float a[2],int ms_flag,int is_pos,struct AUDIO_HEADER *header)
 {
   float ftmp,Mi,Si;
-  if (l>=576) return;
+  if (l>=576) {
+     if (debugLevel > 0) {
+        Snack_WriteLogInt("stereo_s: big value too big",l);
+     }
+     return;
+  }
+
   if ((is_pos != IS_ILLEGAL) && (header->ID==1)) {
-    ftmp=fras2(ext->is[0][l],a[0]);
+    ftmp=FRAS2(ext->is[0][l],a[0]);
     ext->xr[0][0][l]=(1-t_is[is_pos])*ftmp;
     ext->xr[1][0][l]=t_is[is_pos]*ftmp;
     return;
   }
 
   if ((is_pos != IS_ILLEGAL) && (header->ID==0)) {
-    ftmp=fras2(ext->is[0][l],a[0]);
+    ftmp=FRAS2(ext->is[0][l],a[0]);
     if (is_pos&1) {
       ext->xr[0][0][l]= t_is2[ext->intensity_scale][(is_pos+1)>>1] * ftmp;
       ext->xr[1][0][l]= ftmp;
@@ -905,13 +1002,13 @@ stereo_l(mp3Info *ext, int l,float a[2],int ms_flag,int is_pos,struct AUDIO_HEAD
   }
 
   if (ms_flag) {
-    Mi=fras2(ext->is[0][l],a[0]);
-    Si=fras2(ext->is[1][l],a[1]);
+    Mi=FRAS2(ext->is[0][l],a[0]);
+    Si=FRAS2(ext->is[1][l],a[1]);
     ext->xr[0][0][l]=(float) ((Mi+Si)*i_sq2);
     ext->xr[1][0][l]=(float) ((Mi-Si)*i_sq2);
   } else {
-    ext->xr[0][0][l]=fras2(ext->is[0][l],a[0]);
-    ext->xr[1][0][l]=fras2(ext->is[1][l],a[1]);
+    ext->xr[0][0][l]=FRAS2(ext->is[0][l],a[0]);
+    ext->xr[1][0][l]=FRAS2(ext->is[1][l],a[1]);
   }
 
 }
@@ -926,14 +1023,13 @@ static void
 requantize_ms(mp3Info *ext, int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *header)
 {
   int l,sfb,ms_flag,is_pos,i,ch;
-  int *global_gain,subblock_gain[2],*scalefac_scale,scalefac[2],isbound[3];
+  int *global_gain,subblock_gain[2],*scalefac_scale,scalefac[2]={0,0},isbound[3];
   int sfreq=header->sampling_frequency;
   int id = header->ID;
   float a[2];
 
   global_gain=info->global_gain[gr];
   scalefac_scale=info->scalefac_scale[gr];
-
   if (info->window_switching_flag[gr][0] && info->block_type[gr][0]==2)
     if (info->mixed_block_flag[gr][0]) {
       /*
@@ -1013,7 +1109,6 @@ requantize_ms(mp3Info *ext, int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *h
       }
       while (l<576) {
         int reorder = t_reorder[id][sfreq][l++];
-
         ext->xr[0][0][reorder]=ext->xr[1][0][reorder]=0;
       }
     } else {
@@ -1030,8 +1125,9 @@ requantize_ms(mp3Info *ext, int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *h
         for (window=0;window<3;window++) {
           subblock_gain[0]=info->subblock_gain[gr][0][window];
           subblock_gain[1]=info->subblock_gain[gr][1][window];
-          scalefac[0]=ext->scalefac_s[gr][0][sfb][window];
-          scalefac[1]=ext->scalefac_s[gr][1][sfb][window];
+
+          scalefac[0]=ext->scalefac_s[gr][0][sfb][window]&0x3F; /* clamp values to < 63 */
+          scalefac[1]=ext->scalefac_s[gr][1][sfb][window]&0x3F;
 
           if (ext->t_s[sfb] < isbound[window]) {
             is_pos=IS_ILLEGAL;
@@ -2728,15 +2824,16 @@ layer3_frame(mp3Info *ext, struct AUDIO_HEADER *header, int len)
   /* MPEG2 only has one granule  */
 
   bitrate=t_bitrate[header->ID][3-header->layer][header->bitrate_index];
-  fs=t_sampling_frequency[header->ID][header->sampling_frequency];
-  if (header->ID) mean_frame_size=144000*bitrate/fs;
-  else mean_frame_size=72000*bitrate/fs;
-
+  fs=t_sampling_frequency[header->fullID][header->sampling_frequency];
+  mean_frame_size = (bitrate * (sr_lookup[header->ID]) / fs);
   /* check if mdb is too big for the first few frames. this means that
    * a part of the stream could be missing. We must still fill the buffer
    */
   if (info.main_data_begin > gblAppend)
     if (cnt*mean_frame_size < 960) {
+      if (debugLevel > 0) {
+         Snack_WriteLogInt(" incomplete frame < 960 bytes ", cnt);
+      }
       /*printf(" frame %d discarded, incomplete main_data\n",cnt);*/
       fillbfr(mean_frame_size + header->padding_bit - hsize);
       return 0;
@@ -2750,11 +2847,6 @@ layer3_frame(mp3Info *ext, struct AUDIO_HEADER *header, int len)
   /* read into the buffer all bytes up to the start of next header */
 
   fillbfr(mean_frame_size + header->padding_bit - hsize);
-  /*\ TFW: here is where we can check to see if this is a complete
-  |*|      frame by reading an additional 4 bytes and verifying
-  |*|      the next frame is valid. If not try searching back then
-  |*|      forward for sync. Alternative is to dump entire frame.
-  \*/
   /* these two should go away */
 
   ext->t_l=&t_b8_l[header->ID][header->sampling_frequency][0];
@@ -2828,7 +2920,7 @@ layer3_frame(mp3Info *ext, struct AUDIO_HEADER *header, int len)
       memcpy(&gblOutputbuf[ext->ind], ext->stereo_samples, l);
       ext->ind += l;
       if (l < 18*32*2*4) {
-        memcpy(&rest[ext->restlen], 
+        memcpy(&rest[ext->restlen],
            &((char *)ext->stereo_samples)[l], 18*32*2*4 - l);
         ext->restlen += (18*32*2*4 - l);
       }
@@ -2865,8 +2957,11 @@ processHeader(Sound *s, struct AUDIO_HEADER *header, int cnt)
 
   if (s->debug > 3) Snack_WriteLog("      Enter processHeader\n");
 
+  /*
+   * If already read the header, reuse it. Otherwise
+   * read it from the stream.
+   */
   if (Si->gotHeader) {
-     /* First time, already have a header */
     memcpy((char *) _buffer, (char *)&(Si->headerInt), 4);
     _bptr=0;
   } else {
@@ -2877,21 +2972,19 @@ processHeader(Sound *s, struct AUDIO_HEADER *header, int cnt)
   while ((g=gethdr(header))!=0) {
      /* Loop while the header is invalid, typically this won't happen
       * However it indicates a cut/insertion in the stream just before this.
-      * TFW: This can be slow when resyncing. Would also be nice to verify the
-      * frame is complete by validating the next header sync.
       */
     if (_fillbfr(4) <= 0) return(1);
     i++;
   }
   if (s->debug > 0 && i > 0) {
      Snack_WriteLogInt("       Synced to valid next frame #",Si->cnt);
+     Snack_WriteLogInt("                      bytes skipped",i*4);
   }
   if (header->protection_bit==0) getcrc();
 
   return(0);
  }
 
-#define MAXFRAMESIZE 2106  /* frame size starting at header */
 char *
 GuessMP3File(char *buf, int len)
 {
@@ -2901,6 +2994,9 @@ GuessMP3File(char *buf, int len)
   int i;
   float energyLIN16 = 1.0, energyLIN16S = 1.0, ratio;
 
+  if (debugLevel > 1) {
+     Snack_WriteLogInt(" GuessMP3File Called",len);
+  }
   if (len < 4) return(QUE_STRING);
   /* If ID3 tag or RIFF tag then we know it is an MP3 (TFW: Not specifically true, others can have ID3V2)*/
   if (strncmp("ID3", buf, strlen("ID3")) == 0) {
@@ -2928,35 +3024,51 @@ GuessMP3File(char *buf, int len)
     return(NULL);
   }
 
-  depth = min(NFIRSTSAMPLES,len);
+  depth = min(CHANNEL_HEADER_BUFFER,len);
   while (offset <= depth - 4) {
     /* Validate frame sync and other data to make sure this is a good header */
      if (hasSync(&buf[offset])) {
       int next_frame = locateNextFrame(&buf[offset]);
+      if (debugLevel > 1) {
+         Snack_WriteLogInt(" GuessMP3File Found a sync at",offset);
+      }
       if (offset == 0 || offset == 72) {
+       if (debugLevel > 0) {
+          Snack_WriteLogInt("GuessMP3File detected MP3 at",offset);
+       }
         return(MP3_STRING);
       }
-      if (offset + next_frame + 4 >= len && len > 1000) {
+      /* Have one sync but dataset is too short to check for more frames */
+      if (offset + next_frame + 4 >= len && len > depth) {
+        if (debugLevel > 0) {
+           Snack_WriteLogInt(" GuessMP3File Failed at",offset);
+        }
         return(NULL);
       }
 
       /* A valid MP3 should have a header at the next location,
          and they should nearly match (sync + ID/Layer/Pro bit
-         just to make sure we need two additional matches.
+         just to make sure we need one additional matche.
       */
       if (hasSync(&buf[offset+next_frame])) {
         matches++;
-        /* Require at least three frames have this kind of match */
-        if (matches > 2) {
+        /* Require at least two frames have this kind of match */
+        if (matches > 1) {
+          if (debugLevel > 0) {
+             Snack_WriteLogInt("GuessMP3File detected MP3 at",offset);
+          }
           return(MP3_STRING);
         }
       }
     }
     offset++;
   }
-  if (offset < 1001) {
+  if (offset <= depth) {
     return(QUE_STRING);
   } else {
+     if (debugLevel > 0) {
+        Snack_WriteLogInt(" GuessMP3File Final Failed at",offset);
+     }
     return(NULL);
   }
 }
@@ -2991,21 +3103,21 @@ static int ExtractI4(unsigned char *buf)
 #define BYTES_FLAG      0x0002
 
 int
-GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
-             char *buf)
-{
-  int offset = 0, okHeader = 0, i, j;
+  GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
+               char *buf) {
+   int offset = 0, okHeader = 0, i, j,k;
    int mean_frame_size = 0, bitrate = 0, fs, ID3Extra = 0;
    int layer, br_index, sr_index = 0, pad, mode, totalFrames=0;
    int passes = 0;
    int head_flags;
+   int bufLen=CHANNEL_HEADER_BUFFER;
    int xFrames=0, xBytes=0, xAvgBitrate=0, xAvgFrameSize=0 ;
    mp3Info *Si = (mp3Info *)S->extHead;
 
    if (S->debug > 2) {
-     Snack_WriteLog("    Enter GetMP3Header\n");
+      Snack_WriteLog("    Enter GetMP3Header\n");
    }
-   
+
    if (S->extHead != NULL && S->extHeadType != SNACK_MP3_INT) {
       Snack_FileFormat *ff;
 
@@ -3020,7 +3132,7 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 
    if (Si == NULL) {
       Si = (mp3Info *) ckalloc(sizeof(mp3Info));
-      S->extHead = (char *) Si; 
+      S->extHead = (char *) Si;
       for (i = 0; i < 32; i++) {
          for (j = 0; j < 16; j++) {
             Si->u[0][0][i][j] = 0.0f;
@@ -3046,14 +3158,29 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
          initDone = 1;
       }
    }
+   /*
+    Init scalefactors to 0
+    */
+   for (i = 0; i < 2; i++) {
+      for (j = 0; j < 2; j++) {
+         for (k = 0; k < 22; k++) {
+            Si->scalefac_l[i][j][k] = 0;
+         }
+      }
+   }
+   for (i = 0; i < 2; i++) {
+      for (j = 0; j < 13; j++) {
+         for (k = 0; k < 3; k++) {
+            Si->scalefac_s[0][i][j][k] = 0;
+            Si->scalefac_s[1][i][j][k] = 0;
+         }
+      }
+   }
+
   /**
    * TFW: If any ID3V2 info is to be got, it can be read here
    * Insert code as needed.
    * See: http://www.id3.org/id3v2-00.txt for more details.
-   * TFW Potential problem: if the buffer length actually passed in
-   * is less than NFIRSTSAMPLES the a crash may occur here. It
-   * should normally be larger but on a very small file it won't
-   * be.
    */
    S->length = -1;
    if (strncmp("ID3", buf, strlen("ID3")) == 0) {
@@ -3064,18 +3191,19 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
                              + (long)(buf[8]&0x7F)*128l
                              + (long)buf[9] + 10);
       /* Attempt to read beyond the ID3 offset if it is too large */
-      if (idOffset > NFIRSTSAMPLES) {
+      if (idOffset > bufLen) {
 
-         if (TCL_SEEK(ch, idOffset, SEEK_SET) > 0) {
-            if (Tcl_Read(ch, &buf[0], NFIRSTSAMPLES) > 0) {
+         if (Tcl_Seek(ch, idOffset, SEEK_SET) > 0) {
+            bufLen = Tcl_Read(ch, &buf[0], bufLen);
+            if (bufLen > 0) {
                /* local buffer is now at end of ID3 tag */
                offset = 0;
                ID3Extra = idOffset;
             } else {
                if (S->debug > 0) Snack_WriteLogInt("ID3 size is in error is too big", offset);
-                  Tcl_AppendResult(interp, "ID3 size is in error is too big", NULL);
-                  return TCL_ERROR;
-               }
+               Tcl_AppendResult(interp, "ID3 size is in error is too big", NULL);
+               return TCL_ERROR;
+            }
 
          } else {
             if (S->debug > 0) Snack_WriteLogInt("ID3 Tag is bigger than file size", offset);
@@ -3103,11 +3231,17 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
        Layer 00 (reserved)
        Sample Rate 11 (reserved)
     */
-     if (hasSync(&buf[offset])) {
-      /* Have a good frame sync and the header data passed the initial checks */
-       /*char *p = &buf[offset];*/
-        unsigned char *xBuf = &buf[offset];
-        int next_frame = locateNextFrame(&buf[offset]);
+      if (hasSync(&buf[offset])) {
+         /*
+          * Have a good frame sync and the header data passed the initial checks
+          */
+         unsigned char *xBuf = &buf[offset];
+         int next_frame = locateNextFrame(&buf[offset]);
+         if (next_frame > bufLen) {
+            if (S->debug > 0) Snack_WriteLogInt("Could not find MP3 header", next_frame);
+            Tcl_AppendResult(interp, "Could not find MP3 header", NULL);
+            return TCL_ERROR;
+         }
          if (((buf[offset + 3] & 0xc0) >> 6) != 3) {
             S->nchannels = 2;
          } else {
@@ -3117,6 +3251,7 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
          S->sampsize = 2;
 
          Si->id =   (buf[offset+1] & 0x08) >> 3;
+         Si->fullID = (buf[offset+1] & 0x18) >> 3;
          layer =    (buf[offset+1] & 0x06) >> 1;
          sr_index = (buf[offset+2] & 0x0c) >> 2;
 
@@ -3124,9 +3259,9 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
          pad =      (buf[offset+2] & 0x02) >> 1;
          mode =     (buf[offset+3] & 0xc0) >> 6;
 
-         S->samprate = t_sampling_frequency[Si->id][sr_index];
+         fs = t_sampling_frequency[Si->fullID][sr_index];
+         S->samprate = fs;
          bitrate = t_bitrate[Si->id][3 - layer][br_index];
-         fs = t_sampling_frequency[Si->id][sr_index];
          /* Xing VBR Check
           * If a Xing VBR header exists, then use the info from there
           * otherwise the length and average bitrate estimate will
@@ -3134,9 +3269,9 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
           *
           * First, determine offset of header into Aux section
           */
-         if ( Si->id ) {                         /* mpeg1 */
+         if ( Si->id ) {                              /* mpeg1 */
             xBuf += 4 + (mode != 3 ? 32 : 17);
-         } else {                                /* mpeg */
+         } else {                                       /* mpeg */
             xBuf += 4 + (mode != 3 ? 17 : 9);
          }
 
@@ -3146,25 +3281,25 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
             head_flags = ExtractI4(xBuf);
             xBuf+=4;
             if ( head_flags & FRAMES_FLAG ) {
-              xFrames   = ExtractI4(xBuf);  /* Number of frames in file */
-              xBuf+=4;
+               xFrames   = ExtractI4(xBuf);      /* Number of frames in file */
+               xBuf+=4;
             }
             if ( head_flags & BYTES_FLAG ) {
-              xBytes = ExtractI4(xBuf);    /* File size (at encoding) */
-              xBuf+=4;
+               xBytes = ExtractI4(xBuf);         /* File size (at encoding) */
+               xBuf+=4;
             }
             /* Enough info to compute average VBR bitrate and framesize*/
             if ( xFrames > 0 && xBytes > 0 && (head_flags & (BYTES_FLAG | FRAMES_FLAG))) {
                xAvgFrameSize =  xBytes/xFrames;
-               xAvgBitrate =  (xAvgFrameSize*fs)/(Si->id ? 144000:72000);   /* Layer 1 */
+               xAvgBitrate =  (xAvgFrameSize*fs)/sr_lookup[Si->id];   /* Layer 1 */
             }
          }
 
-      /* End XING stuff */
+         /* End XING stuff */
 
-         mean_frame_size = (bitrate * (Si->id ? 144000:72000) / fs);   /* This frame size */
+         mean_frame_size = (bitrate * sr_lookup[Si->id] / fs);   /* This frame size */
 
-      /* Max should be 2926 */
+         /* Max should be 2926 */
 
          if (mean_frame_size > MAXFRAMESIZE) {
             mean_frame_size = MAXFRAMESIZE;
@@ -3179,8 +3314,8 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
          */
          if (passes > 0) {
             /* Verify this frame and next frame headers match */
-            if (hasSync(&buf[offset+next_frame]) && 
-               (buf[offset+3]|0x30) == (buf[offset+next_frame+3]|0x30) ) {
+            if (hasSync(&buf[offset+next_frame]) &&
+                (buf[offset+3]|0x30) == (buf[offset+next_frame+3]|0x30) ) {
                okHeader = 1;
             } else {
                offset++;
@@ -3191,7 +3326,7 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
       } else {
          offset++;
       }
-      if (offset > NFIRSTSAMPLES) {
+      if (offset > bufLen) {
          if (S->debug > 0) Snack_WriteLogInt("Could not find MP3 header", offset);
          Tcl_AppendResult(interp, "Could not find MP3 header", NULL);
          return TCL_ERROR;
@@ -3203,21 +3338,22 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
    Si->bytesPerFrame = xAvgFrameSize ? xAvgFrameSize : mean_frame_size;
    /* Compute length */
    if (ch != NULL) {
-      if (TCL_SEEK(ch, 0, SEEK_END) > 0) {
-         totalFrames = ((int)TCL_TELL(ch) - (offset + ID3Extra)) / Si->bytesPerFrame;
+      if (Tcl_Seek(ch, 0, SEEK_END) > 0) {
+         totalFrames = ((int)Tcl_Tell(ch) - (offset + ID3Extra)) / Si->bytesPerFrame;
       }
       S->length = (totalFrames * 18 * 32) * (Si->id ? 2:1);
    }
    if (obj != NULL) {
       if (useOldObjAPI) {
          totalFrames = (obj->length - (offset + ID3Extra)) / Si->bytesPerFrame;
-      } else {
+      }
+      else {
 #ifdef TCL_81_API
          int length = 0;
          Tcl_GetByteArrayFromObj(obj, &length);
          totalFrames = (length - (offset + ID3Extra)) / Si->bytesPerFrame;
 #endif
-         }
+      }
       S->length = (totalFrames * 18 * 32) * (Si->id ? 2:1);
    }
 
@@ -3225,17 +3361,17 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
    S->swap = 0;
    Si->bufind = offset + ID3Extra;
    Si->restlen = 0;
-   Si->gotHeader = 1;
    Si->append = 0;
    Si->data = 0;
   /* If Xing header, then use an average bitrate, otherwise use this frames bitrate */
    Si->bitrate = 1000 * (xAvgBitrate ? xAvgBitrate : bitrate);
 
+   Si->gotHeader = 1;
    memcpy((char *)&Si->headerInt, &buf[offset], 4);
-   Si->lastByte = buf[offset+3]; /* save for later, TFW: Can go away hopefully */
+   Si->lastByte = buf[offset+3];                 /* save for later, TFW: Can go away hopefully */
    Si->sr_index = sr_index;
 
-   S->extHead = (char *) Si; /* redundant */
+   S->extHead = (char *) Si;                     /* redundant */
    S->extHeadType = SNACK_MP3_INT;
 
    if (S->debug > 2) Snack_WriteLogInt("    Exit GetMP3Header", S->length);
@@ -3245,12 +3381,12 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 
 int
  SeekMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, int pos) {
-   int filepos, i, j;
+   int filepos, i, j, tpos;
    unsigned int hInt = 0;
    int framesize=0;
    mp3Info *Si = (mp3Info *)S->extHead;
    unsigned char *seekBuffer = NULL;
-   if (S->debug > 2) Snack_WriteLogInt("    Enter SeekMP3File", pos);
+   if (S->debug > 0) Snack_WriteLogInt("    Enter SeekMP3File", pos);
 
    Si->bufind = S->headSize;
    Si->restlen = 0;
@@ -3281,21 +3417,26 @@ int
 
    framesize = Si->id ? 1152:576; /* samples per frame */
    filepos = (S->headSize + (int)((float)Si->bytesPerFrame/(float)(framesize) * (float)pos) )&0xfffffffc;
+   /*
+    * TFW: For streams, can't seek very far. In fact, can't seek beyound the header size so all seeks fail
+    */
+   if (S->debug > 0) Snack_WriteLogInt("    Want to seek to", filepos);
    /* Sync up to next valid frame, put file position at start of data following header */
    hInt = Si->headerInt;
    if (ch != NULL) {
       int seekSize = max(Si->bytesPerFrame*50,20000);
       int index=0;
+      tpos = (int)Tcl_Seek(ch, filepos, SEEK_SET);
+      if (tpos < 0) {
+         if (S->debug > 0) Snack_WriteLogInt("    Failed to seek to", filepos);
+         return(filepos);                                  /* Denote seek beyond eof */
+      } else {
+         filepos = tpos;
+      }
       seekBuffer = Tcl_Alloc(seekSize);
       if (seekBuffer == NULL) {
          if (S->debug > 0) Snack_WriteLogInt("    Failed to allocate seek buffer", seekSize);
          return -1;
-      }
-      filepos = (int)TCL_SEEK(ch, filepos, SEEK_SET);
-      if (filepos < 0) {
-         if (S->debug > 0) Snack_WriteLogInt("    Failed to seek to", filepos);
-         return(filepos);                                  /* Denote seek beyond eof */
-         Tcl_Free(seekBuffer);
       }
       seekSize = Tcl_Read(ch, seekBuffer, seekSize);
       if (seekSize <= 0) {
@@ -3314,8 +3455,8 @@ int
          int syncsNeeded = 3;
          int tmpIndex= index;
          unsigned char *ref = &seekBuffer[index];
-         /* 
-          * Make sure we can walk N frame syncs, just to make sure 
+         /*
+          * Make sure we can walk N frame syncs, just to make sure
           * Double check against the sr index and other data we consider
           * static in the file just to make sure we indeed are at the
           * start of a frame.
@@ -3323,7 +3464,7 @@ int
          while (tmpIndex < seekSize && tmpIndex > 0 && syncsNeeded > 0) {
             unsigned char *tmp = &seekBuffer[tmpIndex];
             unsigned char sr_index = (tmp[2] & 0x0c) >> 2;
-            if (hasSync(tmp) && (sr_index == Si->sr_index) && (Si->lastByte|0x3C) == (tmp[3]|0x3C)) {
+            if (hasSync(tmp) && (sr_index == Si->sr_index) && (Si->lastByte|0x7C) == (tmp[3]|0x7C)) {
                int frameLength = locateNextFrame(tmp);
                tmpIndex += frameLength;
                syncsNeeded--;
@@ -3339,14 +3480,14 @@ int
              * Skip 32 bit header and position at start of data
              * (protection field handled elsewhere)
              */
-            TCL_SEEK(ch,filepos + index + 4, SEEK_SET);
+            Tcl_Seek(ch,filepos + index + 4, SEEK_SET);
             Tcl_Free(seekBuffer);
             return(pos);
          }
          index++;
       }
       /* If we got here, we went past the eof, seek to it */
-      TCL_SEEK(ch,0,SEEK_END);
+      Tcl_Seek(ch,0,SEEK_END);
       if (S->debug > 0) Snack_WriteLogInt("    Seek beyond EOF", filepos+index);
       pos = -1;
    }
@@ -3366,9 +3507,9 @@ int hasSync (unsigned char *buf) {
    if ((buf[0] & 0xff) == 0xff &&                          /* frame sync, verify valid */
        (buf[1] & 0xe0) == 0xe0 &&                          /* frame sync, verify valid */
        (buf[1] & 0x18) != 0x08 &&                          /* Version, 1 not allowed */
-       (buf[1] & 0x06) == 0x02 &&                          /* Layer 3 only */
+       (buf[1] & 0x06) == 0x02 &&                          /* Layer 3 only (no layer 2 support yet)*/
        (buf[2] & 0x0C) != 0x0c &&                          /* sample rate index, 3 not allowed */
-       (buf[2] & 0xf0) != 0xf0) {                           /* bitrate, 15 not allowed */
+       (buf[2] & 0xf0) != 0xf0) {                           /* bitrate, 15 not allowed (0 is allowed but not supported) */
       return 1;
    }
    else {
@@ -3378,21 +3519,22 @@ int hasSync (unsigned char *buf) {
 /**
  * Return the offset to the next potential frame based on
  * this frames data.
- *
  */
 int locateNextFrame (unsigned char *tmp) {
-   int id       = (tmp[1] & 0x08) >> 3; /* 2 or 3 (0 or 1)*/
-   int layer    = (tmp[1] & 0x06) >> 1; /* 1 for mp3 */
-   int br_index = (tmp[2] & 0xf0) >> 4; /* 10 for 128K layer 3 */
+   int id       = (tmp[1] & 0x08) >> 3;          /* 2 or 3 (0 or 1)*/
+   int fullID   = (tmp[1] & 0x18) >> 3;          /* full ID layer*/
+   int layer    = (tmp[1] & 0x06) >> 1;          /* 1 for mp3 */
+   int br_index = (tmp[2] & 0xf0) >> 4;          /* 10 for 128K layer 3 */
    int sr_index = (tmp[2] & 0x0c) >> 2;
    int padding  = (tmp[2] & 0x02) >> 1;
    int bitrate  = t_bitrate[id][3 - layer][br_index];
-   int fs       = t_sampling_frequency[id][sr_index]; /* 44.1K normally */
+   int fs       = t_sampling_frequency[fullID][sr_index];   /* 44.1K normally */
    int next_frame_pos;
    if (bitrate == 0) {
-      next_frame_pos = 1;  /* (Free bit rate) This will move the scanner one step forward */
-   } else {
-      next_frame_pos = (bitrate * (id ? 144000:72000) / fs) + padding /*+  * 2*protection */;   /* This frame size */
+      next_frame_pos = 1;                        /* (Free bit rate) This will move the scanner one step forward */
+   }
+   else {
+      next_frame_pos = (bitrate * sr_lookup[id] / fs) + padding;
    }
    return next_frame_pos;
 }
@@ -3409,7 +3551,7 @@ ReadMP3Samples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf,
   if (s->debug > 2) Snack_WriteLogInt("    Enter ReadMP3Samples", len);
 
   len *= sizeof(float);
-  /* 
+  /*
    * Restore the sound posititions for the common
    * values for this particular object.
    */
@@ -3433,9 +3575,11 @@ ReadMP3Samples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf,
       Si->restlen = 0;
     }
   }
+  /* should be already set appropriatly
   if (Si->cnt == 0) {
     Si->gotHeader = 1;
   }
+  */
   for (;; Si->cnt++) {
     if (Si->ind >= len) break;
     if (Si->ind == last &&

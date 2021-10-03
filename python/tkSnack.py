@@ -4,7 +4,7 @@ An interface to Kåre Sjölander's Snack Tcl extension
 http://www.speech.kth.se/snack/index.html
 
 by Kevin Russell and Kåre Sjölander
-last modified: Sep 03, 2002
+last modified: Mar 28, 2003
 """
 
 import Tkinter
@@ -215,7 +215,7 @@ class Sound (TkObject):
         
     def insert(self, sound, position, **kw):
         """Inserts sound at position."""
-        self.tk.call((self.name, sound.name, position) + self._options(kw))
+        self.tk.call((self.name, 'insert', sound.name, position) + self._options(kw))
     
     def length(self, n=None, **kw):
         """Gets/sets the length of the sound in number of samples (default)
@@ -463,7 +463,10 @@ class MixerControllerSingleton(TkObject):
         self.tk.call('snack::mixer', 'update')
         
     def volume(self, line, leftVar=None, rightVar=None):
-        raise NotImplementedException
+        if self.channels(line)[0] == 'Mono':
+            return self.tk.call('snack::mixer', 'volume', line, rightVar)
+        else:
+            return self.tk.call('snack::mixer', 'volume', line, leftVar, rightVar)
         
     def select(self, device):
         """Selects a device to be used as default."""

@@ -200,6 +200,8 @@ extern void Snack_MixerDeleteCmd(ClientData clientData);
 #define SOUND_IN_MEMORY 0
 #define SOUND_IN_CHANNEL  1
 #define SOUND_IN_FILE     2
+/* NFIRSTSAMPLES*/
+#define CHANNEL_HEADER_BUFFER 80000
 
 typedef int (soundCmd)(Sound *s, Tcl_Interp *interp, int objc,
 		     Tcl_Obj *CONST objv[]);
@@ -464,8 +466,8 @@ typedef struct jkQueuedSound {
   Sound *sound;
   int startPos;
   int endPos;
-  int nWritten;
-  int startTime;
+  long nWritten;
+  long startTime;
   Tcl_Obj *cmdPtr;
   queuedSoundStatus status;
   int duration;

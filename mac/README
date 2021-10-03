@@ -1,9 +1,8 @@
 Building Snack for MacOS X
-(instructions for the Tcl8.4.1 binaries released 11/14/02)
 
-In order to use Snack you will have to install Tcl/Tk 8.4.1 first.
+In order to use Snack you will have to install Tcl/Tk 8.4.2 or later first.
 Download from
-http://www.apple.com/downloads/macosx/unix_open_source/tcltk.html
+http://www.maths.mq.edu.au/~steffen/tcltk/TclTkAqua/
 
 In order to build Snack you also need to have Apple's developer tools
 installed.
@@ -25,7 +24,10 @@ now type
 make
 
 
-You can fake the installation step using cp -r mac/ /Library/Tcl
+Install using:
+
+make install
+
 
 -------------------------------------------------------------------
 
