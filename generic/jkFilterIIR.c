@@ -104,7 +104,7 @@ iirConfigProc(Snack_Filter f, Tcl_Interp *interp, int objc,
   iirFilter_t iir = (iirFilter_t) f;
   
   int arg, arg1 = 0;
-  static char *optionStrings[] = {
+  static CONST84 char *optionStrings[] = {
     "-impulse", "-numerator", "-denominator", "-noise", "-dither", NULL
   };
   enum options {

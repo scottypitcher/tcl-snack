@@ -35,10 +35,23 @@ ParseSoundCmd(ClientData cdata, Tcl_Interp *interp, int objc,
 
 extern int littleEndian;
 
+void *
+Snack_Alloc(int size) {
+  void *tmp = ckalloc(size);
+  /*  printf("Alloced %d at %d\n", size, (int) tmp);*/
+  return tmp;
+}
+
+void
+Snack_Free(void *handle) {
+  /*  printf("Freed at %d\n", (int) handle);*/
+  ckfree(handle);
+}
+
 int
 Snack_AddCallback(Sound *s, updateProc *proc, ClientData cd)
 {
-  jkCallback *cb = (jkCallback *) ckalloc(sizeof(jkCallback));
+  jkCallback *cb = (jkCallback *) Snack_Alloc(sizeof(jkCallback));
 
   if (cb == NULL) return(-1);
   cb->proc = proc;
@@ -59,23 +72,23 @@ Snack_AddCallback(Sound *s, updateProc *proc, ClientData cd)
 void
 Snack_RemoveCallback(Sound *s, int id)
 {
-  jkCallback *cb = s->firstCB, *prev = cb;
+  jkCallback *cb = s->firstCB, **pp = &s->firstCB, *cbGoner = NULL;
 
   if (s->debug > 1) Snack_WriteLogInt("  Snack_RemoveCallback", id);
 
   if (id == -1) return;
-  if (cb->id == id) {
-    s->firstCB = cb->next;
-    ckfree((char *)cb);
-    return;
-  }
 
-  for (cb = cb->next; cb != NULL; cb = cb->next) {
+  while (cb != NULL) {
     if (cb->id == id) {
-      prev->next = cb->next;
-      ckfree((char *)cb);
+      cbGoner = cb;
+      cb = cb->next;
+      *pp = cb;
+      Snack_Free((char *)cbGoner);
+      return;
+    } else {
+      pp = &cb->next;
+      cb = cb->next;
     }
-    prev = cb;
   }
 }
 
@@ -227,13 +240,8 @@ Snack_UpdateExtremes(Sound *s, int start, int end, int flag)
   float maxs, mins, newmax, newmin;
 
   if (flag == SNACK_NEW_SOUND) {
-    if (s->encoding == LIN8OFFSET) {
-      s->maxsamp = 128.0f;
-      s->minsamp = 128.0f;
-    } else {
-      s->maxsamp = 0.0f;
-      s->minsamp = 0.0f;
-    }
+    s->maxsamp = -32768.0f;
+    s->minsamp =  32767.0f;
   }
 
   maxs = s->maxsamp;
@@ -342,7 +350,7 @@ Snack_DeleteSound(Sound *s)
   }
 
   Snack_ResizeSoundStorage(s, 0);
-  ckfree((char *) s->blocks);
+  Snack_Free((char *) s->blocks);
   if (s->storeType == SOUND_IN_FILE && s->linkInfo.linkCh != NULL) {
     CloseLinkedFile(&s->linkInfo);
   }
@@ -356,17 +364,17 @@ Snack_DeleteSound(Sound *s)
   }
 
   if (s->fcname != NULL) {
-    ckfree((char *)s->fcname);
+    Snack_Free((char *)s->fcname);
   }
   if (s->filterName != NULL) {
-    ckfree(s->filterName);
+    Snack_Free(s->filterName);
   }
 
   Snack_ExecCallbacks(s, SNACK_DESTROY_SOUND);
   currCB = s->firstCB;
   while (currCB != NULL) {
     if (s->debug > 1) Snack_WriteLogInt("  Freed callback", currCB->id);
-    ckfree((char *)currCB);
+    Snack_Free((char *)currCB);
     currCB = currCB->next;
   }
 
@@ -382,7 +390,7 @@ Snack_DeleteSound(Sound *s)
     Snack_WriteLog("  Sound object freed\n");
   }
 
-  ckfree((char *) s);
+  Snack_Free((char *) s);
 }
 
 int
@@ -425,7 +433,7 @@ Snack_ResizeSoundStorage(Sound *s, int len)
 					len*s->nchannels * sizeof(float));
 
     s->exact = len * s->nchannels * sampSize;
-    if ((s->blocks[0] = (float *) ckalloc(s->exact)) == NULL) {
+    if ((s->blocks[0] = (float *) Snack_Alloc(s->exact)) == NULL) {
       return TCL_ERROR;
     }
     i = 1;
@@ -443,14 +451,14 @@ Snack_ResizeSoundStorage(Sound *s, int len)
     }
 
     for (i = s->nblks; i < neededblks; i++) {
-      if ((s->blocks[i] = (float *) ckalloc(CBLKSIZE)) == NULL) {
+      if ((s->blocks[i] = (float *) Snack_Alloc(CBLKSIZE)) == NULL) {
 	break;
       }
     }
     if (i < neededblks) {
       if (s->debug > 2) Snack_WriteLogInt("    block alloc failed", i);
       for (--i; i >= s->nblks; i--) {
-	ckfree((char *) s->blocks[i]);
+	Snack_Free((char *) s->blocks[i]);
       }
       return TCL_ERROR;
     }
@@ -458,7 +466,7 @@ Snack_ResizeSoundStorage(Sound *s, int len)
     /* Copy and de-allocate any exact block */
     if (s->exact > 0) {
       memcpy(s->blocks[0], tmp, s->exact);
-      ckfree((char *) tmp);
+      Snack_Free((char *) tmp);
       s->exact = 0;
     }
 
@@ -467,7 +475,7 @@ Snack_ResizeSoundStorage(Sound *s, int len)
 
     /* Reallocate to one full block */
 
-    float *tmp = (float *) ckalloc(CBLKSIZE);
+    float *tmp = (float *) Snack_Alloc(CBLKSIZE);
 
     if (s->debug > 2) {
       Snack_WriteLogInt("    Reallocating full block", CBLKSIZE);
@@ -475,7 +483,7 @@ Snack_ResizeSoundStorage(Sound *s, int len)
 
     if (tmp != NULL) {
       memcpy(tmp, s->blocks[0], s->exact);
-      ckfree((char *) s->blocks[0]);
+      Snack_Free((char *) s->blocks[0]);
       s->blocks[0] = tmp;
       s->maxlength = blockSize / s->nchannels;
     }
@@ -484,7 +492,7 @@ Snack_ResizeSoundStorage(Sound *s, int len)
 
   if (neededblks < s->nblks) {
     for (i = neededblks; i < s->nblks; i++) {
-      ckfree((char *) s->blocks[i]);
+      Snack_Free((char *) s->blocks[i]);
     }
     s->maxlength = neededblks * blockSize / s->nchannels;
   }
@@ -615,7 +623,7 @@ maxCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   int startpos = 0, endpos = s->length - 1, arg, channel = -1;
   float maxsamp, minsamp;
   SnackLinkedFileInfo info;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-start", "-end", "-channel", NULL
   };
   enum subOptions {
@@ -700,7 +708,7 @@ minCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   int startpos = 0, endpos = s->length - 1, arg, channel = -1;
   float maxsamp, minsamp;
   SnackLinkedFileInfo info;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-start", "-end", "-channel", NULL
   };
   enum subOptions {
@@ -816,7 +824,9 @@ destroyCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 
   if (debug > 0) Snack_WriteLog("Enter destroyCmd\n");
 
-  s->destroy = 0;
+  if (s->writeStatus == WRITE) {
+    s->destroy = 1;
+  }
   s->length = 0;
   if (wop == IDLE) {
     Snack_StopSound(s, interp);
@@ -860,7 +870,7 @@ configureCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   int arg, filearg = 0, newobjc;
   Tcl_Obj **newobjv = NULL;
-  static char *optionStrings[] = {
+  static CONST84 char *optionStrings[] = {
     "-load", "-file", "-channel", "-rate", "-frequency", "-channels",
     "-encoding", "-format", "-byteorder", "-buffersize", "-skiphead",
     "-guessproperties", "-precision", "-changecommand", "-fileformat",
@@ -889,7 +899,7 @@ configureCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   for (arg = 0; arg <newobjc; arg++) {
     Tcl_DecrRefCount(newobjv[arg]);
   }
-  ckfree((char *)newobjv);
+  Snack_Free((char *)newobjv);
 
   if (objc == 2) { /* get all options */
     Tcl_Obj *objs[6];
@@ -1249,7 +1259,7 @@ configureCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 static int
 cgetCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  static char *optionStrings[] = {
+  static CONST84 char *optionStrings[] = {
     "-load", "-file", "-channel", "-rate", "-frequency", "-channels",
     "-encoding", "-format", "-byteorder", "-buffersize", "-skiphead",
     "-guessproperties", "-precision", "-changecommand", "-fileformat",
@@ -1381,46 +1391,59 @@ cgetCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 int filterSndCmd(Sound *s, Tcl_Interp *interp, int objc,
 		 Tcl_Obj *CONST objv[]);
 
-#define NSOUNDCOMMANDS   33
-#define MAXSOUNDCOMMANDS 50
+#define NSOUNDCOMMANDS   39
+#define MAXSOUNDCOMMANDS 100
 
 static int nSoundCommands   = NSOUNDCOMMANDS;
 static int maxSoundCommands = MAXSOUNDCOMMANDS;
 
-char *sndCmdNames[MAXSOUNDCOMMANDS] = {
+CONST84 char *sndCmdNames[MAXSOUNDCOMMANDS] = {
   "play",
   "read",
   "record",
   "stop",
   "write",
+
   "data",
   "crop",
   "info",
   "length",
   "current_position",
+
   "max",
   "min",
   "sample",
   "changed",
   "copy",
+
   "append",
   "concatenate",
   "insert",
   "cut",
   "destroy",
+
   "flush",
   "configure",
   "cget",
   "pause",
   "convert",
+
   "dBPowerSpectrum",
   "pitch",
   "reverse",
   "shape",
   "datasamples",
+
   "filter",
   "swap",
   "power",
+  "formant",
+  "speatures",
+
+  "al",
+  "mix",
+  "xo",
+  "oc",
   NULL
 };
 
@@ -1459,10 +1482,22 @@ soundCmd *sndCmdProcs[MAXSOUNDCOMMANDS] = {
   dataSamplesCmd,
   filterSndCmd,
   swapCmd,
-  powerCmd
+  powerCmd,
+  formantCmd,
+  speaturesCmd,
+  alCmd,
+  mixCmd,
+  xoCmd,
+  ocCmd
 };
 
 soundDelCmd *sndDelCmdProcs[MAXSOUNDCOMMANDS] = {
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
   NULL,
   NULL,
   NULL,
@@ -1527,7 +1562,7 @@ SoundCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 Sound *
 Snack_NewSound(int rate, int encoding, int nchannels)
 {
-  Sound *s = (Sound *) ckalloc(sizeof(Sound));
+  Sound *s = (Sound *) Snack_Alloc(sizeof(Sound));
 
   if (s == NULL) {
     return NULL;
@@ -1566,10 +1601,11 @@ Snack_NewSound(int rate, int encoding, int nchannels)
   s->skipBytes = 0;
   s->storeType = SOUND_IN_MEMORY;
   s->fcname    = NULL;
+  s->interp    = NULL;
   s->cmdPtr    = NULL;
-  s->blocks    = (float **) ckalloc(MAXNBLKS * sizeof(float*));
+  s->blocks    = (float **) Snack_Alloc(MAXNBLKS * sizeof(float*));
   if (s->blocks == NULL) {
-    ckfree((char *) s);
+    Snack_Free((char *) s);
     return NULL;
   }
   s->blocks[0] = NULL;
@@ -1589,6 +1625,7 @@ Snack_NewSound(int rate, int encoding, int nchannels)
   s->itemRefCnt = 0;
   s->validStart = 0;
   s->linkInfo.linkCh = NULL;
+  s->linkInfo.eof = 0;
   s->inByteOrder = SNACK_NATIVE;
   s->devStr = NULL;
   s->soundTable = NULL;
@@ -1612,6 +1649,8 @@ CleanSound(Sound *s, Tcl_Interp *interp, char *name)
   Tcl_DeleteHashEntry(Tcl_FindHashEntry(s->soundTable, name));
 }
 
+extern int defaultSampleRate;
+
 int
 ParseSoundCmd(ClientData cdata, Tcl_Interp *interp, int objc,
 	      Tcl_Obj *CONST objv[], char** namep, Sound** sp)
@@ -1619,7 +1658,8 @@ ParseSoundCmd(ClientData cdata, Tcl_Interp *interp, int objc,
   Sound *s;
   int arg, arg1, filearg = 0, flag;
   static int id = 0;
-  int samprate = 16000, nchannels = 1, encoding = LIN16, sampsize = 2;
+  int samprate = defaultSampleRate, nchannels = 1;
+  int encoding = LIN16, sampsize = 2;
   int storeType = -1, guessEncoding = -1, guessRate = -1;
   int forceFormat = -1, skipBytes = -1, buffersize = -1;
   int guessProps = 0, swapIfBE = -1, debug = -1, precision = -1;
@@ -1631,7 +1671,7 @@ ParseSoundCmd(ClientData cdata, Tcl_Interp *interp, int objc,
   int length = 0;
   char *string = NULL;
   Tcl_Obj *cmdPtr = NULL;
-  static char *optionStrings[] = {
+  static CONST84 char *optionStrings[] = {
     "-load", "-file", "-rate", "-frequency", "-channels", "-encoding",
     "-format", "-channel", "-byteorder", "-buffersize", "-skiphead",
     "-guessproperties", "-fileformat", "-precision", "-changecommand",
@@ -1928,8 +1968,9 @@ SoundDeleteCmd(ClientData clientData)
   if (s->debug > 1) {
     Snack_WriteLog("  Sound obj cmd deleted\n");
   }
-  
-  Snack_StopSound(s, s->interp);
+  if (s->destroy == 0) {
+    Snack_StopSound(s, s->interp);
+  }
   for (i = 0; i < nSoundCommands; i++) {
     if (sndDelCmdProcs[i] != NULL) {
       (sndDelCmdProcs[i])(s);
@@ -1959,12 +2000,15 @@ Snack_SoundCmd(ClientData cdata, Tcl_Interp *interp, int objc,
   return TCL_OK;
 }
 
+extern Tcl_HashTable *filterHashTable;
+
 Sound *
 Snack_GetSound(Tcl_Interp *interp, char *name)
 {
   Tcl_CmdInfo infoPtr;
-
-  if (Tcl_GetCommandInfo(interp, name, &infoPtr) == 0) {
+  Tcl_HashEntry *hPtr = Tcl_FindHashEntry(filterHashTable, name);
+ 
+  if (hPtr != NULL || Tcl_GetCommandInfo(interp, name, &infoPtr) == 0) {
     Tcl_AppendResult(interp, name, " : no such sound", (char *) NULL);
     return NULL;
   }
@@ -1977,7 +2021,7 @@ Snack_SoundDeleteCmd(ClientData clientData)
 {
   if (clientData != NULL) {
     Tcl_DeleteHashTable((Tcl_HashTable *) clientData);
-    ckfree((char *) clientData);
+    Snack_Free((char *) clientData);
   }
 }
 
@@ -2045,9 +2089,9 @@ SetFcname(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj)
   char *str = Tcl_GetStringFromObj(obj, &length);
 
   if (s->fcname != NULL) {
-    ckfree((char *)s->fcname);
+    Snack_Free((char *)s->fcname);
   }
-  if ((s->fcname = (char *) ckalloc((unsigned) (length + 1))) == NULL) {
+  if ((s->fcname = (char *) Snack_Alloc((unsigned) (length + 1))) == NULL) {
     Tcl_AppendResult(interp, "Could not allocate name buffer!", NULL);
     return TCL_ERROR;
   }

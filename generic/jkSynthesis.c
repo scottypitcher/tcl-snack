@@ -133,7 +133,11 @@ formantFlowProc(Snack_Filter f, Snack_StreamInfo si, float *in, float *out,
 	     &a[1],&b[1],&c[1]);
   a[0]=mf->a0;b[0]=mf->b0;c[0]=mf->c0;
   /* only mono sounds... */
-  if (si->outWidth != 1) return TCL_ERROR;
+  if (si->outWidth != 1) {
+    *outFrames = 0;
+    *inFrames = 0;
+    return TCL_ERROR;
+  }
   
   nf = (*inFrames)<(*outFrames)?(*inFrames):(*outFrames);
   if (nf != 0) {

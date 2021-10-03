@@ -1,7 +1,7 @@
 # Commands covered: sound data/append
 #
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -120,7 +120,7 @@ test data-5.1 {data command, initial data byte is '-'} {
   set res [$s info]
   $s destroy
   set res
-} {1 16000 45 0 Lin16 1 RAW 0}
+} {1 16000 45 45 Lin16 1 RAW 0}
 
 # cleanup
 ::tcltest::cleanupTests

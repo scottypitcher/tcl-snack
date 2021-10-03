@@ -4,7 +4,7 @@ exec wish8.3 "$0" "$@"
 
 # Prompted sentence recording application
  
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 set rate 16000
 snack::sound t -rate $rate
@@ -522,6 +522,7 @@ proc NewSession {} {
 
 # Create a list with all sessions so far
 
+set ::script ""
 set dirlist [lsort [glob -type d -nocomplain {sn[0-9][0-9][0-9][0-9]}]]
 foreach sn $dirlist {
   set n [string trimleft $sn sn0]
@@ -532,7 +533,6 @@ foreach sn $dirlist {
   }
   .db.f1.l1 insert end "$n: $::name, $::l"
 }
-set ::script ""
 
 
 # Uncomment these lines to open default script at start-up

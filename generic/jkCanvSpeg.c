@@ -20,12 +20,11 @@
  */
 
 #include "tcl.h"
-#include "jkAudIO.h"
+#include "snack.h"
 #include <stdio.h>
 #include <stdlib.h>
 #define USE_OLD_CANVAS /* To keep Tk8.3 happy */
 #include "tk.h"
-#include "jkSound.h"
 #include "jkCanvItems.h"
 #include <string.h>
 #include <math.h>
@@ -90,7 +89,7 @@ typedef struct SpectrogramItem  {
 float xfft[NMAX];
 
 static int ParseColorMap(ClientData clientData, Tcl_Interp *interp,
-			 Tk_Window tkwin, char *value, char *recordPtr,
+			 Tk_Window tkwin, CONST84 char *value, char *recordPtr,
 			 int offset);
 
 static char *PrintColorMap(ClientData clientData, Tk_Window tkwin,
@@ -572,7 +571,7 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   Tk_Window tkwin = Tk_CanvasTkwin(canvas);
   XGCValues gcValues;
   int doCompute = 0;
-#if defined(MAC)
+#if defined(MAC) || defined(MAC_OSX_TCL)
   int i;
 #endif
 
@@ -580,12 +579,13 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 
   /*  if (spegPtr->si.computing) return TCL_OK;*/
 
-  if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc, argv, 
+  if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc,
+			 (CONST84 char **)argv, 
 			 (char *) spegPtr, flags) != TCL_OK) return TCL_ERROR;
 
   if (spegPtr->si.debug > 1) Snack_WriteLog("  Enter ConfigureSpeg\n");
 
-#if defined(MAC)
+#if defined(MAC) || defined(MAC_OSX_TCL)
   for (i = 0; i < argc; i++) {
     if (strncmp(argv[i], "-anchor", strlen(argv[i])) == 0) {
       i++;
@@ -1063,11 +1063,13 @@ SpectrogramToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   char buffer[100];
   int x, y, i, j, noColor = 1;
   int nbins = spegPtr->si.fftlen / 2;
-  int height = spegPtr->height;
-  int width = spegPtr->width;
+  int height = 2 * spegPtr->height;
+  int width = 2 * spegPtr->width;
   int nfft = (int)(((spegPtr->esmp - spegPtr->ssmp)) / spegPtr->si.spacing);
   short v[NMAX + 1];
   unsigned char *imageR, *imageG, *imageB;
+
+  /*  if (width == 0 || height == 0) return TCL_OK;*/
 
   for (i = 0; i < spegPtr->si.ncolors; i++) {
     if ((spegPtr->si.xcolor[i]->red != spegPtr->si.xcolor[i]->green) ||
@@ -1186,7 +1188,7 @@ SpectrogramToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 	  spegPtr->header.x1, Tk_CanvasPsY(canvas,(double)spegPtr->header.y2));
   Tcl_AppendResult(interp, buffer, (char *) NULL);
 
-  sprintf(buffer, "%d %d scale\n", width, height);
+  sprintf(buffer, "%d %d scale\n", width/2, height/2);
   Tcl_AppendResult(interp, buffer, (char *) NULL);
 
   sprintf(buffer, "%d %d 8\n", width, height);
@@ -1417,7 +1419,7 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
   return ret;
 }
 
-#if defined(MAC)
+#if defined(MAC) || defined(MAC_OSX_TCL)
 int MacPutPixel(XImage *image, int x, int y, unsigned long pixel)
 {
   /*
@@ -1479,7 +1481,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
     ximage = XCreateImage(disp, siPtr->visual, depth, ZPixmap, 0,
 			  (char *) NULL, nCols, height, 32, 0);
     if (ximage == NULL) return;
-#if defined(MAC)
+#if defined(MAC) || defined(MAC_OSX_TCL)
     ximage->f.put_pixel = MacPutPixel;
 #endif
 
@@ -1524,7 +1526,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 
 	if ((p / nbins) < 0 || (p / nbins) >= siPtr->nfft) {
 	  for (j = 0; j < height; j++) {
-#if !defined(WIN) && !defined(MAC)
+#if !defined(WIN) && !defined(MAC) && !defined(MAC_OSX_TCL)
 	    XPutPixel(ximage, (int) i - xStart, (int) j, pixelmap[0]);
 #else
 	    if (depth == 8) {
@@ -1574,7 +1576,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 	  
 	  switch (depth) {
 	  case 8:
-#if !defined(WIN) && !defined(MAC)
+#if !defined(WIN) && !defined(MAC) && !defined(MAC_OSX_TCL)
 	    *bytePtr = (unsigned char) pixelmap[c];
 #else
 	    *bytePtr = (unsigned char) c;
@@ -1602,7 +1604,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 
               xcoord = (int) (i+k) - xStart;
 	      for (j = (float) height - dj; j > 0.0; j -= dj) {
-#if !defined(WIN) && !defined(MAC)
+#if !defined(WIN) && !defined(MAC) && !defined(MAC_OSX_TCL)
 		XPutPixel(ximage, xcoord, (int) j, gridpixel);
 #else
 		if (depth == 8) {
@@ -1618,7 +1620,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 	    for (j = (float) height - dj; j > 0.0; j -= dj) {
 	      for (k = -5; k <= 5; k++) {
 		if ((int)(j+k) >= 0 && (int)(j+k) < height) {
-#if !defined(WIN) && !defined(MAC)
+#if !defined(WIN) && !defined(MAC) && !defined(MAC_OSX_TCL)
 		  XPutPixel(ximage, (int) i - xStart, (int) (j+k), gridpixel);
 #else
 		  if (depth == 8) {
@@ -1639,7 +1641,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 	for (i = 0.0; i < (float) width; i++) {
 	  if (i >= xStart && i < xEnd) {
 	    for (j = (float) height - dj; j > 0.0; j -= dj) {
-#if !defined(WIN) && !defined(MAC)
+#if !defined(WIN) && !defined(MAC) && !defined(MAC_OSX_TCL)
 	      XPutPixel(ximage, (int) i - xStart, (int) j, gridpixel);
 #else
 	      if (depth == 8) {
@@ -1659,7 +1661,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 	for (i = xleft + di; i < (float) width; i += di) {
 	  if (i >= xStart && i < xEnd) {
 	    for (j = 0.0; j < (float) height; j++) {
-#if !defined(WIN) && !defined(MAC)
+#if !defined(WIN) && !defined(MAC) && !defined(MAC_OSX_TCL)
 	      XPutPixel(ximage, (int) i - xStart, (int) j, gridpixel);
 #else
 	      if (depth == 8) {
@@ -1691,11 +1693,11 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 
 static int
 ParseColorMap(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-	      char *value, char *recordPtr, int offset)
+	      CONST84 char *value, char *recordPtr, int offset)
 {
   SpectrogramItem *spegPtr = (SpectrogramItem *) recordPtr;
   int argc, i;
-  char **argv = NULL;
+  CONST84 char **argv = NULL;
 
   if (Tcl_SplitList(interp, value, &argc, &argv) != TCL_OK) {
     Tcl_ResetResult(interp);

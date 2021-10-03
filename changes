@@ -828,3 +828,75 @@ build Snack on the Macintosh.
 ----------------- Released 2.1.6, 3/4/02 -----------------------
 
 3/6/02 (change) Removed automatic zero-padding of ESPS files, the start_time field can now be accessed using "sndName configure -start_time" instead.
+
+5/7/02 (bug fix) Fixed problem with the 'fade' filter and multi-channel sound.
+
+5/14/02 (new feature) Included code from the ESPS speech analysis library in Snack.
+
+5/14/02 (new feature)  New sound command 'formant', which is used to compute formant and bandwiths values. Algorithm taken from the ESPS tool formant.
+
+5/14/02 (new feature)  New option '-method' to the 'pitch' command. This is used to select either the new pitch tracker, algorithm taken from the ESPS tool get_f0, or the old one.
+
+----------------- Released 2.2a1, 5/14/02 -----------------------
+
+6/19/02 (new feature) New option -starttime for the 'play' command. Used to specify a delay time in milliseconds before starting playback.
+
+6/19/02 (enhancement) Re-designed internal playback engine, separating sound objects and playback instances properly. Play callbacks are now invoked just before closing the audio device which allows for queueing sounds and other on-the-fly operations.
+
+6/19/02 (enhancement) Postscript for spectrograms is now generated with double resolution.
+
+6/19/02 (enhancement) Drawing of waveforms improved for high zoom factors.
+
+6/19/02 (enhancement) Waveforms now generate faster postscript code.
+
+6/19/02 (bug fix) Fixed bug that caused the play callback not to be invoked when playing multiple simultaneous sounds.
+
+6/19/02 (bug fix) Fixed bug for the -start_time option for SD (ESPS) files with very long headers.
+
+----------------- Released 2.2a2, 6/20/02 -----------------------
+
+7/17/02 (new feature) Support for Linux ALSA PCM sound drivers. New compile time configure option --enable-alsa.
+
+9/12/02 (enhancement) Many improvements to the MP3 decoder, e.g. better seeking. (Wilkason)
+
+9/12/02 (new feature) Automatic selection of default sample rate for new sound objects.
+
+----------------- Released 2.2a3, 9/13/02 -----------------------
+
+9/19/02 (new feature) Modified sources (added CONST qualification on pointers in Tcl API's where required) in order to compile cleanly with Tcl8.4.0 as well as with earlier versions.
+
+9/19/02 (enhancement) Updated package "snackogg" to support release 1.0 of Ogg/Vorbis.
+
+9/29/02 (new feature) New sound command 'mix', which is used to mix two sound objects with optional scaling.
+
+9/29/02 (bug fix) Fixed problem with the 'convert' command and some joint rate/channel conversion combinations. (Pique)
+
+----------------- Released 2.2b1, 9/29/02 -----------------------
+
+10/29/02 (bug fix) Fixed segmentation fault that occured when playing a sound and start time > end time, and no callback was registered. (Davis)
+
+10/29/02 (bug fix) Fixed problem with crash on exit for some Windows systems.
+
+11/4/02 (enhancement) Better handling of mono output on stereo only hardware.
+
+11/5/02 (enhancement) Improvements to the MP3 decoder to allow multiple sounds to cleanly decode one stream each simultaneously. (Wilkason)
+
+11/5/02 (change) Various fixes to configure.in/Makefile.in and win/*.dsp.
+
+----------------- Released 2.2b2, 11/6/02 -----------------------
+
+11/14/02 (new feature) Support for Mac OS X. (McSpadden)
+
+11/14/02 (bug fix) Fixed a couple of problems with sound I/O using Windows DirectSound.
+
+----------------- Released 2.2, 11/14/02 -----------------------
+
+11/19/02 (bug fix) Fixed problem with SnackAudioPlayed() on Windows, return value could roll over after lengthy sound output. (Wilkason)
+
+1/16/03 (enhancement) Canvas items now work on Mac OS X, also added Makefile hardcoded for Tcl8.4.1.
+
+1/24/03 (new feature) Building using configure/make for Mac OS X.
+
+1/24/03 (new feature) Core Audio support for Mac OS X.
+
+2/06/03 (new feature) Improved build support for Mac OS X. (Steffen)

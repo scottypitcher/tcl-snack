@@ -27,6 +27,9 @@
 #include "tcl.h"
 #include "snack.h"
 
+extern int Get_f0(Sound *s, Tcl_Interp *interp, int objc,
+                  Tcl_Obj *CONST objv[]);
+
 /* ********************************************************************* */
 /*                LES PARAMETRES GLOBAUX DU DETECTEUR                    */
 /* ********************************************************************* */
@@ -825,14 +828,25 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   short minnrj, maxnrj, minfo, maxfo, mindpz, maxdpz;
   int arg, startpos = 0, endpos = -1, result, start;
   Tcl_Obj *list;
-  static char *subOptionStrings[] = {
-    "-start", "-end", "-maxpitch", "-minpitch", "-progress", NULL
+  static CONST84 char *subOptionStrings[] = {
+    "-start", "-end", "-maxpitch", "-minpitch", "-progress",
+    "-framelength", "-method", "-windowlength", NULL
   };
   enum subOptions {
-    START, END, F0MAX, F0MIN, PROGRESS
+    START, END, F0MAX, F0MIN, PROGRESS, FRAME, METHOD, WINLEN
   };
 
   if (s->debug > 0) { Snack_WriteLog("Enter pitchCmd\n"); }
+
+  for (arg = 2; arg < objc; arg += 2) {
+    char *opt = Tcl_GetStringFromObj(objv[arg], NULL);
+    char *val = Tcl_GetStringFromObj(objv[arg+1], NULL);
+
+    if ((strcmp("-method", opt) == 0) && (strcasecmp("esps", val) == 0)) {
+      Get_f0(s, interp, objc, objv);
+      return TCL_OK;
+    }
+  }
 
   if (s->nchannels != 1) {
     Tcl_AppendResult(interp, "pitch only works with Mono sounds",
@@ -900,6 +914,18 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 	  Tcl_IncrRefCount(objv[arg+1]);
 	  s->cmdPtr = objv[arg+1];
 	}
+	break;
+      }
+    case FRAME:
+      {
+	break;
+      }
+    case METHOD:
+      {
+	break;
+      }
+    case WINLEN:
+      {
 	break;
       }
     }
@@ -988,6 +1014,107 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       Tcl_ListObjAppendElement(interp, list, Tcl_NewDoubleObj((double)Fo[i]));
     }
     Tcl_SetObjResult(interp, list);
+  }
+  ckfree((char *) Nrj);
+  ckfree((char *) Dpz);
+  ckfree((char *) Vois);
+  ckfree((char *) Fo);
+
+  if (s->debug > 0) { Snack_WriteLog("Exit pitchCmd\n"); }
+
+  return TCL_OK;
+}
+
+int
+cPitch(Sound *s, Tcl_Interp *interp, int **outlist, int *length)
+{
+  int longueur, nb_trames, To_Moyen;
+  int *Hammer;
+  int i;
+  int fmin = 60, fmax = 400, lquick = 1/*, adjust = 0*/, nbframes;
+  short minnrj, maxnrj, minfo, maxfo, mindpz, maxdpz;
+  int startpos = 0, endpos = -1, result, start;
+
+  if (s->debug > 0) { Snack_WriteLog("Enter pitchCmd\n"); }
+
+  if (fmax <= fmin) {
+    Tcl_AppendResult(interp, "maxpitch must be > minpitch", NULL);
+    return TCL_ERROR;
+  }
+  if (startpos < 0) startpos = 0;
+  if (endpos >= (s->length - 1) || endpos == -1)
+    endpos = s->length - 1;
+  if (startpos > endpos) return TCL_OK;
+
+  quick = lquick;
+  init(s->samprate, fmin, fmax);
+
+  start = startpos - (cst_length_hamming / 2);
+  if (start < 0) start = 0;
+  longueur = endpos - start + 1;
+
+  if ((Signal = (float *) ckalloc(cst_length_hamming * sizeof(float))) == NULL) {
+    Tcl_AppendResult(interp, "Couldn't allocate buffer!", NULL);
+    return TCL_ERROR;
+  }
+
+  nb_trames = (longueur / cst_step_hamming) + 10;
+  Nrj =  (short *) ckalloc(sizeof(short) * nb_trames);   
+  Dpz =  (short *) ckalloc(sizeof(short) * nb_trames);
+  Vois = (short *) ckalloc(sizeof(short) * nb_trames);
+  Fo =   (short *) ckalloc(sizeof(short) * nb_trames);
+  Resultat = (int **) ckalloc(sizeof(int *) * nb_trames);
+
+  for (i = 0; i < nb_trames; i++) {
+    Resultat[i] = (int *) ckalloc(sizeof(int) * (cst_step_max-cst_step_min+1));
+  }
+
+  nb_trames = nbframes = calcul_nrj_dpz(s, interp, start, longueur);
+
+  Hamming = (double *) ckalloc(sizeof(double)*cst_length_hamming);
+  Hammer = (int *) ckalloc(sizeof(int) * cst_length_hamming);
+  for (i=0;i<cst_pics_amdf;i++) {
+    Coeff_Amdf[i] = (RESULT *) ckalloc(sizeof(RESULT)* nb_trames);
+  }
+
+  precalcul_hamming();
+
+  result = parametre_amdf(s, interp, start, longueur, (int *)&(nbframes),
+			  Hammer); 
+
+  if (result == TCL_OK) {
+    calcul_voisement(nbframes); 
+    zone = calcul_zones_voisees(nbframes); 
+    calcul_fo_moyen(nbframes,&To_Moyen);    
+    calcul_courbe_fo(nbframes,&To_Moyen);    
+
+    minfo = (short) min_fo;  
+    maxfo = (short) max_fo;
+    minnrj = (short) min_nrj;
+    maxnrj = (short) max_nrj;
+    mindpz = (short) min_dpz;
+    maxdpz = (short) max_dpz;
+  
+    libere_zone(zone);
+    for (i=0;i<nbframes;i++) 
+      if (Resultat[i]) ckfree((char *) Resultat[i]);
+  }
+  ckfree((char *) Hamming);
+  ckfree((char *) Hammer);
+  ckfree((char *)Signal);
+  libere_coeff_amdf(); 
+  ckfree((char *) Resultat);
+  if (result == TCL_OK) {
+    int n = cst_length_hamming / (2 * cst_step_hamming) - startpos / cst_step_hamming;
+    int *tmp = (int *)ckalloc(sizeof(int) * (n + nb_trames));
+    for (i = 0; i < n; i++) {
+      tmp[i] = 0;
+    }
+    for (i = n; i < nbframes + n; i++) {
+      tmp[i] = Fo[i-n];
+    }
+    *outlist = tmp;
+    *length = nbframes + n;
   }
   ckfree((char *) Nrj);
   ckfree((char *) Dpz);

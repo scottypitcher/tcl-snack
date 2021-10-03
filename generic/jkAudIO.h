@@ -26,6 +26,10 @@
 extern "C" {
 #endif
 
+#ifndef CONST84
+#   define CONST84
+#endif
+
 #ifdef HPUX
 #  include <Alib.h>
 #endif
@@ -53,7 +57,7 @@ extern "C" {
 #  include <audio.h>
 #endif
 
-#ifdef MAC
+#if defined(MAC) || defined(OS_X_CORE_AUDIO)
 
 /* We need to temporarily redefine several symbols used by an obsolete
  *  MacOS interface as they are also used by Snack */
@@ -64,7 +68,16 @@ extern "C" {
 #  define volumeCmd  volumeCmd_MacOS
 #  define pauseCmd   pauseCmd_MacOS
 
+#if defined(OS_X_CORE_AUDIO)
+#undef min
+#undef max
+#  include <CoreServices/CoreServices.h>
+#  include <CoreAudio/AudioHardware.h>
+#define min(a,b) ((a)<(b)?(a):(b))
+#define max(a,b) ((a)>(b)?(a):(b))
+#else
 #  include <Sound.h>
+#endif
 
 #  undef convertCmd
 #  undef soundCmd
@@ -84,6 +97,10 @@ extern "C" {
 #define INBUF_OVERLAP (0)
 
 #endif /* MAC */
+
+#ifdef ALSA
+#include <alsa/asoundlib.h>
+#endif
 
 typedef struct ADesc {
 
@@ -106,6 +123,13 @@ typedef struct ADesc {
   int    freq;
   int    convert;
   int    warm;
+#endif
+
+#ifdef ALSA
+  snd_pcm_t *handle;
+  int       freq;
+  int       nWritten;
+  int       nPlayed;
 #endif
 
 #ifdef Solaris
@@ -136,6 +160,7 @@ typedef struct ADesc {
   unsigned int BufPos;
   int BufLen;
   int written;
+  int lastWritten;
 #endif
 
 #ifdef IRIX
@@ -145,7 +170,7 @@ typedef struct ADesc {
   int count;
 #endif
 
-#ifdef MAC
+#if defined(MAC)/* || defined(OS_X_CORE_AUDIO)*/
   /* Fields for handling output */
   SndChannelPtr schn;
   SndCommand	  scmd;
@@ -170,6 +195,15 @@ typedef struct ADesc {
   int underruns;
 #endif /* MAC */
 
+#ifdef OS_X_CORE_AUDIO
+  AudioDeviceID	device;
+  UInt32 deviceBufferSize;
+  AudioStreamBasicDescription deviceFormat;
+  int rpos, wpos;
+  double time;
+  int tot;
+#endif /* OS_X_CORE_AUDIO */
+
   int bytesPerSample;
   int nChannels;
   int mode;
@@ -184,7 +218,8 @@ extern int SnackGetMixerDevices(char **arr, int n);
 extern void SnackAudioInit();
 extern void SnackAudioFree();
 extern int  SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
-			   int mode, int freq, int channels, int encoding);
+			   int mode, int freq, int channels,
+			   int encoding);
 extern int  SnackAudioClose(ADesc *A);
 extern int  SnackAudioPause(ADesc *A);
 extern void SnackAudioResume(ADesc *A);
@@ -209,7 +244,8 @@ extern int  AGetPlayGain();
 extern void SnackMixerGetInputJackLabels(char *buf, int n);
 extern void SnackMixerGetOutputJackLabels(char *buf, int n);
 extern void SnackMixerGetInputJack(char *buf, int n);
-extern int  SnackMixerSetInputJack(Tcl_Interp *interp, char *jack, char *status);
+extern int  SnackMixerSetInputJack(Tcl_Interp *interp, char *jack,
+				   CONST84 char *status);
 extern void SnackMixerGetOutputJack(char *buf, int n);
 extern void SnackMixerSetOutputJack(char *jack, char *status);
 extern void SnackMixerGetChannelLabels(char *mixer, char *buf, int n);
@@ -254,7 +290,7 @@ typedef struct MixerLink {
   char *mixer;
   char *mixerVar;
   char *jack;
-  char *jackVar;
+  CONST84 char *jackVar;
   int channel;
 } MixerLink;
 

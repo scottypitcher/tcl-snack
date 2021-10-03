@@ -53,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 tclstub83.lib tkstub83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Tcl\lib\snack2.1\libsnack.dll" /libpath:"C:\Tcl\lib"
+# ADD LINK32 tclstub83.lib tkstub83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Tcl\lib\snack2.2\libsnack.dll" /libpath:"C:\Tcl\lib"
 
 !ELSEIF  "$(CFG)" == "snack - Win32 Debug"
 
@@ -79,7 +79,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tclstub83.lib tkstub83.lib /nologo /dll /debug /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"Debug/libsnack.dll" /pdbtype:sept /libpath:"C:\Tcl\lib"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tclstub83.lib tkstub83.lib /nologo /dll /debug /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Tcl\lib\snack2.2\libsnack.dll" /pdbtype:sept /libpath:"C:\Tcl\lib"
 
 !ENDIF 
 
@@ -168,6 +168,22 @@ SOURCE=..\generic\shape.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\generic\jkGetF0.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\jkFormant.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\sigproc.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\sigproc2.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\generic\snack.c
 # End Source File
 # Begin Source File
@@ -205,6 +221,14 @@ SOURCE=..\generic\snack.h
 # Begin Source File
 
 SOURCE=..\generic\snackDecls.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\jkFormant.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\jkGetF0.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

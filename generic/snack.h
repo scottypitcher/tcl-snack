@@ -26,8 +26,12 @@
 # define TCL_STORAGE_CLASS DLLEXPORT
 #endif
 
+#ifndef CONST84
+#   define CONST84
+#endif
+
 #include "jkSound.h"
 #include "jkAudIO.h"
 
-#define SNACK_VERSION     "2.1"
-#define SNACK_PATCH_LEVEL "2.1.6"
+#define SNACK_VERSION     "2.2"
+#define SNACK_PATCH_LEVEL "2.2"

@@ -222,7 +222,11 @@ AUStart(ADesc *A, void *buf, long frames)
   AUNewData(A, buf, frames);
   if (A->bufFull[1]) {	    /* second buffer is full - OK to start */
     /* start the command */
+#if defined(MAC_TCL)
     SndPlayDoubleBuffer(A->schn, (SndDoubleBufferHeaderPtr)&(A->dbh));
+#else // MAC_OSX_TCL
+    CarbonSndPlayDoubleBuffer(A->schn, (SndDoubleBufferHeaderPtr)&(A->dbh));
+#endif
     A->running = 1;
   }
   return frames;  /* does not block */
@@ -293,7 +297,8 @@ AUInBufStart(ADesc *A) {
     spb->bufferLength = A->bytesPerSample * A->nChannels * A->bufFrames;
     spb->milliseconds = 0;
     spb->count = spb->bufferLength;
-    spb->completionRoutine = NewSICompletionProc(AUInBufComplete);
+    /*spb->completionRoutine = NewSICompletionProc(AUInBufComplete);*/
+    spb->completionRoutine = NewSICompletionUPP(AUInBufComplete);
     spb->interruptRoutine = NULL;
     spb->userLong = (long)(A);
     spb->error = 0;
@@ -320,8 +325,9 @@ AURecIdle(ADesc * A) {
         fprintf(stderr, "AURecIdle: error (%d) checking busy\n", oe);
     }
   */
-
+#if defined(MAC_TCL)
   SystemTask();
+#endif
 }
 
 int
@@ -404,7 +410,12 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
     A->dbh.dbhCompressionID = CompressionID;
     A->dbh.dbhPacketSize    = 0;
     A->dbh.dbhSampleRate    = fxSr;
-    A->dbh.dbhDoubleBack    = NewSndDoubleBackProc(DoubleBackProc);
+#if defined(MAC_TCL)
+    /*    A->dbh.dbhDoubleBack    = NewSndDoubleBackProc(DoubleBackProc);*/
+    A->dbh.dbhDoubleBack    = NewSndDoubleBackUPP(DoubleBackProc);
+#else // MAC_OSX_TCL
+    A->dbh.dbhDoubleBack    = DoubleBackProc;
+#endif
     A->dbh.dbhFormat		= CompressionFormat;
 
     /* setup the DB struct */
@@ -918,7 +929,7 @@ SnackAudioFree()
       ckfree(mixerLinks[i][0].jack);
     }
     if (mixerLinks[i][0].jackVar != NULL) {
-      ckfree(mixerLinks[i][0].jackVar);
+      ckfree((char *)mixerLinks[i][0].jackVar);
     }
   }
 }
@@ -1106,7 +1117,7 @@ SnackMixerGetInputJack(char *buf, int n)
 }
 
 int
-SnackMixerSetInputJack(Tcl_Interp *interp, char *jack, char *status)
+SnackMixerSetInputJack(Tcl_Interp *interp, char *jack, CONST84 char *status)
 {
   OSErr oe;
   char *devname = NULL;	/* how to ask for default input device */
@@ -1166,11 +1177,11 @@ SnackMixerLinkJacks(Tcl_Interp *interp, char *jack, Tcl_Obj *var)
 }
 
 static char *
-VolumeVarProc(ClientData clientData, Tcl_Interp *interp, char *name1,
-	      char *name2, int flags)
+VolumeVarProc(ClientData clientData, Tcl_Interp *interp, CONST84 char *name1,
+	      CONST84 char *name2, int flags)
 {
   MixerLink *mixLink = (MixerLink *) clientData;
-  char *stringValue;
+  CONST84 char *stringValue;
   
   if (flags & TCL_TRACE_UNSETS) {
     if ((flags & TCL_TRACE_DESTROYED) && !(flags & TCL_INTERP_DESTROYED)) {
@@ -1201,7 +1212,8 @@ SnackMixerLinkVolume(Tcl_Interp *interp, char *line, int n,
 {
   char *mixLabels[] = { "Play" };
   int i, j, channel;
-  char *value, tmp[VOLBUFSIZE];
+  CONST84 char *value;
+  char tmp[VOLBUFSIZE];
 
   for (i = 0; i < SNACK_NUMBER_MIXERS; i++) {
     if (strncasecmp(line, mixLabels[i], strlen(line)) == 0) {

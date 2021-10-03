@@ -1,7 +1,7 @@
 # Commands covered: sound flush info
 #
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest

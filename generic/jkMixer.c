@@ -215,7 +215,7 @@ updateCmd(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 int nMixerCommands   = NMIXERCOMMANDS;
 int maxMixerCommands = MAXMIXERCOMMANDS;
 
-char *mixerCmdNames[MAXMIXERCOMMANDS] = {
+CONST84 char *mixerCmdNames[MAXMIXERCOMMANDS] = {
   "devices",
   "select",
   "input",

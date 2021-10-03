@@ -4,7 +4,7 @@ An interface to Kåre Sjölander's Snack Tcl extension
 http://www.speech.kth.se/snack/index.html
 
 by Kevin Russell and Kåre Sjölander
-last modified: August 31, 2000
+last modified: Sep 03, 2002
 """
 
 import Tkinter
@@ -145,10 +145,19 @@ class Sound (TkObject):
         this sound.  Both sounds must be of the same type."""
         self.tk.call(self.name, 'concatenate', othersound.name)
         
+    def configure(self, **kw):
+        """The configure command is used to set options for a sound."""
+        self.tk.call((self.name, 'configure') + self._options(kw))
+
     def copy(self, sound, **kw):
         """Copies sample data from another sound into self."""
         self.tk.call((self.name, 'copy', sound.name) + self._options(kw))
-        
+
+    def convert(self, **kw):
+        """Convert a sound to a different sample encoding, sample rate,
+        or number of channels."""
+        self.tk.call((self.name, 'convert') + self._options(kw))
+
     def crop(self, start=1, end=None, **kw):
         """Removes all samples outside of the range [start..end]."""
         if end is None:
@@ -185,6 +194,11 @@ class Sound (TkObject):
         return self.tk.call((self.name, 'filter', filter.name) +
                             self._options(kw))
         
+    def formant(self, **kw):
+        """Returns a list of formant trajectories."""
+        result = self.tk.call((self.name, 'formant') + self._options(kw))
+        return map(self._getdoubles, self.tk.splitlist(result))
+    
     def flush(self):
         """Removes all audio data from the sound."""
         self.tk.call(self.name, 'flush')
@@ -224,17 +238,25 @@ class Sound (TkObject):
         """Returns the largest negative sample value of the sound."""
         return _cast(self.tk.call((self.name, 'min') + self._options(kw)))
 
+    def mix(self, sound, **kw):
+        """Mixes sample data from another sound into self."""
+        self.tk.call((self.name, 'mix', sound.name) + self._options(kw))
+
     def pause(self):
         """Pause current record/play operation.  Next pause invocation
         resumes play/record."""
         self.tk.call(self.name, 'pause')
         
-    def pitch(self, **kw):
-        """Returns a list of pitch values, spaced 10ms, computed using the
-        AMDF method."""
-        result = self.tk.call((self.name, 'pitch') + self._options(kw))
-        return self._getdoubles(result)
-        
+    def pitch(self, method=None, **kw):
+        """Returns a list of pitch values."""
+        if method is None:
+            result = self.tk.call((self.name, 'pitch') + self._options(kw))
+            return self._getdoubles(result)
+        else:
+            result = self.tk.call((self.name, 'pitch', '-method', method) + 
+                                  self._options(kw))
+            return map(self._getdoubles, self.tk.splitlist(result))
+
     def play(self, **kw):
         """Plays the sound."""
         self.tk.call((self.name, 'play') + self._options(kw))
@@ -352,6 +374,10 @@ class AudioControllerSingleton(TkObject):
         """Stops all playback on the audio device."""
         self.tk.call('snack::audio', 'stop')
 
+    def elapsedTime(self):
+        """Return the time since the audio device started playback."""
+        result = self.tk.call('snack::audio', 'elapsedTime')
+        return self.tk.getdouble(result)
 
 class Filter(TkObject):
 
@@ -494,7 +520,7 @@ def createSpectrogram(canvas, *args, **kw):
 
 def createSection(canvas, *args, **kw):
     """Draws and FFT log power spectrum section on canvas."""
-    return canvas._create('spectrogram', args, kw)
+    return canvas._create('section', args, kw)
 
 def createWaveform(canvas, *args, **kw):
     """Draws a waveform on canvas."""

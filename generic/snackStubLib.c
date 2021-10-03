@@ -60,10 +60,10 @@ SnackStubs *snackStubsPtr;
  *----------------------------------------------------------------------
  */
 
-char *
+CONST84 char *
 Snack_InitStubs (Tcl_Interp *interp, char *version, int exact)
 {
-  char *actualVersion;
+  CONST84 char *actualVersion;
   
   actualVersion = Tcl_PkgRequireEx(interp, "snack", version, exact,
 				   (ClientData *) &snackStubsPtr);

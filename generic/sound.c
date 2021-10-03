@@ -21,6 +21,7 @@
 
 #include "snack.h"
 #include "tcl.h"
+#include <string.h>
 
 #if defined(__WIN32__)
 #  define WIN32_LEAN_AND_MEAN
@@ -49,7 +50,6 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
 #endif
 
 #ifdef MAC
-#include <string.h>
 int main (void)
 {
 	return 0;
@@ -131,6 +131,9 @@ extern Tcl_HashTable *filterHashTable;
 #define Tcl_InitHashTable (tclStubsPtr->tcl_InitHashTable)
 #endif
 
+extern char defaultOutDevice[];
+int defaultSampleRate = 16000;
+
 int
 Sound_Init(Tcl_Interp *interp)
 {
@@ -140,6 +143,7 @@ Sound_Init(Tcl_Interp *interp)
     char c[sizeof(short)];
     short s;
   } order;
+  char rates[100];
   
 #ifdef USE_TCL_STUBS
   if (Tcl_InitStubs(interp, "8", 0) == NULL) {
@@ -232,6 +236,14 @@ Sound_Init(Tcl_Interp *interp)
   order.s = 1;
   if (order.c[0] == 1) {
     littleEndian = 1;
+  }
+
+  /* Determine a default sample rate for this machine, usually 16kHz. */
+  
+  SnackAudioGetRates(defaultOutDevice, rates, 100);
+  if (strstr(rates, "16000") != NULL ||
+      sscanf(rates, "%d", &defaultSampleRate) != 1) {
+    defaultSampleRate = 16000;
   }
 
   return TCL_OK;

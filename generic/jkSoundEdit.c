@@ -234,6 +234,8 @@ lengthCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   int arg, len, type = 0, newlen = -1, i;
   char *string = NULL;
 
+  if (s->debug > 0) { Snack_WriteLog("Enter lengthCmd\n"); }
+
   if (objc >= 3) {
     for (arg = 2; arg < objc; arg++) {
       string = Tcl_GetStringFromObj(objv[arg], &len);
@@ -298,6 +300,8 @@ lengthCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     Snack_ExecCallbacks(s, SNACK_NEW_SOUND);
   }
 
+  if (s->debug > 0) { Snack_WriteLog("Exit lengthCmd\n"); }
+
   return TCL_OK;
 }
 
@@ -307,7 +311,7 @@ insertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   Sound *ins;
   int inspoint, arg, startpos = 0, endpos = -1;
   char *string;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-start", "-end", NULL
   };
   enum subOptions {
@@ -428,7 +432,7 @@ copyCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   int arg, startpos = 0, endpos = -1;
   Sound *master;
   char *string;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-start", "-end", NULL
   };
   enum subOptions {
@@ -510,12 +514,149 @@ copyCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 }
 
 int
+mixCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  int arg, startpos = 0, endpos = -1, i, c, j;
+  double mixscale = 1.0, prescale = 1.0;
+  Sound *mixsnd;
+  char *string;
+  static CONST84 char *subOptionStrings[] = {
+    "-start", "-end", "-mixscaling", "-prescaling", "-progress", NULL
+  };
+  enum subOptions {
+    START, END, MIXSCALE, PRESCALE, PROGRESS
+  };
+
+  if (s->storeType != SOUND_IN_MEMORY) {
+    Tcl_AppendResult(interp, "mix only works with in-memory sounds",
+		     (char *) NULL);
+    return TCL_ERROR;
+  }
+
+  if (objc < 3) {
+    Tcl_WrongNumArgs(interp, 1, objv, "mix sound");
+    return TCL_ERROR;
+  }
+      
+  string = Tcl_GetStringFromObj(objv[2], NULL);
+
+  if ((mixsnd = Snack_GetSound(interp, string)) == NULL) {
+    return TCL_ERROR;
+  }
+
+  if (mixsnd->storeType != SOUND_IN_MEMORY) {
+    Tcl_AppendResult(interp, "can only mix from in-memory sounds",
+		     (char *) NULL);
+    return TCL_ERROR;
+  }
+
+  if (s->encoding != mixsnd->encoding || s->nchannels != mixsnd->nchannels) {
+    Tcl_AppendResult(interp, "Sound format differs: ", string, NULL);
+    return TCL_ERROR;
+  }
+
+  if (s->cmdPtr != NULL) {
+    Tcl_DecrRefCount(s->cmdPtr);
+    s->cmdPtr = NULL;
+  }
+  
+  for (arg = 3; arg < objc; arg += 2) {
+    int index;
+
+    if (Tcl_GetIndexFromObj(interp, objv[arg], subOptionStrings,
+			    "option", 0, &index) != TCL_OK) {
+      return TCL_ERROR;
+    }
+	
+    if (arg + 1 == objc) {
+      Tcl_AppendResult(interp, "No argument given for ",
+		       subOptionStrings[index], " option", (char *) NULL);
+      return TCL_ERROR;
+    }
+    
+    switch ((enum subOptions) index) {
+    case START:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case END:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case MIXSCALE:
+      {
+	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &mixscale) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case PRESCALE:
+      {
+	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &prescale) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case PROGRESS:
+      {
+	char *str = Tcl_GetStringFromObj(objv[arg+1], NULL);
+	
+	if (strlen(str) > 0) {
+	  Tcl_IncrRefCount(objv[arg+1]);
+	  s->cmdPtr = objv[arg+1];
+	}
+	break;
+      }
+    }
+  }
+  if (startpos < 0) startpos = 0;
+  if (endpos >= (s->length - 1) || endpos == -1)
+    endpos = s->length - 1;
+  if (startpos > endpos) return TCL_OK;
+  if (endpos - startpos + 1 > mixsnd->length)
+    endpos = startpos + mixsnd->length - 1;
+
+  Snack_ProgressCallback(s->cmdPtr, interp, "Mixing sound", 0.0);
+
+  for (i = startpos, j = 0; i <= endpos; i++, j++) {
+    for (c = 0; c < s->nchannels; c++) {
+      float outsmp = (float) (prescale * FSAMPLE(s, (i * s->nchannels + c)) +
+   		          mixscale * FSAMPLE(mixsnd, (j * s->nchannels + c)));
+      if (outsmp > 32767.0f) {
+	outsmp = 32767.0f;
+      }
+      if (outsmp < -32768.0f) {
+	outsmp = -32768.0;
+      }
+      FSAMPLE(s, (i * s->nchannels + c)) = outsmp;
+    }
+    if ((i % 100000) == 99999) {
+      int res = Snack_ProgressCallback(s->cmdPtr, interp,
+				       "Mixing sound", 
+				       (double) i / (endpos - startpos));
+      if (res != TCL_OK) {
+	return TCL_ERROR;
+      }
+    }
+  }
+
+  Snack_ProgressCallback(s->cmdPtr, interp, "Mixing sound", 1.0);
+
+  Snack_UpdateExtremes(s, startpos, endpos, SNACK_NEW_SOUND);
+  Snack_ExecCallbacks(s, SNACK_NEW_SOUND);
+
+  return TCL_OK;
+}
+
+int
 appendCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   Sound *t;
   int arg, startpos = 0, endpos = -1;
   char *filetype;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-rate", "-frequency", "-skiphead", "-byteorder", "-channels",
     "-encoding", "-format", "-start", "-end", "-fileformat",
     "-guessproperties", NULL
@@ -674,6 +815,14 @@ concatenateCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   Sound *app;
   char *string;
+  int i, j, arg, offset = 0, smoothjoin = 0;
+  float min = 1.0e20f;
+  static CONST84 char *subOptionStrings[] = {
+    "-smoothjoin", NULL
+  };
+  enum subOptions {
+    SMOOTH
+  };
 
   if (s->storeType != SOUND_IN_MEMORY) {
     Tcl_AppendResult(interp, 
@@ -682,7 +831,7 @@ concatenateCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     return TCL_ERROR;
   }
 
-  if (objc != 3) {
+  if (objc < 3) {
     Tcl_WrongNumArgs(interp, 1, objv, "concatenate sound");
     return TCL_ERROR;
   }
@@ -698,12 +847,77 @@ concatenateCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     return TCL_ERROR;
   }
 
-  if (Snack_ResizeSoundStorage(s, s->length + app->length) != TCL_OK) {
+  for (arg = 3; arg < objc; arg += 2) {
+    int index;
+	
+    if (Tcl_GetIndexFromObj(interp, objv[arg], subOptionStrings,
+			    "option", 0, &index) != TCL_OK) {
+      return TCL_ERROR;
+    }
+	
+    if (arg + 1 == objc) {
+      Tcl_AppendResult(interp, "No argument given for ",
+		       subOptionStrings[index], " option", (char *) NULL);
+      return TCL_ERROR;
+    }
+    
+    switch ((enum subOptions) index) {
+    case SMOOTH:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &smoothjoin) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    }
+  }
+ 
+  if (s->length < smoothjoin) {
+    Tcl_AppendResult(interp, "First sound is too short", NULL);
     return TCL_ERROR;
   }
-  SnackCopySamples(s, s->length, app, 0, app->length);
-  Snack_UpdateExtremes(s, s->length, s->length + app->length, SNACK_MORE_SOUND);
-  s->length += app->length;
+  if (app->length < 2 * smoothjoin) {
+    Tcl_AppendResult(interp, "Second sound is too short", NULL);
+    return TCL_ERROR;
+  }
+  /*
+  for (i = 0; i < smoothjoin; i++) {
+    float sum = 0.0f;
+    int k = i;
+    for (j = s->length - smoothjoin; j < s->length; j++) {
+      sum += (float) fabs((float)(FSAMPLE(s, j)-(float)(FSAMPLE(app, k++))));
+    }
+    if (sum < min) {
+      min = sum;
+      offset = i;
+      }*/
+    /*    if (i == 78 || i == 155) printf("%f %d\n",sum,i);*/
+    /*printf("%d  %f\n",i, sum);*/
+  /*}*/
+  /*  printf("%d\n",offset);*/
+
+  if (smoothjoin > 0) {
+    offset = 80;
+    /*printf("   *** %d",s->length-offset);*/
+    for (i = 0; i < offset; i++) {
+      float z = (float) ((0.5 + 160.0 / 2 - 1 - i) * 3.141592653589793 / 160);
+      float win = (float) exp(-3.0 * z * z);
+      /*printf("A %f\n",win);*/
+      
+      FSAMPLE(s, s->length-offset+i) = (1.0-win) *
+	FSAMPLE(s, s->length-offset+i) + win * FSAMPLE(app, i);
+    }
+    /*printf(" %d\n",s->length-1);*/
+  } else {
+    offset = 0;
+  }
+
+  if (Snack_ResizeSoundStorage(s, s->length + app->length -offset) != TCL_OK) {
+    return TCL_ERROR;
+  }
+  SnackCopySamples(s, s->length, app, offset, app->length - offset);
+  Snack_UpdateExtremes(s, s->length, s->length + app->length - offset,
+		       SNACK_MORE_SOUND);
+  s->length += (app->length - offset);
   Snack_ExecCallbacks(s, SNACK_MORE_SOUND);
 
   return TCL_OK;
@@ -842,18 +1056,20 @@ Resample(Sound *s, Sound *t, Tcl_Interp *interp)
 int
 convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  int arg, i, j/*, tmpInt*/;
+  int arg, i, j;
   int samprate = s->samprate, nchannels = s->nchannels;
   int encoding = s->encoding, sampsize = s->sampsize;
+  int snchan = s->nchannels;
   Sound *t = NULL;
-  /*  float **tmpBlocks;*/
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-rate", "-frequency", "-channels", "-encoding", "-format",
     "-progress", NULL
   };
   enum subOptions {
     RATE, FREQUENCY, CHANNELS, ENCODING, FORMAT, PROGRESS
   };
+
+  if (s->debug > 0) { Snack_WriteLog("Enter convertCmd\n"); }
 
   if (s->storeType != SOUND_IN_MEMORY) {
     Tcl_AppendResult(interp, "convert only works with in-memory sounds",
@@ -865,12 +1081,12 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     Tcl_WrongNumArgs(interp, 1, objv, "convert option value");
     return TCL_ERROR;
   }
-
+  
   if (s->cmdPtr != NULL) {
     Tcl_DecrRefCount(s->cmdPtr);
     s->cmdPtr = NULL;
   }
-
+  
   for (arg = 2; arg < objc; arg += 2) {
     int index;
 
@@ -917,18 +1133,16 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     }
   }
 
-  if ((t = Snack_NewSound(samprate, encoding, nchannels)) == NULL) {
+  if ((t = Snack_NewSound(samprate, encoding, s->nchannels)) == NULL) {
     Tcl_AppendResult(interp, "Couldn't allocate temporary sound!", NULL);
     return TCL_ERROR;
   }
-  t->cmdPtr = s->cmdPtr;
   t->debug  = s->debug;
   t->length = (int) (s->length * (float) samprate / s->samprate);
   if (Snack_ResizeSoundStorage(t, t->length) != TCL_OK) {
     Tcl_AppendResult(interp, "Couldn't allocate temporary sound!", NULL);
     return TCL_ERROR;
   }
-
   if (samprate != s->samprate) {
     if (s->length > 0) {
       if (Resample(s, t, interp) != TCL_OK) {
@@ -936,26 +1150,19 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 	return TCL_ERROR;
       }
       SnackSwapSoundBuffers(s, t);
-      /*
-      tmpBlocks = t->blocks;
-      t->blocks = s->blocks;
-      s->blocks = tmpBlocks;
-      tmpInt    = t->nblks;
-      t->nblks  = s->nblks;
-      s->nblks  = tmpInt;
-      tmpInt    = t->exact;
-      t->exact  = s->exact;
-      s->exact  = tmpInt;
-      s->maxlength = t->maxlength;
-      */
     }
     s->length = t->length;
     s->samprate = t->samprate;
   }
-
+  if (Snack_ResizeSoundStorage(t, t->length * nchannels) != TCL_OK) {
+    Tcl_AppendResult(interp, "Couldn't allocate temporary sound!", NULL);
+    return TCL_ERROR;
+  }
+  t->nchannels = nchannels;
+  
   if (encoding != s->encoding) {
     Snack_ProgressCallback(s->cmdPtr, interp, "Converting encoding", 0.0);
-    for (i = 0; i < s->length * s->nchannels; i++) {
+    for (i = 0; i < s->length * snchan; i++) {
       float value = 0.0;
 
       switch (s->encoding) {
@@ -999,7 +1206,7 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       if ((i % 100000) == 99999) {
 	int res = Snack_ProgressCallback(s->cmdPtr, interp,
 					 "Converting encoding",
-				 (double) i / (s->length * s->nchannels));
+				 (double) i / (s->length * snchan));
 	if (res != TCL_OK) {
 	  Snack_DeleteSound(t);
 	  return TCL_ERROR;
@@ -1008,23 +1215,12 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     }
     Snack_ProgressCallback(s->cmdPtr, interp, "Converting encoding", 1.0);
     SnackSwapSoundBuffers(s, t);
-    /*    tmpBlocks = t->blocks;
-    t->blocks = s->blocks;
-    s->blocks = tmpBlocks;
-    tmpInt    = t->nblks;
-    t->nblks  = s->nblks;
-    s->nblks  = tmpInt;
-    tmpInt    = t->exact;
-    t->exact  = s->exact;
-    s->exact  = tmpInt;
-    s->maxlength = t->maxlength;
-    */
     s->encoding = t->encoding;
     s->sampsize = t->sampsize;
   }
 
-  if (nchannels != s->nchannels) {
-    if (nchannels > 1 && s->nchannels > 1) {
+  if (nchannels != snchan) {
+    if (nchannels > 1 && snchan > 1) {
       Tcl_AppendResult(interp, "Can only convert n -> 1 or 1 -> n channels",
 		       (char *) NULL);
       Snack_DeleteSound(t);
@@ -1033,12 +1229,12 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     Snack_ProgressCallback(s->cmdPtr, interp, "Converting channels", 0.0);
     if (nchannels == 1) {
       for (i = 0; i < s->length; i++) {
-	float value = 0;
-
-	for (j = 0; j < s->nchannels; j++) {
-	  value += FSAMPLE(s, i * s->nchannels + j);
+	float value = 0.0f;
+	
+	for (j = 0; j < snchan; j++) {
+	  value += FSAMPLE(s, i * snchan + j);
 	}
-	value = value / (float) s->nchannels;
+	value = value / (float) snchan;
 	
 	FSAMPLE(t, i) = value;
 
@@ -1053,7 +1249,7 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 	}
       }
     }
-    if (s->nchannels == 1) {
+    if (snchan == 1) {
       for (i = s->length - 1; i >= 0; i--) {
 	for (j = 0; j < nchannels; j++) {
 	  FSAMPLE(t, i * nchannels + j) = FSAMPLE(s, i);
@@ -1070,22 +1266,13 @@ convertCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     }
     Snack_ProgressCallback(s->cmdPtr, interp, "Converting channels", 1.0);
     SnackSwapSoundBuffers(s, t);
-    /*    tmpBlocks = t->blocks;
-    t->blocks = s->blocks;
-    s->blocks = tmpBlocks;
-    tmpInt    = t->nblks;
-    t->nblks  = s->nblks;
-    s->nblks  = tmpInt;
-    tmpInt    = t->exact;
-    t->exact  = s->exact;
-    s->exact  = tmpInt;
-    s->maxlength = t->maxlength;*/
     s->nchannels = t->nchannels;
   }
-  t->cmdPtr = NULL; /* This is ok because t is just a temporary sound */
   Snack_DeleteSound(t);
   Snack_UpdateExtremes(s, 0, s->length, SNACK_NEW_SOUND);
   Snack_ExecCallbacks(s, SNACK_NEW_SOUND);
+
+  if (s->debug > 0) { Snack_WriteLog("Exit convertCmd\n"); }
 
   return TCL_OK;
 }
@@ -1094,7 +1281,7 @@ int
 reverseCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   int arg, startpos = 0, endpos = -1, i, j, c;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-start", "-end", "-progress", NULL
   };
   enum subOptions {

@@ -398,3 +398,123 @@ r8tx(int nxtlt, int nthpo, int lengt,
     }
   }
 }
+
+void
+Snack_PowerSpectrum(float *z)
+{
+  int l[15];
+  int i, in, n8pow, fn;
+  int lengt;
+  register int ij, ji, nxtlt;
+  int i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12, i13, i14;
+  float r, fi;
+  float h1r, h1i, h2r, h2i;
+  double wr, wi, wtemp;
+
+  fn = nthpo;
+  for (i = 0; i < nthpo; i++) {
+    y[i] = -z[(i<<1)+1];
+    x[i] = z[i<<1];
+  }
+
+  n8pow = n2pow / 3;
+  if (n8pow != 0) {
+    for (i = 0; i < n8pow; i++) {
+      lengt = n2pow - 3 * i;
+      nxtlt = Pow2[lengt - 3];
+      r8tx (nxtlt, nthpo, lengt,
+	    &x[0], &x[nxtlt], &x[2 * nxtlt], &x[3 * nxtlt],
+	    &x[4 * nxtlt], &x[5 * nxtlt], &x[6 * nxtlt], &x[7 * nxtlt],
+	    &y[0], &y[nxtlt], &y[2 * nxtlt], &y[3 * nxtlt],
+	    &y[4 * nxtlt], &y[5 * nxtlt], &y[6 * nxtlt], &y[7 * nxtlt]);
+    }
+  }
+
+  switch (n2pow - 3 * n8pow) {
+  case 0:
+    break;
+  case 1:
+    r2tx (nthpo, &x[0], &x[1], &y[0], &y[1]);
+    break;
+  case 2:
+    r4tx (nthpo, &x[0], &x[1], &x[2], &x[3],
+	  &y[0], &y[1], &y[2], &y[3]);
+    break;
+  default:
+    /*    fprintf (stderr, "-- Algorithm Error Snack_DBPowerSpectrum\n");*/
+    exit (1);
+  }
+  for (i = 0; i < 15; i++) {
+    if (i < n2pow) {
+      l[i] = Pow2[n2pow - i];
+    } else {
+      l[i] = 1;
+    }
+  }
+  ij = 0;
+  for (i1 = 0; i1 < l[14]; i1++) {
+    for (i2 = i1; i2 < l[13]; i2 += l[14]) {
+      for (i3 = i2; i3 < l[12]; i3 += l[13]) {
+	for (i4 = i3; i4 < l[11]; i4 += l[12]) {
+	  for (i5 = i4; i5 < l[10]; i5 += l[11]) {
+	    for (i6 = i5; i6 < l[9]; i6 += l[10]) {
+	      for (i7 = i6; i7 < l[8]; i7 += l[9]) {
+		for (i8 = i7; i8 < l[7]; i8 += l[8]) {
+		  for (i9 = i8; i9 < l[6]; i9 += l[7]) {
+		    for (i10 = i9; i10 < l[5]; i10 += l[6]) {
+		      for (i11 = i10; i11 < l[4]; i11 += l[5]) {
+			for (i12 = i11; i12 < l[3]; i12 += l[4]) {
+			  for (i13 = i12; i13 < l[2]; i13 += l[3]) {
+			    for (i14 = i13; i14 < l[1]; i14 += l[2]) {
+			      for (ji = i14; ji < l[0]; ji += l[1]) {
+				if (ij < ji) {
+				  r = x[ij];
+				  x[ij] = x[ji];
+				  x[ji] = r;
+				  fi = y[ij];
+				  y[ij] = y[ji];
+				  y[ji] = fi;
+				}
+				ij++;
+			      }
+			    }
+			  }
+			}
+		      }
+		    }
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  wr = 1.0+wpr;
+  wi = wpi;
+  for (i = 1; i <= (nthpo>>1); i++) {
+    in = nthpo-i;
+    h1r = (x[i]+x[in]);
+    h1i = (y[i]-y[in]);
+    h2r = (y[i]+y[in]);
+    h2i = (x[in]-x[i]);
+    x[in] = (float) (h1r+wr*h2r-wi*h2i);
+    y[in] = (float) (h1i+wr*h2i+wi*h2r);
+    wtemp =  x[in]*x[in]+y[in]*y[in];
+    z[in] = (float) wtemp;
+ 
+    x[i]  = (float) (h1r-wr*h2r+wi*h2i);
+    y[i]  = (float) (-h1i+wr*h2i+wi*h2r);
+    wtemp = x[i]*x[i]+y[i]*y[i];
+    z[i] = (float) wtemp;
+
+    wtemp = wr;
+    wr = wr*wpr-wi*wpi+wr;
+    wi = wi*wpr+wtemp*wpi+wi;
+  }
+  wtemp = x[0]-y[0];
+  wtemp = wtemp*wtemp;
+  z[0] = (float) wtemp;
+}

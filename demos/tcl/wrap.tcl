@@ -14,7 +14,7 @@ update
 
 # Get the Snack package's directory
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 set tmp [package ifneeded snack [package provide snack]]
 set tmp [lindex [lindex [split $tmp ";"] 0] end]
 set snackdir [file dirname $tmp]

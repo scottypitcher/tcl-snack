@@ -44,7 +44,7 @@ filterSndCmd(ClientData clientData, Tcl_Interp *interp, int objc,
   Tcl_HashEntry *hPtr;
   Snack_Filter f;
   Snack_StreamInfo si;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-start", "-end", "-continuedrain", "-progress", NULL
   };
   enum subOptions {
@@ -1368,8 +1368,8 @@ fadeFlowProc(Snack_Filter f, Snack_StreamInfo si, float *in, float *out,
     for (wi = 0; wi < si->outWidth; wi++) {
       out[i] = factor * in[i];
       i++;
-      mf->pos++;
     }
+    mf->pos++;
   }
 
   *outFrames = *inFrames;

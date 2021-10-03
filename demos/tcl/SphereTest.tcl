@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec tclsh8.3 "$0" "$@"
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 package require snacksphere
 
 snack::debug 0

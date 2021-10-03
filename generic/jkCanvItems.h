@@ -90,14 +90,14 @@ extern int  CheckWinlen(Tcl_Interp *interp, int winlen, int fftlen);
 
 extern int  CheckLPCorder(Tcl_Interp *interp, int lpcorder);
 
-#if !defined(WIN) && !defined(MAC)
+#if !defined(WIN) && !defined(MAC) && !defined(MAC_OSX_TK)
 #define TkPutImage(colors, ncolors, display, pixels, gc, image, \
 		   destx, desty, srcx, srcy, width, height) \
         XPutImage(                  display, pixels, gc, image, \
 		   destx, desty, srcx, srcy, width, height);
 #endif
 
-#if defined WIN || defined MAC
+#if defined(WIN) || defined(MAC) || defined(MAC_OSX_TK)
 #  define XFree(data) {if ((data) != NULL) ckfree((char *) (data));}
 #endif
 

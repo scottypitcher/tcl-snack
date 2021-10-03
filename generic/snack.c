@@ -139,6 +139,7 @@ Snack_DebugCmd(ClientData cdata, Tcl_Interp *interp, int objc,
 {
   int len;
   char *str;
+  CONST84 char *patchLevelStr;
 
   if (objc > 1) {
     if (Tcl_GetIntFromObj(interp, objv[1], &debugLevel) != TCL_OK)
@@ -169,9 +170,9 @@ Snack_DebugCmd(ClientData cdata, Tcl_Interp *interp, int objc,
     strcpy(snackDumpFile, str);
   }
   if (debugLevel > 0) {
-    str = Tcl_GetVar(interp, "snack::patchLevel", TCL_GLOBAL_ONLY);
+    patchLevelStr = Tcl_GetVar(interp, "snack::patchLevel", TCL_GLOBAL_ONLY);
     Tcl_Write(snackDebugChannel, "Snack patch level: ", 19);
-    Tcl_Write(snackDebugChannel, str, strlen(str));
+    Tcl_Write(snackDebugChannel, patchLevelStr, strlen(patchLevelStr));
     Tcl_Write(snackDebugChannel, "\n", 1);
     Tcl_Flush(snackDebugChannel);
   }
@@ -197,22 +198,28 @@ extern SnackStubs *snackStubs;
 #endif
 
 extern Tcl_HashTable *filterHashTable;
+extern Tcl_HashTable *hsetHashTable;
+extern Tcl_HashTable *arHashTable;
 
 #if defined(Tcl_InitHashTable) && defined(USE_TCL_STUBS)
 #undef Tcl_InitHashTable
 #define Tcl_InitHashTable (tclStubsPtr->tcl_InitHashTable)
 #endif
 
+extern char defaultOutDevice[];
+int defaultSampleRate = 16000;
+
 int
 Snack_Init(Tcl_Interp *interp)
 {
   Tcl_CmdInfo infoPtr;
-  char *version;
+  CONST84 char *version;
   Tcl_HashTable *soundHashTable;
   union {
     char c[sizeof(short)];
     short s;
   } order;
+  char rates[100];
   
 #ifdef USE_TCL_STUBS
   if (Tcl_InitStubs(interp, "8", 0) == NULL) {
@@ -249,7 +256,7 @@ Snack_Init(Tcl_Interp *interp)
       Tk_CreateItemType(&snackSpectrogramType);
       Tk_CreateItemType(&snackSectionType);
     }
-#ifndef MAC
+#if !defined(MAC) && !defined(MAC_OSX_TCL)
     Tk_DefineBitmap(interp, Tk_GetUid("play"),   (char *) play_bits,
 		    play_width, play_height);
     Tk_DefineBitmap(interp, Tk_GetUid("record"), (char *) rec_bits,
@@ -281,6 +288,8 @@ Snack_Init(Tcl_Interp *interp)
 
   soundHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
   filterHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
+  hsetHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
+  arHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
 
   Tcl_CreateObjCommand(interp, "sound", Snack_SoundCmd,
 		       (ClientData) soundHashTable, (Tcl_CmdDeleteProc *)NULL);
@@ -299,7 +308,13 @@ Snack_Init(Tcl_Interp *interp)
   
   Tcl_CreateObjCommand(interp, "snack::filter", Snack_FilterCmd,
 		       (ClientData) filterHashTable, Snack_FilterDeleteCmd);
-  
+
+  Tcl_CreateObjCommand(interp, "snack::hset", Snack_HSetCmd,
+		       (ClientData) hsetHashTable, Snack_HSetDeleteCmd);
+
+  Tcl_CreateObjCommand(interp, "snack::ca", Snack_arCmd,
+		       (ClientData) arHashTable, Snack_arDeleteCmd);
+   
   Tcl_CreateObjCommand(interp, "snack::debug",
 		       (Tcl_ObjCmdProc*) Snack_DebugCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
@@ -312,6 +327,8 @@ Snack_Init(Tcl_Interp *interp)
 
   Tcl_InitHashTable(soundHashTable, TCL_STRING_KEYS);
   Tcl_InitHashTable(filterHashTable, TCL_STRING_KEYS);
+  Tcl_InitHashTable(hsetHashTable, TCL_STRING_KEYS);
+  Tcl_InitHashTable(arHashTable, TCL_STRING_KEYS);
 
   if (initialized == 0) {
     SnackDefineFileFormats(interp);
@@ -335,6 +352,14 @@ Snack_Init(Tcl_Interp *interp)
   order.s = 1;
   if (order.c[0] == 1) {
     littleEndian = 1;
+  }
+  
+  /* Determine a default sample rate for this machine, usually 16kHz. */
+  
+  SnackAudioGetRates(defaultOutDevice, rates, 100);
+  if (strstr(rates, "16000") != NULL ||
+      sscanf(rates, "%d", &defaultSampleRate) != 1) {
+    defaultSampleRate = 16000;
   }
 
   return TCL_OK;

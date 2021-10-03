@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 # Try to load optional file format handlers
 catch { package require snacksphere }
 catch { package require snackogg }
@@ -49,8 +49,8 @@ set v(vchan)   -1
 #set v(zerolabs) 0
 set v(startsmp) 0
 set v(lastmoved) -1
-set v(p_version) 2.1
-set v(s_version) 2.1
+set v(p_version) 2.2
+set v(s_version) 2.2
 set v(plugins) {}
 set v(scroll) 1
 set v(rate) 16000
@@ -146,13 +146,18 @@ proc SetDefaultVars {} {
     set v(labalign) w
     set v(fg) black
     set v(bg) [. cget -bg]
-    if [string match macintosh $::tcl_platform(platform)] {
+    if {[string match macintosh $::tcl_platform(platform)] || \
+	    [string match Darwin $::tcl_platform(os)]} {
 	set v(fillmark) 0
     } else {
 	set v(fillmark) 1
     }
     set v(font)  {Courier 10}
-    set v(sfont) {Helvetica 8 bold}
+    if {[string match unix $::tcl_platform(platform)] } {
+     set v(sfont) {Helvetica 10 bold}
+    } else {
+     set v(sfont) {Helvetica 8 bold}
+    }
     set v(gridfspacing) 0
     set v(gridtspacing) 0
     set v(gridcolor) red
@@ -635,7 +640,8 @@ bind $c <Leave>  {
     $c coords ch2 -1 -1 -1 -1
 }
 
-if [string match macintosh $::tcl_platform(platform)] {
+if {[string match macintosh $::tcl_platform(platform)] || \
+	[string match Darwin $::tcl_platform(os)]} {
  bind $c <Control-1> { PopUpMenu %X %Y %x %y }
 } else {
  bind $c <3> { PopUpMenu %X %Y %x %y }
@@ -4031,7 +4037,8 @@ proc OpenZoomWindow {} {
     .zmenu add command -label "Play Range" -command PlayMark
     .zmenu add command -label "Mark Start" -command {PutZMarker zm1 $x}
     .zmenu add command -label "Mark End" -command {PutZMarker zm2 $x}
-    if [string match macintosh $::tcl_platform(platform)] {
+    if {[string match macintosh $::tcl_platform(platform)] || \
+	    [string match Darwin $::tcl_platform(os)]} {
 	bind $c <Control-1> \
 		{set x %x; set y %y; catch {tk_popup .zmenu %X %Y 0}}
     } else {
@@ -4301,7 +4308,7 @@ proc Settings {} {
     bind $w.r.f2.e <Key-Return> {.dim.ll.c itemconf speg -winlen [expr int($v(rate) / $v(anabw))]}
 
     pack [frame $w.r.f3]
-    label $w.r.f3.l -text "Preemphasis factor:" -width 25 -anchor w
+    label $w.r.f3.l -text "Pre-emphasis factor:" -width 25 -anchor w
     entry $w.r.f3.e -textvar v(preemph) -wi 6
     pack $w.r.f3.l $w.r.f3.e -side left
     bind $w.r.f3.e <Key-Return> {.dim.ll.c itemconf speg -preem $v(preemph)}

@@ -235,6 +235,8 @@ SnackAudioFlush(ADesc *A)
   }
 }
 
+static char zeroBlock[16];
+
 void
 SnackAudioPost(ADesc *A)
 {
@@ -242,15 +244,14 @@ SnackAudioPost(ADesc *A)
 
   if (A->warm == 1) {
     int i;
-    char c = 0;
-    for (i = 0; i < A->frag_size; i++) {
-      write(A->afd, &c, sizeof(char));
+    for (i = 0; i < A->frag_size / (A->bytesPerSample * A->nChannels); i++) {
+      write(A->afd, zeroBlock, A->bytesPerSample * A->nChannels);
     }
     A->warm = 2;
     ioctl(A->afd, SNDCTL_DSP_POST, 0);
   }
 
-  if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioPost\n");
+  if (A->debug > 1) Snack_WriteLog("  Exit SnackAudioPost\n");
 }
 
 int
@@ -380,6 +381,10 @@ SnackAudioInit()
     short s;
   } order;
   int afd, format, channels, nchannels;
+  /*
+  int i, n;
+  char *arr[MAX_NUM_DEVICES];
+  */
 
   /* Compute the byte order of this machine. */
 
@@ -391,7 +396,26 @@ SnackAudioInit()
   if ((mfd = open(MIXER_NAME, O_RDWR, 0)) == -1) {
     fprintf(stderr, "Unable to open mixer %s\n", MIXER_NAME);
   }
+  /*
+  n = SnackGetOutputDevices(arr, MAX_NUM_DEVICES);
+  for (i = 0; i < n; i++) {
+    printf("Trying %s %d\n",arr[i], open(arr[i], O_WRONLY, 0));
+    if ((afd = open(arr[i], O_WRONLY, 0)) != -1) {
+      defaultDeviceName = arr[i];
+      printf("accepting %s %d\n",defaultDeviceName,afd);
+      break;
+    }
+  }
+  */
 
+  if ((afd = open(defaultDeviceName, O_WRONLY, 0)) == -1) {
+    defaultDeviceName = "/dev/sound/dsp";
+    if ((afd = open(defaultDeviceName, O_WRONLY, 0)) == -1) {
+      return;
+    }
+  }
+  close(afd);
+  
   /* Determine minimum number of channels supported. */
   
   if ((afd = open(defaultDeviceName, O_WRONLY, 0)) == -1) {
@@ -433,7 +457,7 @@ SnackAudioFree()
       ckfree(mixerLinks[i][0].jack);
     }
     if (mixerLinks[i][0].jackVar != NULL) {
-      ckfree(mixerLinks[i][0].jackVar);
+      ckfree((char *)mixerLinks[i][0].jackVar);
     }
   }
 
@@ -594,7 +618,7 @@ SnackMixerGetInputJack(char *buf, int n)
 }
 
 int
-SnackMixerSetInputJack(Tcl_Interp *interp, char *jack, char *status)
+SnackMixerSetInputJack(Tcl_Interp *interp, char *jack, CONST84 char *status)
 {
   char *jackLabels[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_LABELS;
   int i, recSrc = 0, currSrc;
@@ -641,13 +665,13 @@ SnackMixerSetOutputJack(char *jack, char *status)
 static int dontTrace = 0;
 
 static char *
-JackVarProc(ClientData clientData, Tcl_Interp *interp, char *name1,
-	    char *name2, int flags)
+JackVarProc(ClientData clientData, Tcl_Interp *interp, CONST84 char *name1,
+	    CONST84 char *name2, int flags)
 {
   MixerLink *mixLink = (MixerLink *) clientData;
   char *jackLabels[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_LABELS;
   int i, recSrc = 0, status = 0;
-  char *stringValue;
+  CONST84 char *stringValue;
   Tcl_Obj *obj, *var;
 
   if (dontTrace) return (char *) NULL;
@@ -707,7 +731,7 @@ SnackMixerLinkJacks(Tcl_Interp *interp, char *jack, Tcl_Obj *var)
 {
   char *jackLabels[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_LABELS;
   int i, recSrc = 0, status;
-  char *value;
+  CONST84 char *value;
 
   ioctl(mfd, SOUND_MIXER_READ_RECSRC, &recSrc);
 
@@ -819,11 +843,11 @@ SnackMixerSetVolume(char *line, int channel, int volume)
 }
 
 static char *
-VolumeVarProc(ClientData clientData, Tcl_Interp *interp, char *name1,
-	      char *name2, int flags)
+VolumeVarProc(ClientData clientData, Tcl_Interp *interp, CONST84 char *name1,
+	      CONST84 char *name2, int flags)
 {
   MixerLink *mixLink = (MixerLink *) clientData;
-  char *stringValue;
+  CONST84 char *stringValue;
   
   if (flags & TCL_TRACE_UNSETS) {
     if ((flags & TCL_TRACE_DESTROYED) && !(flags & TCL_INTERP_DESTROYED)) {
@@ -855,7 +879,8 @@ SnackMixerLinkVolume(Tcl_Interp *interp, char *line, int n,
 {
   char *mixLabels[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_LABELS;
   int i, j, channel;
-  char *value, tmp[VOLBUFSIZE];
+  CONST84 char *value;
+  char tmp[VOLBUFSIZE];
 
   for (i = 0; i < SOUND_MIXER_NRDEVICES; i++) {
     if (strncasecmp(line, mixLabels[i], strlen(line)) == 0) {

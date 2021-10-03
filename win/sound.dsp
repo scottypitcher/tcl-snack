@@ -53,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tclstub83.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Tcl\lib\snack2.1\libsound.dll" /libpath:"C:\Tcl\lib"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tclstub83.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Tcl\lib\snack2.2\libsound.dll" /libpath:"C:\Tcl\lib"
 
 !ELSEIF  "$(CFG)" == "sound - Win32 Debug"
 
@@ -79,7 +79,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /out:"Debug/libsound.dll" /pdbtype:sept
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tclstub83.lib /nologo /dll /debug /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Tcl\lib\snack2.2\libsound.dll" /libpath:"C:\Tcl\lib" /pdbtype:sept
 
 !ENDIF 
 
@@ -116,7 +116,15 @@ SOURCE=..\generic\jkFilterIIR.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\generic\jkFormant.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\generic\jkFormatMP3.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\jkGetF0.c
 # End Source File
 # Begin Source File
 
@@ -156,6 +164,14 @@ SOURCE=..\generic\shape.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\generic\sigproc.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\sigproc2.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\generic\snackStubInit.c
 # End Source File
 # Begin Source File
@@ -180,7 +196,15 @@ SOURCE=..\generic\jkCanvItems.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\generic\jkFormant.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\generic\jkFormatMP3.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\jkGetF0.h
 # End Source File
 # Begin Source File
 

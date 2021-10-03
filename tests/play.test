@@ -1,7 +1,7 @@
 # Commands covered: sound play
 #
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -23,6 +23,7 @@ test play-1.1.2 {play command, non-blocking, -file} {
   $s destroy
   set flag
 } 1
+after 1000 {set flag 1} ; vwait flag 
 
 test play-1.1.3 {play command, non-blocking, -channel} {
   set fd [open ex1.wav]

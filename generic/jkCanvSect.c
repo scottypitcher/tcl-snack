@@ -20,13 +20,12 @@
  */
 
 #include "tcl.h"
-#include "jkAudIO.h"
+#include "snack.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #define USE_OLD_CANVAS /* To keep Tk8.3 happy */
 #include "tk.h"
-#include "jkSound.h"
 #include "jkCanvItems.h"
 #include <string.h>
 
@@ -729,18 +728,19 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   GC newGC;
   unsigned long mask;
   int doCompute = 0;
-#if defined(MAC)
+#if defined(MAC) || defined(MAC_OSX_TCL)
   int i;
 #endif
 
   if (argc == 0) return TCL_OK;
 
-  if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc, argv,
+  if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc,
+			 (CONST84 char **)argv,
 			 (char *) sectPtr, flags) != TCL_OK) return TCL_ERROR;
 
   if (sectPtr->debug) Snack_WriteLog("Enter ConfigureSection\n");
 
-#if defined(MAC)
+#if defined(MAC) || defined(MAC_OSX_TCL)
   for (i = 0; i < argc; i++) {
     if (strncmp(argv[i], "-anchor", strlen(argv[i])) == 0) {
       i++;

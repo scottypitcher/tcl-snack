@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 # there is no way (?) to find out from Tk if we can display UNICODE IPA
 # but it seems to be standard on windows installations

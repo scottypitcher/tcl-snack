@@ -2,7 +2,7 @@
 # the next line restarts using tclsh \
 exec tclsh8.3 "$0" "$@"
 
-package require -exact sound 2.1
+package require -exact sound 2.2
 # Try to load optional file format handlers
 catch { package require snacksphere }
 catch { package require snackogg }

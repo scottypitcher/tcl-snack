@@ -26,8 +26,10 @@
 extern "C" {
 #endif
 
-#ifdef MAC
+#if defined(MAC) || defined(MAC_OSX_TCL)
 #  include <string.h>
+#endif
+#if defined(MAC)
 extern int strcasecmp (const char *str1, const char *str2);
 extern int strncasecmp(const char *str1, const char *str2, size_t nchars);
 #  define EXPORT(a,b) a b
@@ -342,6 +344,18 @@ extern int convertCmd(Sound *s, Tcl_Interp *interp, int objc,
 		      Tcl_Obj *CONST objv[]);
 extern int dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
 			      Tcl_Obj *CONST objv[]);
+extern int speaturesCmd(Sound *s, Tcl_Interp *interp, int objc,
+			Tcl_Obj *CONST objv[]);
+extern int alCmd(Sound *s, Tcl_Interp *interp, int objc,
+		 Tcl_Obj *CONST objv[]);
+extern int xoCmd(Sound *s, Tcl_Interp *interp, int objc,
+		 Tcl_Obj *CONST objv[]);
+extern int ocCmd(Sound *s, Tcl_Interp *interp, int objc,
+		 Tcl_Obj *CONST objv[]);
+extern int arCmd(Sound *s, Tcl_Interp *interp, int objc,
+		 Tcl_Obj *CONST objv[]);
+extern int mixCmd(Sound *s, Tcl_Interp *interp, int objc,
+		  Tcl_Obj *CONST objv[]);
 extern int sampleCmd(Sound *s, Tcl_Interp *interp, int objc,
 		     Tcl_Obj *CONST objv[]);
 extern int flipBitsCmd(Sound *s, Tcl_Interp *interp, int objc,
@@ -418,7 +432,8 @@ extern void PreEmphase(float *sig, float presample, int len, float preemph);
 
 extern double SnackCurrentTime();
 
-extern char *Snack_InitStubs (Tcl_Interp *interp, char *version, int exact);
+extern CONST84 char *Snack_InitStubs (Tcl_Interp *interp, char *version,
+				      int exact);
 
 extern int pitchCmd(Sound *s, Tcl_Interp *interp, int objc,
 		    Tcl_Obj *CONST objv[]);
@@ -427,6 +442,9 @@ extern int powerCmd(Sound *s, Tcl_Interp *interp, int objc,
 		    Tcl_Obj *CONST objv[]);
 
 extern int reverseCmd(Sound *s, Tcl_Interp *interp, int objc,
+		      Tcl_Obj *CONST objv[]);
+
+extern int formantCmd(Sound *s, Tcl_Interp *interp, int objc,
 		      Tcl_Obj *CONST objv[]);
 
 #define ITEMBUFFERSIZE 100000
@@ -454,9 +472,10 @@ typedef struct jkQueuedSound {
   int startTime;
   Tcl_Obj *cmdPtr;
   queuedSoundStatus status;
-  int execd;
+  int duration;
   char *name;
   char *filterName;
+  int id;
   struct jkQueuedSound *next;
   struct jkQueuedSound *prev;
 } jkQueuedSound;
@@ -527,12 +546,22 @@ typedef struct Snack_FilterType {
 
 void SnackCreateFilterTypes(Tcl_Interp *interp);
 
+extern int Snack_HSetCmd(ClientData cdata, Tcl_Interp *interp, int objc,
+			   Tcl_Obj *CONST objv[]);
+
+extern void Snack_HSetDeleteCmd(ClientData clientData);
+
+extern int Snack_arCmd(ClientData cdata, Tcl_Interp *interp, int objc,
+			   Tcl_Obj *CONST objv[]);
+
+extern void Snack_arDeleteCmd(ClientData clientData);
+
 extern int WriteSound(writeSamplesProc *writeProc, Sound *s,
 		      Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 		      int startpos, int len);
 
 extern void Snack_RemoveOptions(int objc, Tcl_Obj *CONST objv[],
-				char **subOptionStrings, int *newobjc,
+				CONST84 char **subOptionStrings, int *newobjc,
 				Tcl_Obj **newobjv);
 
 #ifndef MAC

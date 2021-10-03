@@ -5,7 +5,7 @@ exec wish8.3 "$0" "$@"
 # An example of how to build a sound application using Snack.
 # Can also be used as a base for specialized applications.
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 # Try to load optional file format handlers
 catch { package require snacksphere }
 catch { package require snackogg }
@@ -60,7 +60,8 @@ pack [set c [canvas .c -width $v(width) -height $v(height) -highlightthi 0]] \
 $c create waveform 0 0 -sound snd -height $v(height) -width $v(width) \
     -tag [list obj wave] -progress snack::progressCallback -trimstart 1 \
     -debug $v(debug)
-if [string match macintosh $::tcl_platform(platform)] {
+if {[string match macintosh $::tcl_platform(platform)] || \
+	[string match Darwin $::tcl_platform(os)]} {
     $c create rect  -1 -1 -1 -1 -tags mark -width 2 -outline red
 } else {
     $c create rect  -1 -1 -1 -1 -tags mark -fill yellow -stipple gray25 \

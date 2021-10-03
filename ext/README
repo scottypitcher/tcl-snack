@@ -11,7 +11,7 @@ Use Snack_AddSubCmd() as shown in the example square.c to associate a new
 command name and a custom C/C++ function.
 
 The preferred way of creating a Snack extension is to link with
-Snack's stub library (unix: libsnackstub2.1.a, win: snackstub21.lib).
+Snack's stub library (unix: libsnackstub2.2.a, win: snackstub22.lib).
 In this way your extension should be usable with different versions of Snack
 without recompilation.
 More general information on stub libraries at http://dev.scriptics.com/doc/tea/
@@ -77,6 +77,6 @@ On Unix it might be necessary to set the environment variable TCLLIBPATH
 in order for this to work.
 If you just built Snack and the sample extension you use this command
 
-setenv TCLLIBPATH "~/snack2.1.6/unix ~/snack2.1.6/ext $TCLLIBPATH"
+setenv TCLLIBPATH "~/snack2.2/unix ~/snack2.2/ext $TCLLIBPATH"
 
 Note that the list of directories is space separated.

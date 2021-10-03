@@ -1387,7 +1387,7 @@ PutSmpHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
     i += (int) sprintf(&buf[i], "msb=first\r\n");
   }
   i += (int) sprintf(&buf[i], "nchans=%d\r\n", s->nchannels);
-  i += (int) sprintf(&buf[i], "preemph=none\r\nborn=snack\r\n=\r\n%c%c ", 0,4);
+  i += (int) sprintf(&buf[i],"preemph=none\r\nborn=snack\r\n=\r\n%c%c%c", 0,4,26);
 
   for (;i < NIST_HEADERSIZE; i++) buf[i] = 0;
 
@@ -1423,12 +1423,14 @@ GetSdHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   int datastart, len, i, j;
   double freq = 16000.0;
   double start = 0.0;
+  int first = 1;
 
   if (s->debug > 2) Snack_WriteLog("    Reading SD header\n");
 
   datastart = GetBELong(buf, 8);
+  s->nchannels = GetBELong(buf, 144);
 
-  for (i = 0; i < 900; i++) { 
+  for (i = 0; i < s->firstNRead; i++) { 
     if (strncasecmp("record_freq", &buf[i], strlen("record_freq")) == 0) {
       i = i + 18;
       if (littleEndian) {
@@ -1441,7 +1443,8 @@ GetSdHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
       }
       memcpy(&freq, &buf[i], 8);
     }
-    if (strncasecmp("start_time", &buf[i], strlen("start_time")) == 0) {
+    if (strncasecmp("start_time", &buf[i], strlen("start_time")) == 0 && first) {
+      first = 0;
       i = i + 18;
       if (littleEndian) {
 	for (j = 0; j < 4; j++) {
@@ -1474,7 +1477,6 @@ GetSdHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   
   s->encoding = LIN16;
   s->sampsize = 2;
-  s->nchannels = 1;
   s->samprate = (int) freq;
   s->loadOffset = 0; /*(int) (start * s->samprate + 0.5);*/
 
@@ -1499,6 +1501,7 @@ GetSdHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 #endif
     }
   }
+  s->length /= s->nchannels;
   s->headSize = datastart;
   SwapIfLE(s);
 
@@ -1510,7 +1513,7 @@ ConfigSdHeader(Sound *s, Tcl_Interp *interp, int objc,
                 Tcl_Obj *CONST objv[])
 {
   int index;
-  static char *optionStrings[] = {
+  static CONST84 char *optionStrings[] = {
     "-start_time", NULL
   };
   enum options {
@@ -2506,7 +2509,7 @@ readCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
 {
   char *filetype;
   int arg, startpos = 0, endpos = -1;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-rate", "-frequency", "-skiphead", "-byteorder", "-channels",
     "-encoding", "-format", "-start", "-end", "-fileformat",
     "-guessproperties", "-progress", NULL
@@ -2674,7 +2677,8 @@ readCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
 }
 
 void
-Snack_RemoveOptions(int objc, Tcl_Obj *CONST objv[], char **subOptionStrings,
+Snack_RemoveOptions(int objc, Tcl_Obj *CONST objv[],
+		    CONST84 char **subOptionStrings,
 		    int *newobjc, Tcl_Obj **newobjv)
 {
   int arg, n = 0;
@@ -2702,7 +2706,7 @@ writeCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   int startpos = 0, endpos = s->length, arg, len, newobjc;
   char *string, *filetype = NULL;
   Tcl_Obj **newobjv = NULL;
-  static char *subOptionStrings[] = {
+  static CONST84 char *subOptionStrings[] = {
     "-start", "-end", "-fileformat", "-progress", "-byteorder", NULL
   };
   enum subOptions {
@@ -2839,7 +2843,7 @@ dataCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     Tcl_Obj *new = Tcl_NewObj();
     char *filetype = s->fileType;
     int arg, len, startpos = 0, endpos = s->length;
-    static char *subOptionStrings[] = {
+    static CONST84 char *subOptionStrings[] = {
       "-fileformat", "-start", "-end", "-byteorder",
       NULL
     };
@@ -2916,7 +2920,7 @@ dataCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   } else { /* variable -> sound */
     int arg, startpos = 0, endpos = -1;
     char *filetype;
-    static char *subOptionStrings[] = {
+    static CONST84 char *subOptionStrings[] = {
       "-rate", "-frequency", "-skiphead", "-byteorder",
       "-channels", "-encoding", "-format", "-start", "-end", "-fileformat",
       "-guessproperties", NULL

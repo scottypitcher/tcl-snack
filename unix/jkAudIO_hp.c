@@ -387,7 +387,7 @@ SnackAudioFree()
       ckfree(mixerLinks[i][0].jack);
     }
     if (mixerLinks[i][0].jackVar != NULL) {
-      ckfree(mixerLinks[i][0].jackVar);
+      ckfree((char *)mixerLinks[i][0].jackVar);
     }
   }
 }
@@ -495,7 +495,7 @@ SnackMixerGetInputJack(char *buf, int n)
 }
 
 int
-SnackMixerSetInputJack(Tcl_Interp *interp, char *jack, char *status)
+SnackMixerSetInputJack(Tcl_Interp *interp, char *jack, CONST84 char *status)
 {
   int jackLen = strlen(jack), start = 0, end = 0, mask;
 
@@ -559,12 +559,12 @@ SnackMixerSetOutputJack(char *jack, char *status)
 }
 
 static char *
-JackVarProc(ClientData clientData, Tcl_Interp *interp, char *name1,
-	    char *name2, int flags)
+JackVarProc(ClientData clientData, Tcl_Interp *interp, CONST84 char *name1,
+	    CONST84 char *name2, int flags)
 {
   MixerLink *mixLink = (MixerLink *) clientData;
   int i, recSrc = 0, status = 0;
-  char *stringValue;
+  CONST84 char *stringValue;
   char *jackLabels[] = SNACK_JACK_LABELS;
   Tcl_Obj *obj, *var;
 
@@ -617,7 +617,7 @@ SnackMixerLinkJacks(Tcl_Interp *interp, char *jack, Tcl_Obj *var)
 {
   char *jackLabels[] = SNACK_JACK_LABELS;
   int i, status;
-  char *value;
+  CONST84 char *value;
 
   for (i = 0; i < SNACK_NUMBER_JACKS; i++) {
     if (strncasecmp(jack, jackLabels[i], strlen(jack)) == 0) {
@@ -683,11 +683,11 @@ SnackMixerSetVolume(char *line, int channel, int volume)
 }
 
 static char *
-VolumeVarProc(ClientData clientData, Tcl_Interp *interp, char *name1,
-	      char *name2, int flags)
+VolumeVarProc(ClientData clientData, Tcl_Interp *interp, CONST84 char *name1,
+	      CONST84 char *name2, int flags)
 {
   MixerLink *mixLink = (MixerLink *) clientData;
-  char *stringValue;
+  CONST84 char *stringValue;
   
   if (flags & TCL_TRACE_UNSETS) {
     if ((flags & TCL_TRACE_DESTROYED) && !(flags & TCL_INTERP_DESTROYED)) {
@@ -718,7 +718,8 @@ SnackMixerLinkVolume(Tcl_Interp *interp, char *line, int n,
 {
   char *mixLabels[] = SNACK_MIXER_LABELS;
   int i, j, channel;
-  char *value, tmp[VOLBUFSIZE];
+  CONST84 char *value;
+  char tmp[VOLBUFSIZE];
 
   for (i = 0; i < SNACK_NUMBER_MIXERS; i++) {
     if (strncasecmp(line, mixLabels[i], strlen(line)) == 0) {

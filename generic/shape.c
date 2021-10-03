@@ -84,7 +84,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
   if (shp) {
 
     /* Store shape into sound */
-    static char *subOptionStrings[] = {
+    static CONST84 char *subOptionStrings[] = {
       "-start", "-end", "-pixelspersecond", "-format", "-encoding", "-check",
       NULL
     };
@@ -140,7 +140,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
   } else {
 
     /* Return shape as binary data */
-    static char *subOptionStrings[] = {
+    static CONST84 char *subOptionStrings[] = {
       "-start", "-end", "-width", "-pixelspersecond",
       "-shape", "-byteorder", NULL
     };
@@ -372,7 +372,7 @@ int dataSamplesCmd(Sound *s, Tcl_Interp *interp, int objc,
 
   /* Get options */
   for (arg = 2; arg < objc; arg += 2) {
-    static char *subOptionStrings[] = {
+    static CONST84 char *subOptionStrings[] = {
       "-start", "-end", "-byteorder",  NULL
     };
     enum subOptions {

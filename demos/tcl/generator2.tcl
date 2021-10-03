@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 snack::sound s1 -channels 2
 set leftMap [snack::filter map 1 0 0 0]

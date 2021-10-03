@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 set width 300
 set height 200
@@ -105,8 +105,8 @@ pack [ button .f3.b2 -text ex2.wav -command [list s read ex2.wav]] -side left
 
 proc Record {} {
     s record
-    after cancel {.f3.bs invoke}
-    after 10000 {.f3.bs invoke}
+    after cancel [list catch {.f3.bs invoke}]
+    after 10000  [list catch {.f3.bs invoke}]
 }
 
 pack [ frame .f4] -pady 2

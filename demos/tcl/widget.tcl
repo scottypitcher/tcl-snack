@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 package require http
 
 option add *font {Helvetica 10 bold}
@@ -30,7 +30,7 @@ snack::menuCommand File Mixer... snack::mixerDialog
 snack::menuCommand File Quit exit
 
 proc CheckV token {
-  set ::version "Your version of Snack was released March 7, 2002. \
+  set ::version "Your version of Snack was released February 6, 2003. \
       Latest version released [::http::data $token]."
 }
 
@@ -123,11 +123,12 @@ pack [label  .f6.l -text "Speech toys:"] -side left
 pack [button .f6.b1 -text "Synthesis" -command {Run formant.tcl}] -side left
 pack [button .f6.b2 -text "Pitch" -command {Run pitch.tcl}] -side left
 pack [button .f6.b3 -text "Phonetogram" -command {Run phonetogram.tcl}] -side left
-pack [button .f6.b4 -text "Spectrum" -command {Run polarspec.tcl}] -side left
+pack [button .f6.b4 -text "Vowel-space" -command {Run vowelspace.tcl}] -side left
+pack [button .f6.b5 -text "Spectrum" -command {Run polarspec.tcl}] -side left
 if {$::tcl_platform(platform) == "unix" || \
     $::tcl_platform(platform) == "windows"} {
   pack [label  .f6.l2 -text "Script compiler:"] -side left
-  pack [button .f6.b5 -text "wrap" -command {Run wrap.tcl}] -side left
+  pack [button .f6.b6 -text "wrap" -command {Run wrap.tcl}] -side left
   pack [label .v -textvar version]
 }
 

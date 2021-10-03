@@ -4,7 +4,7 @@ exec wish8.3 "$0" "$@"
 
 # This file shows how to handle CSL/NSP files with both A and B data chunks
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 set filename CSL_file_with_A_and_B_chunks.nsp
 

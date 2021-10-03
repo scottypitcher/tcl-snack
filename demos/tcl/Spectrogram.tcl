@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 set width 300
 set height 200
@@ -87,8 +87,8 @@ proc Record {} {
     s flush
     .c itemconf speg -pixelspersecond $pps -width $width
     s record
-    after cancel {.f5.bs invoke}
-    after 10000 {.f5.bs invoke}
+    after cancel [list catch {.f5.bs invoke}]
+    after 10000  [list catch {.f5.bs invoke}]
 }
 
 set col ""

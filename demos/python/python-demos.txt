@@ -30,3 +30,6 @@ Simple real-time tone generator.
 
 notescale.py
 Example of on-the-fly beep generation.
+
+playnotes.py
+Another example of on-the-fly beep generation.

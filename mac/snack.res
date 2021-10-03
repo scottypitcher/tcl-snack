@@ -21,7 +21,7 @@
 
 load [file join $dir snack.shlb]
 
-package provide snack 2.1
+package provide snack 2.2
 
 # Set playback latency according to the environment variable PLAYLATENCY
 
@@ -134,6 +134,7 @@ namespace eval snack {
 	    {-title       "" "" "Open file"}
 	    {-initialdir  "" "" "."}
 	    {-initialfile "" "" ""}
+	    {-multiple    "" "" 0}
 	    {-format      "" "" "none"}
 	}
 	
@@ -153,7 +154,29 @@ namespace eval snack {
 	if {$data(-initialdir) == ""} {
 	    set data(-initialdir) "."
 	}
-	return [tk_getOpenFile -title $data(-title) -filetypes [loadTypes $data(-format)] -defaultextension [fmt2ext $data(-format)] -initialdir $data(-initialdir) -initialfile $data(-initialfile)]
+        if {[string match Darwin $::tcl_platform(os)]} {
+	 return [tk_getOpenFile -title $data(-title) \
+		    -multiple $data(-multiple) \
+		    -filetypes [loadTypes $data(-format)] \
+		    -defaultextension [fmt2ext $data(-format)] \
+		     -initialdir $data(-initialdir)]
+	}
+	# Later Tcl's allow multiple files returned as a list
+	if {$::tcl_version <= 8.3} {
+	    set res [tk_getOpenFile -title $data(-title) \
+		    -filetypes [loadTypes $data(-format)] \
+		    -defaultextension [fmt2ext $data(-format)] \
+		    -initialdir $data(-initialdir) \
+		    -initialfile $data(-initialfile)]
+	} else {
+	    set res [tk_getOpenFile -title $data(-title) \
+		    -multiple $data(-multiple) \
+		    -filetypes [loadTypes $data(-format)] \
+		    -defaultextension [fmt2ext $data(-format)] \
+		    -initialdir $data(-initialdir) \
+		    -initialfile $data(-initialfile)]
+	}
+	return $res
     }
 
     set loadTypes ""
@@ -466,6 +489,9 @@ namespace eval snack {
 		-fill black \
 		-draw0 0
 	]
+        if {[string match unix $::tcl_platform(platform)] } {
+	 set a(-font) {Helvetica 10}
+	}
 	array set a $args
 
 	if {$height <= 0} return
@@ -537,16 +563,37 @@ namespace eval snack {
 		-font {Helvetica 8} \
 		-starttime 0.0 \
 		-fill black \
+		-format time \
 		-draw0 0 \
 		-drawvisible 0
 	]
+        if {[string match unix $::tcl_platform(platform)] } {
+	 set a(-font) {Helvetica 10}
+	}
 	array set a $args
 
 	if {$pps <= 0.004} return
 
-	set deltalist [list .0001 .0002 .0005 .001 .002 .005 \
-		.01 .02 .05 .1 .2 .5 1 2 5 \
-		10 20 30 60 120 240 360 600 900 1800 3600 7200 14400]
+        switch -- $a(-format) {
+	 time {
+	  set deltalist [list .0001 .0002 .0005 .001 .002 .005 \
+			     .01 .02 .05 .1 .2 .5 1 2 5 \
+			     10 20 30 60 120 240 360 600 900 1800 3600 7200 14400]
+	 }
+	 "PAL frames" {
+	  set deltalist [list .04 .08 .4 .8 2 4 \
+			     10 20 50 100 200 500 1000 2000 5000 10000 20000]
+	 }
+	 "NTSC frames" {
+	  set deltalist [list .03333333333334 .0666666666667 \
+			     .3333333333334 .666666666667 1 2 4 \
+			     10 20 50 100 200 500 1000 2000 5000 10000 20000]
+	 }
+	 "10ms frames" {
+	  set deltalist [list .01 .02 .05 .1 .2 .5 1 2 5 \
+			     10 20 50 100 200 500 1000 2000 5000 10000 20000]
+	 }
+	}
 
 	set majTickH [expr {$height - [font metrics $a(-font) -linespace]}]
 	set minTickH [expr {$majTickH / 2}]
@@ -602,7 +649,7 @@ namespace eval snack {
 	    set ft 0
 	    set fx 0.0
 	}
-
+	
 	set lx [expr {($ox + $width) * [lindex [$canvas xview] 0] - 50}]
 	set rx [expr {($ox + $width) * [lindex [$canvas xview] 1] + 50}]
 
@@ -619,24 +666,36 @@ namespace eval snack {
 	    if {$a(-drawvisible) && $x < $lx} continue
 	    if {$a(-drawvisible) && $x > $rx} break
 
-	    set t [expr {$j * $dt + $ft}]
-
-	    if {$maxtime < 60} {
-		set tmp [expr {int($t)}]
-	    } elseif {$maxtime < 3600} {
-		set tmp x[clock format [expr {int($t)}] -format "%M:%S" -gmt 1]
-		regsub x0 $tmp "" tmp
-		regsub x $tmp "" tmp
-	    } else {
-		set tmp [clock format [expr {int($t)}] -format "%H:%M:%S" -gmt 1]
-	    }	    
-	    if {$dt < 1.0} {
-		set t $tmp[string trimleft [format "%.${ndec}f" \
-			[expr {($t-int($t))}]] 0]
-	    } else {
-		set t $tmp
+	    switch -- $a(-format) {
+	     time {
+	      set t [expr {$j * $dt + $ft}]
+	      
+	      if {$maxtime < 60} {
+	       set tmp [expr {int($t)}]
+	      } elseif {$maxtime < 3600} {
+	       set tmp x[clock format [expr {int($t)}] -format "%M:%S" -gmt 1]
+	       regsub x0 $tmp "" tmp
+	       regsub x $tmp "" tmp
+	      } else {
+	       set tmp [clock format [expr {int($t)}] -format "%H:%M:%S" -gmt 1]
+	      }	    
+	      if {$dt < 1.0} {
+	       set t $tmp[string trimleft [format "%.${ndec}f" \
+					       [expr {($t-int($t))}]] 0]
+	      } else {
+	       set t $tmp
+	      }
+	     }
+	     "PAL frames" {
+	      set t [expr {int($j * $dt * 25.0 + $ft)}]
+	     }
+	     "NTSC frames" {
+	      set t [expr {int($j * $dt * 30.0 + $ft)}]
+	     }
+	     "10ms frames" {
+	      set t [expr {int($j * $dt * 100.0 + $ft)}]
+	     }
 	    }
-
 	    if {$a(-draw0) == 1 || $j > 0 || $a(-starttime) > 0.0} {
 		$canvas create text [expr {$ox+$x}] [expr {$oy+$height}] \
 			-text $t -font $a(-font) -anchor s -tags $a(-tags) \

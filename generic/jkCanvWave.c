@@ -20,13 +20,12 @@
  */
 
 #include "tcl.h"
-#include "jkAudIO.h"
+#include "snack.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #define USE_OLD_CANVAS /* To keep Tk8.3 happy */
 #include "tk.h"
-#include "jkSound.h"
 #include "jkCanvItems.h"
 #include <string.h>
 
@@ -71,7 +70,6 @@ typedef struct WaveItem  {
   int frame;
   int id;
   int mode;
-  XPoint fpts[5];
   int subSampleInt;
   char *channelStr;
   int debug;
@@ -850,7 +848,7 @@ UpdateWave(ClientData clientData, int flag)
 
   if (wavePtr->mode == CONF_WIDTH) {
     if (wavePtr->esmp != wavePtr->ssmp) {
-      wavePtr->pixpsec = (float) wavePtr->width * wavePtr->samprate /
+      wavePtr->pixpsec = (double) wavePtr->width * wavePtr->samprate /
 	(wavePtr->esmp - wavePtr->ssmp);
     }
   }
@@ -900,13 +898,14 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   GC newGC;
   unsigned long mask;
   int doCompute = 0, oldMode;
-#if defined(MAC)
+#if defined(MAC) || defined(MAC_OSX_TCL)
   int i;
 #endif
 
   if (argc == 0) return TCL_OK;
 
-  if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc, argv,
+  if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc,
+			 (CONST84 char **)argv,
 			 (char *) wavePtr, flags) != TCL_OK) return TCL_ERROR;
 
   if (wavePtr->debug > 1) Snack_WriteLog("  Enter ConfigureWave\n");
@@ -1057,7 +1056,7 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   }
   else if (wavePtr->mode == CONF_WIDTH) {
     if (wavePtr->esmp != wavePtr->ssmp) {
-      wavePtr->pixpsec = (float) wavePtr->width * wavePtr->samprate /
+      wavePtr->pixpsec = (double) wavePtr->width * wavePtr->samprate /
 	(wavePtr->esmp - wavePtr->ssmp);
     }
   }
@@ -1236,13 +1235,12 @@ DisplayWave(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display,
 {
   WaveItem *wavePtr = (WaveItem *) itemPtr;
   int i;
-  XPoint *wpts = (XPoint *) ckalloc((unsigned)((width*2+4) * sizeof(XPoint)));
-  XPoint *p = wpts;
   int xo = wavePtr->header.x1;
   int yo = wavePtr->header.y1;
   int ym = wavePtr->height / 2;
   int dx = max(x - xo, 0);
   float scale = 1000000.0f;
+  XPoint fpts[5];
 
   if (wavePtr->debug > 1) Snack_WriteLogInt("  Enter DisplayWave", width);
 
@@ -1273,44 +1271,42 @@ DisplayWave(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display,
   for (i = dx; i < dx + width; i++) {
     Tk_CanvasDrawableCoords(canvas, xo + wavePtr->x0[i],
 			    yo + ym - wavePtr->y0[i] / scale,
-			    &p->x, &p->y);
-    p++;
+			    &fpts[0].x, &fpts[0].y);
     Tk_CanvasDrawableCoords(canvas, xo + wavePtr->x1[i],
 			    yo + ym - wavePtr->y1[i] / scale,
-			    &p->x, &p->y);
-    p++;
+			    &fpts[1].x, &fpts[1].y);
+    Tk_CanvasDrawableCoords(canvas, xo + wavePtr->x1[i]+1,
+			    yo + ym - wavePtr->y1[i] / scale,
+			    &fpts[2].x, &fpts[2].y);
+    XDrawLines(display, drawable, wavePtr->gc, fpts, 3, CoordModeOrigin);
   }
-
-  XDrawLines(display, drawable, wavePtr->gc, wpts, width*2, CoordModeOrigin);
-
+  
   if (wavePtr->zeroLevel) {
     Tk_CanvasDrawableCoords(canvas, (double) xo, 
 			    (double) (yo + wavePtr->height / 2),
-			    &wavePtr->fpts[0].x, &wavePtr->fpts[0].y);
+			    &fpts[0].x, &fpts[0].y);
     Tk_CanvasDrawableCoords(canvas, (double) (xo + wavePtr->width - 1),
 			    (double) (yo + wavePtr->height / 2),
-			    &wavePtr->fpts[1].x, &wavePtr->fpts[1].y);
-    XDrawLines(display, drawable, wavePtr->gc, wavePtr->fpts, 2, CoordModeOrigin);
+			    &fpts[1].x, &fpts[1].y);
+    XDrawLines(display, drawable, wavePtr->gc, fpts, 2, CoordModeOrigin);
   }
-
+  
   if (wavePtr->frame) {
     Tk_CanvasDrawableCoords(canvas, (double) xo, (double) yo,
-			    &wavePtr->fpts[0].x, &wavePtr->fpts[0].y);
+			    &fpts[0].x, &fpts[0].y);
     Tk_CanvasDrawableCoords(canvas, (double) (xo + wavePtr->width - 1), 
 			    (double) yo,
-			    &wavePtr->fpts[1].x, &wavePtr->fpts[1].y);
+			    &fpts[1].x, &fpts[1].y);
     Tk_CanvasDrawableCoords(canvas, (double) (xo + wavePtr->width - 1),
 			    (double) (yo + wavePtr->height - 1),
-			    &wavePtr->fpts[2].x, &wavePtr->fpts[2].y);
+			    &fpts[2].x, &fpts[2].y);
     Tk_CanvasDrawableCoords(canvas, (double) xo, 
 			    (double) (yo + wavePtr->height - 1),
-			    &wavePtr->fpts[3].x, &wavePtr->fpts[3].y);
+			    &fpts[3].x, &fpts[3].y);
     Tk_CanvasDrawableCoords(canvas, (double) xo, (double) yo,
-			    &wavePtr->fpts[4].x, &wavePtr->fpts[4].y);
-    XDrawLines(display, drawable, wavePtr->gc, wavePtr->fpts, 5, CoordModeOrigin);
+			    &fpts[4].x, &fpts[4].y);
+    XDrawLines(display, drawable, wavePtr->gc, fpts, 5, CoordModeOrigin);
   }
-
-  ckfree((char *) wpts);
 
   if (wavePtr->debug > 1) Snack_WriteLog("  Exit DisplayWave\n");
 }
@@ -1382,7 +1378,7 @@ ScaleWave(Tk_Canvas canvas, Tk_Item *itemPtr, double ox, double oy,
   wavePtr->width  = (int) (sx * wavePtr->width) + 1;
   wavePtr->height = (int) (sy * wavePtr->height);
   if (wavePtr->bufPos > 0)
-    wavePtr->pixpsec = (float) wavePtr->width * wavePtr->samprate /
+    wavePtr->pixpsec = (double) wavePtr->width * wavePtr->samprate /
       wavePtr->bufPos;
 
   ComputeWaveBbox(canvas, wavePtr);
@@ -1425,49 +1421,50 @@ WaveToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr, int prepass)
   }
 
   Tcl_AppendResult(interp, "%% WAVE BEGIN\n", (char *) NULL);
-
-  sprintf(buffer, "%.15g %.15g moveto\n%.15g %.15g lineto\n",
-	  x0[0] + xo, Tk_CanvasPsY(canvas, (double) 
-				   (-y0[0]/scale + yo+ wavePtr->height / 2)),
-	  x1[0] + xo, Tk_CanvasPsY(canvas, (double) 
-				   (-y1[0]/scale + yo+ wavePtr->height / 2)));
-  Tcl_AppendResult(interp, buffer, (char *) NULL);
-  for (i = 1; i < wavePtr->width; i++) {
-    sprintf(buffer, "%.15g %.15g lineto\n%.15g %.15g lineto\n",
+  
+  for (i = 0; i < wavePtr->width; i++) {
+    sprintf(buffer,
+	    "%.1f %.1f moveto\n%.1f %.1f lineto\n",
 	    x0[i] + xo, Tk_CanvasPsY(canvas, (double) 
 				     (-y0[i]/scale + yo+ wavePtr->height / 2)),
-	    x1[i] + xo + 0.5, Tk_CanvasPsY(canvas, (double) 
-				    (-y1[i]/scale + yo+ wavePtr->height / 2)));
+	    x1[i] + xo, Tk_CanvasPsY(canvas, (double) 
+				     (-y1[i]/scale + yo+ wavePtr->height / 2)));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
+    if ((double)(wavePtr->esmp - wavePtr->ssmp)/wavePtr->width < 1.0) {
+      sprintf(buffer, "%.1f %.1f lineto\n",
+	      x1[i] + xo + 1, Tk_CanvasPsY(canvas, (double) 
+		   (-y1[i]/scale + yo+ wavePtr->height / 2)));
+      Tcl_AppendResult(interp, buffer, (char *) NULL);
+    }
   }
 
   if (wavePtr->zeroLevel) {
-    sprintf(buffer, "%.15g %.15g moveto\n", (double) xo,
+    sprintf(buffer, "%.1f %.1f moveto\n", (double) xo,
 	    Tk_CanvasPsY(canvas, (double) (yo + wavePtr->height / 2)));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
 
-    sprintf(buffer, "%.15g %.15g lineto\n", (double) xo + wavePtr->width - 1,
+    sprintf(buffer, "%.1f %.1f lineto\n", (double) xo + wavePtr->width - 1,
 	    Tk_CanvasPsY(canvas, (double) (yo + wavePtr->height / 2)));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
   }
 
   if (wavePtr->frame) {
-    sprintf(buffer, "%.15g %.15g moveto\n", (double) xo, Tk_CanvasPsY(canvas, (double) yo));
+    sprintf(buffer, "%.1f %.1f moveto\n", (double) xo, Tk_CanvasPsY(canvas, (double) yo));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
 
-    sprintf(buffer, "%.15g %.15g lineto\n", (double) xo + wavePtr->width - 1,
+    sprintf(buffer, "%.1f %.1f lineto\n", (double) xo + wavePtr->width - 1,
 	    Tk_CanvasPsY(canvas, (double) yo));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
 
-    sprintf(buffer, "%.15g %.15g lineto\n", (double) xo + wavePtr->width - 1,
+    sprintf(buffer, "%.1f %.1f lineto\n", (double) xo + wavePtr->width - 1,
 	    Tk_CanvasPsY(canvas, (double) (yo + wavePtr->height - 1)));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
 
-    sprintf(buffer, "%.15g %.15g lineto\n", (double) xo,
+    sprintf(buffer, "%.1f %.1f lineto\n", (double) xo,
 	    Tk_CanvasPsY(canvas, (double) (yo + wavePtr->height - 1)));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
 
-    sprintf(buffer, "%.15g %.15g lineto\n", (double) xo,
+    sprintf(buffer, "%.1f %.1f lineto\n", (double) xo,
 	    Tk_CanvasPsY(canvas, (double) yo));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
   }

@@ -47,11 +47,12 @@ char defaultOutDevice[MAX_DEVICE_NAME_LENGTH];
 char defaultInDevice[MAX_DEVICE_NAME_LENGTH];
 
 char *
-SnackStrDup(const char *str) {
+SnackStrDup(const char *str)
+{
   char *new = ckalloc(strlen(str)+1);
 
   if (new) {
-    strncpy(new, str, strlen(str)+1);
+    strcpy(new, str);
   }
 
   return new;
@@ -347,7 +348,7 @@ audioPauseCmd(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 int nAudioCommands   = NAUDIOCOMMANDS;
 int maxAudioCommands = MAXAUDIOCOMMANDS;
 
-char *audioCmdNames[MAXAUDIOCOMMANDS] = {
+CONST84 char *audioCmdNames[MAXAUDIOCOMMANDS] = {
   "outputDevices",
   "inputDevices",
   "selectOutput",

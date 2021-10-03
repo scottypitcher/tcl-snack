@@ -1,7 +1,7 @@
 # Commands covered: sound convert
 #
 
-package require -exact snack 2.1
+package require -exact snack 2.2
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -61,6 +61,15 @@ test convert-4.1 {convert command, testing internal allocation} {
   set res [$s2 sample 5000]
   $s1 destroy
   $s2 destroy
+  set res
+} {0}
+
+test convert-5.1 {convert command, stereo->mono} {
+  set s [snack::sound snd -channels 2]
+  $s length 1
+  $s convert -channels 1
+  set res [$s sample 0]
+  $s destroy
   set res
 } {0}
 
