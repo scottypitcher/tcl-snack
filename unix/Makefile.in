@@ -23,7 +23,7 @@ MOZILLA_DIR = @MOZILLA_DIR@
 GENERIC_DIR = ../generic
 UNIX_DIR    = ../unix
 
-VERSION = 1.7
+VERSION = 2.0
 
 TCL_VERSION = @TCLVER@
 
@@ -42,9 +42,14 @@ SHLIB_SUFFIX = @SHLIB_SUFFIX@
 
 all: libsound${SHLIB_SUFFIX} libsnack${SHLIB_SUFFIX} @DOSTUBLIB@ @LIBNIST@ editversion
 
-OBJSO = sound.o jkSound.o jkSoundEdit.o jkSoundFile.o g711.o @AOBJ@ SnackMP3amp.o jkSoundProc.o ffa.o jkPitchCmd.o @STUBINITOBJ@ jkAudio.o jkMixer.o shape.o
+OBJSO = sound.o jkSound.o jkSoundEngine.o jkSoundEdit.o jkSoundFile.o \
+	g711.o @AOBJ@ jkFormatMP3.o jkSoundProc.o ffa.o jkPitchCmd.o \
+	@STUBINITOBJ@ jkAudio.o jkMixer.o shape.o jkFilter.o jkSynthesis.o
 
-OBJSN = snack.o jkSound.o jkSoundEdit.o jkSoundFile.o jkCanvSpeg.o jkCanvWave.o jkCanvSect.o ffa.o g711.o @AOBJ@ SnackMP3amp.o jkSoundProc.o jkPitchCmd.o @STUBINITOBJ@ jkAudio.o jkMixer.o shape.o
+OBJSN = snack.o jkSound.o jkSoundEngine.o jkSoundEdit.o jkSoundFile.o \
+	jkCanvSpeg.o jkCanvWave.o jkCanvSect.o ffa.o g711.o @AOBJ@ \
+	jkFormatMP3.o jkSoundProc.o jkPitchCmd.o @STUBINITOBJ@ \
+	jkAudio.o jkMixer.o shape.o jkFilter.o jkSynthesis.o
 
 OBJSNST = snackStubLib.o
 
@@ -53,6 +58,9 @@ sound.o: $(GENERIC_DIR)/sound.c
 
 jkSound.o: $(GENERIC_DIR)/jkSound.c
 	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSound.c
+
+jkSoundEngine.o: $(GENERIC_DIR)/jkSoundEngine.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSoundEngine.c
 
 jkSoundEdit.o: $(GENERIC_DIR)/jkSoundEdit.c
 	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSoundEdit.c
@@ -63,8 +71,8 @@ jkSoundFile.o: $(GENERIC_DIR)/jkSoundFile.c
 g711.o: $(GENERIC_DIR)/g711.c
 	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/g711.c
 
-SnackMP3amp.o: $(GENERIC_DIR)/SnackMP3amp.c
-	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/SnackMP3amp.c
+jkFormatMP3.o: $(GENERIC_DIR)/jkFormatMP3.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkFormatMP3.c
 
 jkSoundProc.o: $(GENERIC_DIR)/jkSoundProc.c
 	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSoundProc.c
@@ -96,6 +104,12 @@ jkMixer.o: $(GENERIC_DIR)/jkMixer.c
 shape.o: $(GENERIC_DIR)/shape.c
 	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/shape.c
 
+jkFilter.o: $(GENERIC_DIR)/jkFilter.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkFilter.c
+
+jkSynthesis.o: $(GENERIC_DIR)/jkSynthesis.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSynthesis.c
+
 snackStubInit.o: $(GENERIC_DIR)/snackStubInit.c
 	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/snackStubInit.c
 
@@ -108,8 +122,8 @@ jkAudIO_sun.o: $(UNIX_DIR)/jkAudIO_sun.c
 jkAudIO_sgi.o: $(UNIX_DIR)/jkAudIO_sgi.c
 	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_sgi.c
 
-jkAudIO_linux.o: $(UNIX_DIR)/jkAudIO_hp.c
-	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_linux.c
+jkAudIO_oss.o: $(UNIX_DIR)/jkAudIO_oss.c
+	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_oss.c
 
 jkAudIO_skel.o: $(UNIX_DIR)/jkAudIO_skel.c
 	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_skel.c
@@ -130,7 +144,7 @@ stublib: ${OBJSNST}
 
 editversion: ${OBJSN}
 	if test "$(TCL_VERSION)" != "8.3"; then\
-	    cd ../demos/ ;\
+	    cd ../demos/tcl/ ;\
 	    sed s/wish8.3/wish${TCL_VERSION}/ MinSect.tcl > tmp ;\
 	    mv -f tmp MinSect.tcl ;\
 	    chmod 755 MinSect.tcl ;\
@@ -146,55 +160,79 @@ editversion: ${OBJSN}
 	    sed s/wish8.3/wish${TCL_VERSION}/ Spectrogram.tcl > tmp ;\
 	    mv -f tmp Spectrogram.tcl ;\
 	    chmod 755 Spectrogram.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ SphereTest.tcl > tmp ;\
+	    mv -f tmp SphereTest.tcl ;\
+	    chmod 755 SphereTest.tcl ;\
 	    sed s/wish8.3/wish${TCL_VERSION}/ Waveform.tcl > tmp ;\
 	    mv -f tmp Waveform.tcl ;\
 	    chmod 755 Waveform.tcl ;\
 	    sed s/wish8.3/wish${TCL_VERSION}/ aserver.tcl > tmp ;\
 	    mv -f tmp aserver.tcl ;\
 	    chmod 755 aserver.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ mixer.tcl > tmp ;\
-	    mv -f tmp mixer.tcl ;\
-	    chmod 755 mixer.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ record.tcl > tmp ;\
-	    mv -f tmp record.tcl ;\
-	    chmod 755 record.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ snamp.tcl > tmp ;\
-	    mv -f tmp snamp.tcl ;\
-	    chmod 755 snamp.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ widget.tcl > tmp ;\
-	    mv -f tmp widget.tcl ;\
-	    chmod 755 widget.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ xs.tcl > tmp ;\
-	    mv -f tmp xs.tcl ;\
-	    chmod 755 xs.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ compose.tcl > tmp ;\
+	    mv -f tmp compose.tcl ;\
+	    chmod 755 compose.tcl ;\
 	    sed s/wish8.3/wish${TCL_VERSION}/ cool.tcl > tmp ;\
 	    mv -f tmp cool.tcl ;\
 	    chmod 755 cool.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ vu.tcl > tmp ;\
-	    mv -f tmp vu.tcl ;\
-	    chmod 755 vu.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ recrplay.tcl > tmp ;\
-	    mv -f tmp recrplay.tcl ;\
-	    chmod 755 recrplay.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ spectrum.tcl > tmp ;\
-	    mv -f tmp spectrum.tcl ;\
-	    chmod 755 spectrum.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ rplay.tcl > tmp ;\
-	    mv -f tmp rplay.tcl ;\
-	    chmod 755 rplay.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ echo.tcl > tmp ;\
+	    mv -f tmp echo.tcl ;\
+	    chmod 755 echo.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ formant.tcl > tmp ;\
+	    mv -f tmp formant.tcl ;\
+	    chmod 755 formant.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ fourChan.tcl > tmp ;\
+	    mv -f tmp fourChan.tcl ;\
+	    chmod 755 fourChan.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ levelmeter.tcl > tmp ;\
+	    mv -f tmp levelmeter.tcl ;\
+	    chmod 755 levelmeter.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ mapChan.tcl > tmp ;\
+	    mv -f tmp mapChan.tcl ;\
+	    chmod 755 mapChan.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ mixer.tcl > tmp ;\
+	    mv -f tmp mixer.tcl ;\
+	    chmod 755 mixer.tcl ;\
 	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ play.tcl > tmp ;\
 	    mv -f tmp play.tcl ;\
 	    chmod 755 play.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ SphereTest.tcl > tmp ;\
-	    mv -f tmp SphereTest.tcl ;\
-	    chmod 755 SphereTest.tcl ;\
-	    cd ../unix ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ record.tcl > tmp ;\
+	    mv -f tmp record.tcl ;\
+	    chmod 755 record.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ recrplay.tcl > tmp ;\
+	    mv -f tmp recrplay.tcl ;\
+	    chmod 755 recrplay.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ rplay.tcl > tmp ;\
+	    mv -f tmp rplay.tcl ;\
+	    chmod 755 rplay.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ snamp.tcl > tmp ;\
+	    mv -f tmp snamp.tcl ;\
+	    chmod 755 snamp.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ spectrum.tcl > tmp ;\
+	    mv -f tmp spectrum.tcl ;\
+	    chmod 755 spectrum.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ tomAmp.tcl > tmp ;\
+	    mv -f tmp tomAmp.tcl ;\
+	    chmod 755 tomAmp.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ dbrec.tcl > tmp ;\
+	    mv -f tmp dbrec.tcl ;\
+	    chmod 755 dbrec.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ widget.tcl > tmp ;\
+	    mv -f tmp widget.tcl ;\
+	    chmod 755 widget.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ wrap.tcl > tmp ;\
+	    mv -f tmp wrap.tcl ;\
+	    chmod 755 wrap.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ xs.tcl > tmp ;\
+	    mv -f tmp xs.tcl ;\
+	    chmod 755 xs.tcl ;\
+	    cd ../../unix ;\
 	fi
 LIBNIST = @NISTLIBS@ -lc @TCL_LIB_SPEC@ -L. @SNACK_STUB_LIB_FLAG@
 OBJNIST = SphereFile.o
 
-SphereFile.o: $(UNIX_DIR)/SphereFile.c
-	$(CC) -c $(CFLAGS) -DUSE_SNACK_STUBS $(UNIX_DIR)/SphereFile.c
+SphereFile.o: $(GENERIC_DIR)/SphereFile.c
+	$(CC) -c $(CFLAGS) -DUSE_SNACK_STUBS $(GENERIC_DIR)/SphereFile.c
 
 libsnacksphere${SHLIB_SUFFIX}: ${OBJNIST}
 	${SHLIB_LD} ${OBJNIST} ${LIBNIST} -o libsnacksphere${SHLIB_SUFFIX}
@@ -222,10 +260,12 @@ clean:
 distclean: clean
 	rm -f Makefile config.status config.cache config.log
 
+# Tests are run using wish because of play/record commands
+
 test:
 	LD_LIBRARY_PATH=`pwd`:${LD_LIBRARY_PATH}; export LD_LIBRARY_PATH; \
 	LIBPATH=`pwd`:${LIBPATH}; export LIBPATH; \
 	SHLIB_PATH=`pwd`:${SHLIB_PATH}; export SHLIB_PATH; \
 	TCL_LIBRARY="${TCL_BUILDTIME_LIBRARY}"; export TCL_LIBRARY; \
-	cp -f ../demos/ex1.wav ex1.wav; \
-	tclsh${TCL_VERSION} ../tests/all.tcl
+	cp -f ../demos/tcl/ex1.wav ex1.wav; \
+	wish${TCL_VERSION} ../tests/all.tcl

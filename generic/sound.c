@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -31,8 +31,8 @@
 extern "C" {
 #endif
 
-int Snack_Init(Tcl_Interp *interp);
-int Snack_SafeInit(Tcl_Interp *interp);
+int Sound_Init(Tcl_Interp *interp);
+int Sound_SafeInit(Tcl_Interp *interp);
 
 #ifdef __cplusplus
 }
@@ -50,6 +50,8 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
 
 Tcl_Channel snackDebugChannel = NULL;
 static Tcl_Interp *debugInterp = NULL;
+int debugLevel = 0;
+char *snackDumpFile = NULL;
 
 int
 Snack_DebugCmd(ClientData cdata, Tcl_Interp *interp, int objc,
@@ -58,14 +60,40 @@ Snack_DebugCmd(ClientData cdata, Tcl_Interp *interp, int objc,
   int len;
   char *str;
 
-  if (objc == 2) {
+  if (objc > 1) {
+    if (Tcl_GetIntFromObj(interp, objv[1], &debugLevel) != TCL_OK)
+      return TCL_ERROR;
+  }
+  if (objc >= 3) {
     if (Tcl_IsSafe(interp)) {
       Tcl_AppendResult(interp, "can not open log file in a safe interpreter",
 		       (char *) NULL);
       return TCL_ERROR;
     }
-    str = Tcl_GetStringFromObj(objv[1], &len);
-    snackDebugChannel = Tcl_OpenFileChannel(interp, str, "w", 420);
+    str = Tcl_GetStringFromObj(objv[2], &len);
+    if (len > 0) {
+      snackDebugChannel = Tcl_OpenFileChannel(interp, str, "w", 420);
+      if (snackDebugChannel == 0) {
+	return TCL_ERROR;
+      }
+    }
+  }
+  if (objc == 4) {
+    if (Tcl_IsSafe(interp)) {
+      Tcl_AppendResult(interp, "can not open dump file in a safe interpreter",
+		       (char *) NULL);
+      return TCL_ERROR;
+    }
+    str = Tcl_GetStringFromObj(objv[3], &len);
+    snackDumpFile = (char *) ckalloc(len + 1);
+    strcpy(snackDumpFile, str);
+   }
+  if (debugLevel > 0) {
+    str = Tcl_GetVar(interp, "sound::patchLevel", TCL_GLOBAL_ONLY);
+    Tcl_Write(snackDebugChannel, "Sound patch level: ", 19);
+    Tcl_Write(snackDebugChannel, str, strlen(str));
+    Tcl_Write(snackDebugChannel, "\n", 1);
+    Tcl_Flush(snackDebugChannel);
   }
 
   return TCL_OK;
@@ -80,14 +108,25 @@ extern int toCSLUshWaveCmd(Sound *s, Tcl_Interp *interp, int objc,
 
 int useOldObjAPI = 0;
 static int initialized = 0;
+int littleEndian = 0;
 
 extern SnackStubs *snackStubs;
+extern Tcl_HashTable *filterHashTable;
+
+#if defined(Tcl_InitHashTable) && defined(USE_TCL_STUBS)
+#undef Tcl_InitHashTable
+#define Tcl_InitHashTable (tclStubsPtr->tcl_InitHashTable)
+#endif
 
 int
 Sound_Init(Tcl_Interp *interp)
 {
   char *version;
-  Tcl_HashTable *hashTable;
+  Tcl_HashTable *soundHashTable;
+  union {
+    char c[sizeof(short)];
+    short s;
+  } order;
 
 #ifdef USE_TCL_STUBS
   if (Tcl_InitStubs(interp, "8", 0) == NULL) {
@@ -113,15 +152,22 @@ Sound_Init(Tcl_Interp *interp)
   }
 #endif
 
-  hashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
+  soundHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
+  filterHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
 
   Tcl_CreateObjCommand(interp, "sound", Snack_SoundCmd,
-		       (ClientData) hashTable, (Tcl_CmdDeleteProc *)NULL);
+		       (ClientData) soundHashTable, (Tcl_CmdDeleteProc *)NULL);
+
+  Tcl_CreateObjCommand(interp, "snack::sound", Snack_SoundCmd,
+		       (ClientData) soundHashTable, (Tcl_CmdDeleteProc *)NULL);
   
   Tcl_CreateObjCommand(interp, "sound::sound", Snack_SoundCmd,
-		       (ClientData) hashTable, Snack_SoundDeleteCmd);
+		       (ClientData) soundHashTable, Snack_SoundDeleteCmd);
   
   Tcl_CreateObjCommand(interp, "audio", Snack_AudioCmd,
+		       NULL, (Tcl_CmdDeleteProc *)NULL);
+
+  Tcl_CreateObjCommand(interp, "snack::audio", Snack_AudioCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
   
   Tcl_CreateObjCommand(interp, "sound::audio", Snack_AudioCmd,
@@ -130,26 +176,36 @@ Sound_Init(Tcl_Interp *interp)
   Tcl_CreateObjCommand(interp, "sound::mixer", Snack_MixerCmd,
 		       NULL, Snack_MixerDeleteCmd);
 
-  Tcl_CreateObjCommand(interp, "sound::debug",
+  Tcl_CreateObjCommand(interp, "snack::mixer", Snack_MixerCmd,
+		       NULL, Snack_MixerDeleteCmd);
+
+  Tcl_CreateObjCommand(interp, "snack::filter", Snack_FilterCmd,
+		       (ClientData) filterHashTable, Snack_FilterDeleteCmd);
+
+  Tcl_CreateObjCommand(interp, "snack::debug",
 		       (Tcl_ObjCmdProc*) Snack_DebugCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
 
-#if !defined(WIN) && !defined(MAC)  
   snackDebugChannel = Tcl_GetStdChannel(TCL_STDERR);
   debugInterp = interp;
-#endif
 
+  Tcl_SetVar(interp, "snack::patchLevel", SNACK_PATCH_LEVEL, TCL_GLOBAL_ONLY);
+  Tcl_SetVar(interp, "snack::version",    SNACK_VERSION,     TCL_GLOBAL_ONLY);
   Tcl_SetVar(interp, "sound::patchLevel", SNACK_PATCH_LEVEL, TCL_GLOBAL_ONLY);
   Tcl_SetVar(interp, "sound::version",    SNACK_VERSION,     TCL_GLOBAL_ONLY);
 
-  Tcl_InitHashTable(hashTable, TCL_STRING_KEYS);
+  Tcl_InitHashTable(soundHashTable, TCL_STRING_KEYS);
+  Tcl_InitHashTable(filterHashTable, TCL_STRING_KEYS);
 
   if (initialized == 0) {
-    AddSnackNativeFormats();
-    
+    SnackDefineFileFormats(interp);
+    SnackCreateFilterTypes(interp);
+
     SnackAudioInit();
     
     Tcl_CreateExitHandler(Snack_ExitProc, (ClientData) NULL);
+    
+    initialized = 1;
   }
 #ifdef SNACK_CSLU_TOOLKIT
   Snack_AddSubCmd(SNACK_SOUND_CMD, "fromCSLUshWave",
@@ -158,7 +214,12 @@ Sound_Init(Tcl_Interp *interp)
 		  (Snack_CmdProc *) toCSLUshWaveCmd, NULL);
 #endif
 
-  initialized = 1;
+  /* Compute the byte order of this machine. */
+
+  order.s = 1;
+  if (order.c[0] == 1) {
+    littleEndian = 1;
+  }
 
   return TCL_OK;
 }
@@ -172,12 +233,10 @@ Sound_SafeInit(Tcl_Interp *interp)
 void
 Snack_WriteLog(char *str)
 {
-#if defined(WIN) || defined(MAC)
   if (snackDebugChannel == NULL) {
     snackDebugChannel = Tcl_OpenFileChannel(debugInterp, "_debug.txt", "w",
 					    420);
   }
-#endif
   Tcl_Write(snackDebugChannel, str, strlen(str));
   Tcl_Flush(snackDebugChannel);
 }
@@ -186,13 +245,11 @@ void
 Snack_WriteLogInt(char *str, int num)
 {
   char buf[20];
-#if defined(WIN) || defined(MAC)
+
   if (snackDebugChannel == NULL) {
     snackDebugChannel = Tcl_OpenFileChannel(debugInterp, "_debug.txt", "w",
 					    420);
   }
-#endif
-
   Tcl_Write(snackDebugChannel, str, strlen(str));
   sprintf(buf, " %d", num);
   Tcl_Write(snackDebugChannel, buf, strlen(buf));

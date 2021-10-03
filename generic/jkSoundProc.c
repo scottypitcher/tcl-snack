@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,9 +20,8 @@
  */
 
 #include "tcl.h"
+#include "snack.h"
 #include <string.h>
-#include "jkAudIO.h"
-#include "jkSound.h"
 #include <math.h>
 
 #define SNACK_PI 3.141592653589793
@@ -45,7 +44,7 @@ Snack_InitWindow(float *win, int winlen, int fftlen, int type)
     for (i = 0; i < winlen/2; i++)
       win[i] = (float)(((2.0 * i) / (winlen - 1)));
     for (i = winlen/2; i < winlen; i++)
-      win[i] = (float)(2.0 * (1.0 - (i / (winlen - 1))));
+      win[i] = (float)(2.0 * (1.0 - ((float)i / (winlen - 1))));
   } else if (type == SNACK_WIN_BLACKMAN) {
     for (i = 0; i < winlen; i++)
       win[i] = (float)((0.42 - 0.5 * cos(i * 2.0 * SNACK_PI / (winlen - 1)) 
@@ -100,11 +99,11 @@ int
 dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
 		   Tcl_Obj *CONST objv[])
 {
-  double preemph = 0.0;
+  double dpreemph = 0.0;
+  float preemph = 0.0;
   int i, j, n = 0, arg;
   int channel = 0, winlen = 256, fftlen = 512;
   int startpos = 0, endpos = -1, skip = -1;
-  int sampformat = s->sampformat;
   Tcl_Obj *list;
   SnackLinkedFileInfo info;
   SnackWindowType wintype = SNACK_DEFAULT_DBPWINTYPE;
@@ -116,6 +115,8 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
     START, END, CHANNEL, FFTLEN, WINLEN, WINDOWLEN, PREEMPH, SKIP, WINTYPE
   };
 
+  if (s->debug > 0) Snack_WriteLog("Enter dBPowerSpectrumCmd\n");
+
   for (arg = 2; arg < objc; arg += 2) {
     int index;
 	
@@ -124,6 +125,12 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
       return TCL_ERROR;
     }
 	
+    if (arg + 1 == objc) {
+      Tcl_AppendResult(interp, "No argument given for ",
+		       subOptionStrings[index], " option", (char *) NULL);
+      return TCL_ERROR;
+    }
+    
     switch ((enum subOptions) index) {
     case START:
       {
@@ -160,7 +167,7 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
       }
     case PREEMPH:
       {
-	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &preemph) != TCL_OK)
+	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &dpreemph) != TCL_OK)
 	  return TCL_ERROR;
 	break;
       }
@@ -183,6 +190,8 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
   if (CheckFFTlen(interp, fftlen) != TCL_OK) return TCL_ERROR;
 
   if (CheckWinlen(interp, winlen) != TCL_OK) return TCL_ERROR;
+
+  preemph = (float) dpreemph;
 
   if (startpos < 0 || startpos > s->length - fftlen) {
     Tcl_AppendResult(interp, "FFT window out of bounds", NULL);
@@ -219,30 +228,20 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
     n = 1;
   }
 
+  if (s->nchannels == 1) {
+    channel = 0;
+  }
+
   for (j = 0; j < n; j++) {
     if (s->storeType == SOUND_IN_MEMORY) {
       if (s->nchannels == 1 || channel != -1) {
 	int p = (startpos + j * skip) * s->nchannels + channel;
-	if (sampformat == LIN16) {
-	  for (i = 0; i < fftlen; i++) {
-	    xfft[i] = (float) ((SSAMPLE(s, p + s->nchannels)
-				- preemph * SSAMPLE(s, p))
-			       * hamwin[i]);
+
+	for (i = 0; i < fftlen; i++) {
+	  xfft[i] = (float) ((FSAMPLE(s, p + s->nchannels)
+			      - preemph * FSAMPLE(s, p))
+			     * hamwin[i]);
 	    p += s->nchannels;
-	  }
-	} else {
-	  for (i = 0; i < fftlen; i++) {
-	    if (sampformat == MULAW) {
-	      xfft[i] = (float) ((Snack_Mulaw2Lin(UCSAMPLE(s, p + s->nchannels)) - preemph * Snack_Mulaw2Lin(UCSAMPLE(s, p))) * hamwin[i]);
-	    } else if (sampformat == ALAW) {
-	      xfft[i] = (float) ((Snack_Alaw2Lin(UCSAMPLE(s, p + s->nchannels)) - preemph * Snack_Alaw2Lin(UCSAMPLE(s, p))) * hamwin[i]);
-	    } else if (sampformat == LIN8OFFSET) {
-	      xfft[i] = (float) ((UCSAMPLE(s, p + s->nchannels) - preemph * UCSAMPLE(s, p)) * hamwin[i]);
-	    } else if (sampformat == LIN8) {
-	      xfft[i] = (float) ((CSAMPLE(s, p + s->nchannels) - preemph * CSAMPLE(s, p)) * hamwin[i]);
-	    }
-	    p += s->nchannels;
-	  }
 	}
       } else {
 	int c;
@@ -253,26 +252,11 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
 	for (c = 0; c < s->nchannels; c++) {
 	  int p = (startpos + j * skip) * s->nchannels + c;
 	  
-	  if (sampformat == LIN16) {
-	    for (i = 0; i < fftlen; i++) {
-	      xfft[i] += (float) ((SSAMPLE(s, p + s->nchannels)
-				   - preemph * SSAMPLE(s, p))
-				  * hamwin[i]);
-	      p += s->nchannels;
-	    }
-	  } else {
-	    for (i = 0; i < fftlen; i++) {
-	      if (sampformat == MULAW) {
-		xfft[i] += (float) ((Snack_Mulaw2Lin(UCSAMPLE(s, p + s->nchannels)) - preemph * Snack_Mulaw2Lin(UCSAMPLE(s, p))) * hamwin[i]);
-	      } else if (sampformat == ALAW) {
-		xfft[i] += (float) ((Snack_Alaw2Lin(UCSAMPLE(s, p + s->nchannels)) - preemph * Snack_Alaw2Lin(UCSAMPLE(s, p))) * hamwin[i]);
-	      } else if (sampformat == LIN8OFFSET) {
-		xfft[i] += (float) ((UCSAMPLE(s, p + s->nchannels) - preemph * UCSAMPLE(s, p)) * hamwin[i]);
-	      } else if (sampformat == LIN8) {
-		xfft[i] += (float) ((CSAMPLE(s, p + s->nchannels) - preemph * CSAMPLE(s, p)) * hamwin[i]);
-	      }
-	      p += s->nchannels;
-	    }
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] += (float) ((FSAMPLE(s, p + s->nchannels)
+				 - preemph * FSAMPLE(s, p))
+				* hamwin[i]);
+	    p += s->nchannels;
 	  }
 	}
 	for (i = 0; i < fftlen; i++) {
@@ -282,24 +266,12 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
     } else { /* storeType != SOUND_IN_MEMORY */
       if (s->nchannels == 1 || channel != -1) {
 	int p = (startpos + j * skip) * s->nchannels + channel;
-	if (sampformat == LIN16) {
-	  for (i = 0; i < fftlen; i++) {
-	    xfft[i] = (float) ((GetSample(&info, p + s->nchannels)
-				- preemph * GetSample(&info, p))
-			       * hamwin[i]);
-	    p += s->nchannels;
-	  }
-	} else {
-	  for (i = 0; i < fftlen; i++) {
-	    if (sampformat == MULAW) {
-	      xfft[i] = (float) ((Snack_Mulaw2Lin((unsigned char)GetSample(&info, p + s->nchannels)) - preemph * Snack_Mulaw2Lin((unsigned char)GetSample(&info, p))) * hamwin[i]);
-	    } else if (sampformat == ALAW) {
-	      xfft[i] = (float) ((Snack_Alaw2Lin((unsigned char)GetSample(&info, p + s->nchannels)) - preemph * Snack_Alaw2Lin((unsigned char)GetSample(&info, p))) * hamwin[i]);
-	    } else {
-	      xfft[i] = (float) ((GetSample(&info, p + s->nchannels) - preemph * GetSample(&info, p)) * hamwin[i]);
-	    }
-	    p += s->nchannels;
-	  }
+
+	for (i = 0; i < fftlen; i++) {
+	  xfft[i] = (float) ((GetSample(&info, p + s->nchannels)
+			      - preemph * GetSample(&info, p))
+			     * hamwin[i]);
+	  p += s->nchannels;
 	}
       } else {
 	int c;
@@ -310,24 +282,11 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
 	for (c = 0; c < s->nchannels; c++) {
 	  int p = (startpos + j * skip) * s->nchannels + c;
 	  
-	  if (sampformat == LIN16) {
-	    for (i = 0; i < fftlen; i++) {
-	      xfft[i] += (float) ((GetSample(&info, p + s->nchannels)
-				   - preemph * GetSample(&info, p))
-				  * hamwin[i]);
-	      p += s->nchannels;
-	    }
-	  } else {
-	    for (i = 0; i < fftlen; i++) {
-	      if (sampformat == MULAW) {
-		xfft[i] += (float) ((Snack_Mulaw2Lin((unsigned char)GetSample(&info, p + s->nchannels)) - preemph * Snack_Mulaw2Lin((unsigned char)GetSample(&info, p))) * hamwin[i]);
-	      } else if (sampformat == ALAW) {
-		xfft[i] += (float) ((Snack_Alaw2Lin((unsigned char)GetSample(&info, p + s->nchannels)) - preemph * Snack_Alaw2Lin((unsigned char)GetSample(&info, p))) * hamwin[i]);
-	      } else {
-		xfft[i] += (float) ((GetSample(&info, p + s->nchannels) - preemph * GetSample(&info, p)) * hamwin[i]);
-	      }
-	      p += s->nchannels;
-	    }
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] += (float) ((GetSample(&info, p + s->nchannels)
+				 - preemph * GetSample(&info, p))
+				* hamwin[i]);
+	    p += s->nchannels;
 	  }
 	}
 	for (i = 0; i < fftlen; i++) {
@@ -357,6 +316,8 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
   }
 
   Tcl_SetObjResult(interp, list);
+
+  if (s->debug > 0) Snack_WriteLog("Exit dBPowerSpectrumCmd\n");
 
   return TCL_OK;
 }

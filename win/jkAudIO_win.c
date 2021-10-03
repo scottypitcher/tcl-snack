@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -26,14 +26,6 @@
 #include <fcntl.h>
 #ifndef _MSC_VER
 #include <unistd.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" void Snack_WriteLogInt(char *s, int n);
-extern "C" void Snack_WriteLog(char *s);
-#else
-extern void Snack_WriteLogInt(char *s, int n);
-extern void Snack_WriteLog(char *s);
 #endif
 
 #ifndef min
@@ -64,19 +56,19 @@ static int    correction = 1;
 struct MixerLink mixerLinks[SNACK_NUMBER_MIXERS][2];
 static int selectedMixer = 0;
 
-static char *outDeviceList[4];
+static char *outDeviceList[MAX_NUM_DEVICES];
 static numOutDevs = 0;
-static char *inDeviceList[4];
+static char *inDeviceList[MAX_NUM_DEVICES];
 static numInDevs = 0;
-static char *mixerDeviceList[4];
+static char *mixerDeviceList[MAX_NUM_DEVICES];
 static numMixDevs = 0;
 
 #include <dsound.h>
 
-static char *DSOutDeviceList[4];
+static char *DSOutDeviceList[MAX_NUM_DEVICES];
 static GUID guidOut[4];
 static numDSOutDevs = 0;
-static char *DSInDeviceList[4];
+static char *DSInDeviceList[MAX_NUM_DEVICES];
 static GUID guidIn[4];
 static numDSInDevs = 0;
 
@@ -113,7 +105,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 {
   int i, devIndex = -1;
 
-  if (A->debug == 1) Snack_WriteLogInt("Enter SnackAudioOpen", mode);
+  if (A->debug > 1) Snack_WriteLogInt("  Enter SnackAudioOpen", mode);
 
   switch (mode) {
   case RECORD:
@@ -158,7 +150,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
     break; 
   }
   
-  if (A->debug == 1) Snack_WriteLogInt("device", devIndex);
+  if (A->debug > 2) Snack_WriteLogInt("    device", devIndex);
 
   if (useDSound) {
     int res = 0;
@@ -204,18 +196,6 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
       A->dscbdesc.dwBufferBytes = NSECS * A->pcmwf.wf.nAvgBytesPerSec;
       A->dscbdesc.lpwfxFormat = (LPWAVEFORMATEX)&A->pcmwf;
       A->lplpDscb = NULL;
-      Snack_WriteLog("**\n"); 
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_ALLOCATED); 
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_BADFORMAT );
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_INVALIDPARAM );
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_NOAGGREGATION );
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_OUTOFMEMORY );
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_UNINITIALIZED );
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_UNSUPPORTED);
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_INVALIDCALL );
-      Snack_WriteLogInt("CreateSoundBuffer", DSERR_PRIOLEVELNEEDED );
-      Snack_WriteLogInt("CreateSoundBuffer", DS_OK);
-      if (A->debug == 1) Snack_WriteLogInt("Enter SnackAudioOpen", 14);
 
       if (devIndex == -1) {
 	hr = (*ds.DirectSoundCaptureCreate)(NULL, &lpDSCapture,
@@ -233,7 +213,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 
       if (hr != DS_OK) {
         A->lplpDscb = NULL;
-	if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioOpen", hr); 
+	if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioOpen", hr); 
 	Tcl_AppendResult(interp, "Failed creating capture buffer.", NULL);
 	return TCL_ERROR;
       }
@@ -242,7 +222,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
       A->BufLen = dscbcaps.dwBufferBytes;
       hr = IDirectSoundCaptureBuffer_Start(A->lplpDscb, DSCBSTART_LOOPING);
       A->BufPos = -1;
-if (A->debug == 1) Snack_WriteLogInt("Buffer_Start", hr); 
+      if (A->debug > 2) Snack_WriteLogInt("    Buffer_Start", hr); 
       break;
     case PLAY:
       memset(&A->pcmwfPB, 0, sizeof(PCMWAVEFORMAT));
@@ -308,8 +288,8 @@ if (A->debug == 1) Snack_WriteLogInt("Buffer_Start", hr);
       hr = IDirectSound_CreateSoundBuffer(lpDirectSound, &A->dsbdescPB,
 					  &A->lplpDsPB, NULL);
       
-      if (A->debug == 1) {
-	Snack_WriteLogInt("CreateSoundBuffer", hr);
+      if (A->debug > 2) {
+	Snack_WriteLogInt("    CreateSoundBuffer", hr);
       }
       if (hr != DS_OK) {
         A->lplpDsb = NULL;
@@ -321,13 +301,13 @@ if (A->debug == 1) Snack_WriteLogInt("Buffer_Start", hr);
       A->written = 0;
       hr = IDirectSoundBuffer_SetFormat(A->lplpDsPB,
 					(LPWAVEFORMATEX)&A->pcmwfPB);
-      if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioOpen", hr);
+      if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioOpen", hr);
     }
     return TCL_OK;
   } else { /* Windows multimedia library */
     int res = 0, i, size;
 
-    if (A->debug == 1) Snack_WriteLog("Enter SnackAudioOpen\n");
+    if (A->debug > 1) Snack_WriteLog("  Using winmm\n");
 
     A->mode = mode;
     A->curr = 0;
@@ -336,7 +316,7 @@ if (A->debug == 1) Snack_WriteLogInt("Buffer_Start", hr);
     A->shortRead = 0;
     A->convert = 0;
 
-    if (devIndex == -1) {
+    if (devIndex == -1 || devIndex == 0) {
       devIndex = WAVE_MAPPER;
     }
     
@@ -382,7 +362,7 @@ if (A->debug == 1) Snack_WriteLogInt("Buffer_Start", hr);
 	  Tcl_AppendResult(interp, "Failed allocating audio block.", NULL);
 	  return TCL_ERROR;
 	}
-	if (A->debug == 1) Snack_WriteLogInt("blockaddr", (int) blockIn[i]);
+	if (A->debug > 2) Snack_WriteLogInt("    blockaddr", (int) blockIn[i]);
 	memset(&waveHdrIn[i], 0, sizeof(WAVEHDR));
 
 	waveHdrIn[i].lpData = blockIn[i];
@@ -432,7 +412,7 @@ if (A->debug == 1) Snack_WriteLogInt("Buffer_Start", hr);
 	  wFormatOut.nAvgBytesPerSec = freq * A->bytesPerSample * nchannels;
 	  wFormatOut.nBlockAlign     = A->bytesPerSample * nchannels;
 	  wFormatOut.wBitsPerSample  = A->bytesPerSample * 8;
-	  if (A->debug == 1) Snack_WriteLogInt("Converting", encoding);
+	  if (A->debug > 2) Snack_WriteLogInt("    Converting", encoding);
 	}
       }
       
@@ -450,8 +430,10 @@ if (A->debug == 1) Snack_WriteLogInt("Buffer_Start", hr);
       break;
     }
 
-    if (A->debug == 1) Snack_WriteLogInt("Correction", correction);
-    if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioOpen", A->bytesPerSample);
+    if (A->debug > 2) Snack_WriteLogInt("    Correction", correction);
+    if (A->debug > 1) {
+      Snack_WriteLogInt("  Exit SnackAudioOpen", A->bytesPerSample);
+    }
 
     return TCL_OK;
   }
@@ -460,7 +442,7 @@ if (A->debug == 1) Snack_WriteLogInt("Buffer_Start", hr);
 int
 SnackAudioClose(ADesc *A)
 {
-  if (A->debug == 1) Snack_WriteLogInt("Enter SnackAudioClose", useDSound);
+  if (A->debug > 1) Snack_WriteLogInt("  Enter SnackAudioClose", useDSound);
 
   if (useDSound) {
     HRESULT hr;
@@ -468,7 +450,9 @@ SnackAudioClose(ADesc *A)
     switch (A->mode) {
     case RECORD:
       if (A->lplpDscb==0) {
-	if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioClose",(int)A->lplpDscb);
+	if (A->debug > 2) {
+	  Snack_WriteLogInt("    Exit SnackAudioClose",(int)A->lplpDscb);
+	}
 	return(0);
       }
       hr = IDirectSoundCaptureBuffer_Stop(A->lplpDscb);
@@ -476,10 +460,17 @@ SnackAudioClose(ADesc *A)
       IDirectSoundCapture_Release(lpDSCapture);
       break;
     case PLAY:
-	if (A->debug == 1) Snack_WriteLogInt("Exit",A->written*(A->bytesPerSample *A->nChannels));
-	if (A->debug == 1) Snack_WriteLogInt("Exit", SnackAudioPlayed(A));
+      if (A->debug > 2) {
+	Snack_WriteLogInt("    Exit",
+			  A->written*(A->bytesPerSample *A->nChannels));
+      }
+      if (A->debug > 2) {
+	Snack_WriteLogInt("    Exit", SnackAudioPlayed(A));
+      }
       if (A->written*(A->bytesPerSample *A->nChannels) > SnackAudioPlayed(A)) {
-	if (A->debug == 1) Snack_WriteLog("Exit failed SnackAudioClose\n");
+	if (A->debug > 2) {
+	  Snack_WriteLog("    Exit failed SnackAudioClose\n");
+	}
 	return(-1);
       } else {
 	hr = IDirectSoundBuffer_Stop(A->lplpDsb);
@@ -492,47 +483,49 @@ SnackAudioClose(ADesc *A)
   } else { /* Windows multimedia library */
     int i = 0, res;
 
-    if (A->debug == 1) Snack_WriteLogInt("mode", (int) A->mode);
+    if (A->debug > 2) Snack_WriteLogInt("    mode", (int) A->mode);
 
     switch (A->mode) {
     case RECORD:
       waveInStop(hWaveIn);
       waveInReset(hWaveIn);
-      waveInClose(hWaveIn);
       for (i = 0; i < NBUFS; i++) {
 	waveInUnprepareHeader(hWaveIn, &waveHdrIn[i], sizeof(WAVEHDR));
 	if (blockIn[i]) {
 	  ckfree(blockIn[i]);
-	  if (A->debug == 1) Snack_WriteLogInt("freeing", (int) blockIn[i]);
+	  if (A->debug > 2) Snack_WriteLogInt("    freeing", (int) blockIn[i]);
 	  blockIn[i] = NULL;
 	}
       }
+      res = waveInClose(hWaveIn);
+      if (A->debug > 2) Snack_WriteLogInt("    waveInClose", res);
       A->mode = 0;
       break;
     
     case PLAY:
-      if (A->debug == 1) Snack_WriteLog("Attempting waveOutClose\n");
-      res = waveOutClose(hWaveOut);
-      if (A->debug == 1) Snack_WriteLogInt("waveOutClose", res);
-      if (res == WAVERR_STILLPLAYING) return(-1);
-      if (A->debug == 1) Snack_WriteLog("waveOutClose ok\n");
       for (i = 0; i < NBUFS; i++) {
-	waveOutUnprepareHeader(hWaveOut, &waveHdrOut[i], sizeof(WAVEHDR));
+	res = waveOutUnprepareHeader(hWaveOut, &waveHdrOut[i], sizeof(WAVEHDR));
+	if (A->debug > 2) Snack_WriteLogInt("    waveOutUnprepareHeader", res);
+	if (res == WAVERR_STILLPLAYING) return(-1);
 	if (blockOut[i]) {
 	  ckfree(blockOut[i]);
 	  blockOut[i] = NULL;
 	}
       }
-      if (A->debug == 1) Snack_WriteLog("waveOutUnprepareHeader ok\n");
+      if (A->debug > 2) Snack_WriteLog("    Attempting waveOutClose\n");
+      res = waveOutClose(hWaveOut);
+      if (A->debug > 2) Snack_WriteLogInt("    waveOutClose", res);
+      if (res == WAVERR_STILLPLAYING) return(-1);
+      if (A->debug > 2) Snack_WriteLog("    waveOutClose ok\n");
       A->mode = 0;
       break;
 
     default:
-      if (A->debug == 1) Snack_WriteLog("nop\n");
+      if (A->debug > 2) Snack_WriteLog("    nop\n");
       break;
     }  
   }
-  if (A->debug == 1) Snack_WriteLog("Exit SnackAudioClose\n");
+  if (A->debug > 1) Snack_WriteLog("  Exit SnackAudioClose\n");
 
   return(0);
 }
@@ -616,7 +609,7 @@ SnackAudioFlush(ADesc *A)
       
     case PLAY:
       res = waveOutReset(hWaveOut);
-      if (A->debug == 1) Snack_WriteLogInt("waveOutReset", res);
+      if (A->debug > 1) Snack_WriteLogInt("  waveOutReset", res);
       break;
     }
   }
@@ -639,7 +632,7 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
     int size = 0;
     DWORD pos = 0;
 
-    if (A->debug == 1) Snack_WriteLogInt("Enter SnackAudioRead", nFrames);
+    if (A->debug > 1) Snack_WriteLogInt("  Enter SnackAudioRead", nFrames);
 
     hr = IDirectSoundCaptureBuffer_GetCurrentPosition(A->lplpDscb, NULL,&pos);
 
@@ -658,21 +651,23 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
     hr = IDirectSoundCaptureBuffer_Lock(A->lplpDscb, A->BufPos, size, 
 			      &lpvPtr1, &dwBytes1, &lpvPtr2, &dwBytes2, 0);
 
-    if (A->debug == 1) Snack_WriteLogInt("Lock", hr);
-    if (A->debug == 1) Snack_WriteLogInt(" at ", A->BufPos);
-    if (A->debug == 1) Snack_WriteLogInt(" -1 ", dwBytes1);
-    if (A->debug == 1) Snack_WriteLogInt(" -2 ", dwBytes2);
+    if (A->debug > 2) {
+      Snack_WriteLogInt("    Lock", hr);
+      Snack_WriteLogInt("     at ", A->BufPos);
+      Snack_WriteLogInt("     -1 ", dwBytes1);
+      Snack_WriteLogInt("     -2 ", dwBytes2);
+    }
 
     if (hr == DS_OK) {
-      if (A->debug == 1) {
-	Snack_WriteLogInt("memcpy to", (int) lpvPtr1);
-	Snack_WriteLogInt("length", dwBytes1);
+      if (A->debug > 2) {
+	Snack_WriteLogInt("    memcpy to", (int) lpvPtr1);
+	Snack_WriteLogInt("    length", dwBytes1);
       }
       memcpy(buf, lpvPtr1, dwBytes1);
       if (NULL != lpvPtr2) { 
-	if (A->debug == 1) {
-	  Snack_WriteLogInt("memcpy2 to", (int) lpvPtr2);
-	  Snack_WriteLogInt("length2", dwBytes2);
+	if (A->debug > 2) {
+	  Snack_WriteLogInt("    memcpy2 to", (int) lpvPtr2);
+	  Snack_WriteLogInt("    length2", dwBytes2);
 	}
 	memcpy((char*)buf+dwBytes1, lpvPtr2, dwBytes2); 
       } 
@@ -683,31 +678,35 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
       nFrames = size / (A->bytesPerSample * A->nChannels);
 
       if (hr == DS_OK) {
-	if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioRead", A->BufPos);
+	if (A->debug > 1) {
+	  Snack_WriteLogInt("  Exit SnackAudioRead", A->BufPos);
+	}
 	return(nFrames);
       }
     }
-    if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioRead2", hr);
+    if (A->debug > 1) {
+      Snack_WriteLogInt("  Exit SnackAudioRead2", hr);
+    }
     return(0); 
   } else { /* Windows multimedia library */
     int res = 0, i, noread = 1, nsamps, n = 0;
     
-    if (A->debug == 1) Snack_WriteLogInt("Enter SnackAudioRead", nFrames);
+    if (A->debug > 1) Snack_WriteLogInt("  Enter SnackAudioRead", nFrames);
 
     if (A->mode == RECORD) {
       for (i = 0; i < NBUFS; i++) {
 	if (waveHdrIn[i].dwFlags & WHDR_DONE) noread = 0;
       }
-      if (A->debug == 1) Snack_WriteLogInt(" noread", noread);
+      if (A->debug > 2) Snack_WriteLogInt("    noread", noread);
       if (noread) {
 	return(0);
       }
-      if (A->debug == 1) Snack_WriteLogInt(" shortRead", A->shortRead);
+      if (A->debug > 2) Snack_WriteLogInt("    shortRead", A->shortRead);
       if (A->shortRead > 0) {
 	int offset = A->shortRead * (A->bytesPerSample * A->nChannels);
 	int rest = waveHdrIn[A->curr].dwBytesRecorded - offset;
 	
-	if (A->debug == 1) Snack_WriteLog("short read\n");
+	if (A->debug > 2) Snack_WriteLog("    short read\n");
 	
 	memcpy((char *)buf, blockIn[A->curr] + offset, rest);
 	waveInUnprepareHeader(hWaveIn, &waveHdrIn[A->curr], sizeof(WAVEHDR));
@@ -716,13 +715,13 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
 	waveHdrIn[A->curr].dwFlags = 0L;
 	waveHdrIn[A->curr].dwLoops = 0L;
 	res = waveInPrepareHeader(hWaveIn, &waveHdrIn[A->curr], sizeof(WAVEHDR));
-	if (A->debug == 1) Snack_WriteLogInt("waveInPrepareHeader", res);
+	if (A->debug > 2) Snack_WriteLogInt("    waveInPrepareHeader", res);
 	res = waveInAddBuffer(hWaveIn, &waveHdrIn[A->curr], sizeof(WAVEHDR));
-	if (A->debug == 1) Snack_WriteLogInt("waveInAddBuffer", res);
+	if (A->debug > 2) Snack_WriteLogInt("    waveInAddBuffer", res);
 	A->curr = (A->curr + 1) % NBUFS;
 	A->shortRead = 0;
 	n = rest / (A->bytesPerSample * A->nChannels);
-	if (A->debug == 1) Snack_WriteLogInt("short read rest", n);
+	if (A->debug > 2) Snack_WriteLogInt("    short read rest", n);
       }
       
       while ((waveHdrIn[A->curr].dwFlags & WHDR_DONE) && (n < nFrames)) {
@@ -731,33 +730,41 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
 	  A->shortRead = nsamps;
 	  memcpy(((char *)buf + n * A->bytesPerSample * A->nChannels),
 		 blockIn[A->curr], nsamps * (A->bytesPerSample * A->nChannels));
-	  if (A->debug == 1) Snack_WriteLogInt("short read", nsamps);
+	  if (A->debug > 2) Snack_WriteLogInt("    short read", nsamps);
 	} else {
-	  if (A->debug == 1) Snack_WriteLogInt(" pre memcpy",A->curr);
-	  if (A->debug == 1) Snack_WriteLogInt(" to", (int)buf + n * A->bytesPerSample * A->nChannels);
-	  if (A->debug == 1) Snack_WriteLogInt(" from", (int)blockIn[A->curr]);
-	  if (A->debug == 1) Snack_WriteLogInt(" size", waveHdrIn[A->curr].dwBytesRecorded);
+	  if (A->debug > 2) {
+	    /*
+	    Snack_WriteLogInt("    pre memcpy",A->curr);
+	    Snack_WriteLogInt("     to", (int)buf + n * A->bytesPerSample * A->nChannels);
+	    Snack_WriteLogInt("     from", (int)blockIn[A->curr]);
+	    Snack_WriteLogInt("     size", waveHdrIn[A->curr].dwBytesRecorded);
+	    */
+	  }
 	  memcpy(((char *)buf + n * A->bytesPerSample * A->nChannels),
 		 blockIn[A->curr], waveHdrIn[A->curr].dwBytesRecorded);
-	  if (A->debug == 1) Snack_WriteLogInt(" post memcpy",A->curr);
+	  /*
+	  if (A->debug > 2) Snack_WriteLogInt("    post memcpy",A->curr);
+	  */
 	  nsamps = waveHdrIn[A->curr].dwBytesRecorded / (A->bytesPerSample * A->nChannels);
 	  waveInUnprepareHeader(hWaveIn, &waveHdrIn[A->curr], sizeof(WAVEHDR));
-	  if (A->debug == 1) Snack_WriteLogInt("waveInUnprepareHeader", res);
+	  if (A->debug > 2) {
+	    Snack_WriteLogInt("    waveInUnprepareHeader", res);
+	  }
 	  waveHdrIn[A->curr].lpData = blockIn[A->curr];
 	  waveHdrIn[A->curr].dwBufferLength = A->bytesPerSample * A->freq / 16;
 	  waveHdrIn[A->curr].dwFlags = 0L;
 	  waveHdrIn[A->curr].dwLoops = 0L;
 	  res = waveInPrepareHeader(hWaveIn, &waveHdrIn[A->curr], sizeof(WAVEHDR));
-	  if (A->debug == 1) Snack_WriteLogInt("waveInPrepareHeader", res);
+	  if (A->debug > 2) Snack_WriteLogInt("    waveInPrepareHeader", res);
 	  res = waveInAddBuffer(hWaveIn, &waveHdrIn[A->curr], sizeof(WAVEHDR));
-	  if (A->debug == 1) Snack_WriteLogInt("waveInAddBuffer", res);
+	  if (A->debug > 2) Snack_WriteLogInt("    waveInAddBuffer", res);
 	  A->curr = (A->curr + 1) % NBUFS;
 	  A->shortRead = 0;
 	}
 	n += nsamps;
       }
     }
-    if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioRead", res);
+    if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioRead", res);
     
     return(n);
   }
@@ -774,35 +781,35 @@ SnackAudioWrite(ADesc *A, void *buf, int nFrames)
     HRESULT hr;
     int size = 0;
 
-    if (A->debug == 1) Snack_WriteLogInt("Enter SnackAudioWrite", nFrames);
+    if (A->debug > 1) Snack_WriteLogInt("  Enter SnackAudioWrite", nFrames);
 
     if (nFrames > SnackAudioWriteable(A)) {
       nFrames = SnackAudioWriteable(A);
     }
     size = nFrames * A->bytesPerSample * A->nChannels;
-	if (A->debug == 1) {
-		Snack_WriteLogInt("Locking at", A->BufPos);
-		Snack_WriteLogInt("size", size);
+	if (A->debug > 2) {
+		Snack_WriteLogInt("    Locking at", A->BufPos);
+		Snack_WriteLogInt("    size", size);
 	}
     hr = IDirectSoundBuffer_Lock(A->lplpDsb, A->BufPos,
 				 size, &lpvPtr1, &dwBytes1, &lpvPtr2, &dwBytes2, 0); 
-    if (A->debug == 1) Snack_WriteLogInt("Lock", hr);
+    if (A->debug > 2) Snack_WriteLogInt("    Lock", hr);
     if (hr == DSERR_BUFFERLOST) { 
       IDirectSoundBuffer_Restore(A->lplpDsb); 
       hr = IDirectSoundBuffer_Lock(A->lplpDsb, A->BufPos, size, 
 				   &lpvPtr1, &dwBytes1, &lpvPtr2, &dwBytes2, 0); 
-      if (A->debug == 1) Snack_WriteLogInt("Lock2", hr);
+      if (A->debug > 2) Snack_WriteLogInt("    Lock2", hr);
     }
     if (hr == DS_OK) {
-      if (A->debug == 1) {
-	Snack_WriteLogInt("memcpy to", (int) lpvPtr1);
-	Snack_WriteLogInt("length", dwBytes1);
+      if (A->debug > 2) {
+	Snack_WriteLogInt("    memcpy to", (int) lpvPtr1);
+	Snack_WriteLogInt("    length", dwBytes1);
       }
       memcpy(lpvPtr1, buf, dwBytes1);
       if (NULL != lpvPtr2) { 
-	if (A->debug == 1) {
-	  Snack_WriteLogInt("memcpy2 to", (int) lpvPtr2);
-	  Snack_WriteLogInt("length2", dwBytes2);
+	if (A->debug > 2) {
+	  Snack_WriteLogInt("    memcpy2 to", (int) lpvPtr2);
+	  Snack_WriteLogInt("    length2", dwBytes2);
 	}
 	memcpy(lpvPtr2, (char*)buf+dwBytes1, dwBytes2); 
       } 
@@ -814,17 +821,19 @@ SnackAudioWrite(ADesc *A, void *buf, int nFrames)
       A->written += size;
       
 	  if (hr == DS_OK) {
-	if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioWrite", nFrames);
+	if (A->debug > 1) {
+	  Snack_WriteLogInt("  Exit SnackAudioWrite", nFrames);
+	}
 	return(nFrames); 
       } 
     } 
-    if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioWrite", 0);
+    if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioWrite", 0);
     return(0); 
 
   } else { /* Windows multimedia library */
     int res, i, nowrit = 1, size = nFrames * A->bytesPerSample * A->nChannels;
 
-    if (A->debug == 1) Snack_WriteLogInt("Enter SnackAudioWrite", nFrames);
+    if (A->debug > 1) Snack_WriteLogInt("  Enter SnackAudioWrite", nFrames);
 
     if (nFrames == 0) return(0); 
     for (i = 0; i < NBUFS; i++) {
@@ -871,7 +880,7 @@ SnackAudioWrite(ADesc *A, void *buf, int nFrames)
 	break;
       }
     }
-    if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioWrite", res);
+    if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioWrite", res);
   }
   return(nFrames);
 }
@@ -884,7 +893,7 @@ SnackAudioReadable(ADesc *A)
     DWORD pos = 0;
     DWORD status = 0;
 
-    if (A->debug == 1) Snack_WriteLog("Enter SnackAudioReadable\n");
+    if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioReadable\n");
 
     hr = IDirectSoundCaptureBuffer_GetStatus(A->lplpDscb, &status);
     if (!(status && DSCBSTATUS_CAPTURING)) return(0);
@@ -900,14 +909,14 @@ SnackAudioReadable(ADesc *A)
       pos = A->BufLen - (A->BufPos - pos);
     }
 
-    if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioReadable",
+    if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioReadable",
 					 pos/(A->bytesPerSample*A->nChannels));
 
     return(pos / (A->bytesPerSample * A->nChannels));
   } else { /* Windows multimedia library */
     int i, n = 0;
 
-    if (A->debug == 1) Snack_WriteLog("Enter SnackAudioReadable\n");
+    if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioReadable\n");
 
     if (A->mode == RECORD) {
       for (i = 0; i < NBUFS; i++) {
@@ -920,7 +929,7 @@ SnackAudioReadable(ADesc *A)
 	n += A->shortRead;
       }
     }
-    if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioReadable", n);
+    if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioReadable", n);
 
     return(n);
   }
@@ -934,22 +943,24 @@ SnackAudioWriteable(ADesc *A)
     DWORD ppos = 0;
     DWORD status = 0;
 
-    if (A->debug == 1) Snack_WriteLog("Enter SnackAudioWriteable\n");
+    if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioWriteable\n");
 
     hr = IDirectSoundBuffer_GetStatus(A->lplpDsb, &status);
     if (!(status && DSBSTATUS_PLAYING)) {
-      if (A->debug == 1) Snack_WriteLogInt("x SnackAudioWriteable",A->BufLen);
+      if (A->debug > 2) {
+	Snack_WriteLogInt("    x SnackAudioWriteable",A->BufLen);
+      }
       return(A->BufLen / (A->bytesPerSample * A->nChannels));
     }
     
     hr = IDirectSoundBuffer_GetCurrentPosition(A->lplpDsb, &ppos, NULL);
 
-    if (A->debug == 1) Snack_WriteLogInt("ppos",ppos);
+    if (A->debug > 2) Snack_WriteLogInt("    ppos",ppos);
     if (ppos > A->BufPos) {
-      if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioWriteable1",(ppos - A->BufPos)/(A->bytesPerSample * A->nChannels));
+      if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioWriteable1",(ppos - A->BufPos)/(A->bytesPerSample * A->nChannels));
       return ((ppos - A->BufPos)/(A->bytesPerSample * A->nChannels));
     } else {
-      if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioWriteable2",(A->BufLen - (A->BufPos - ppos))/(A->bytesPerSample * A->nChannels));
+      if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioWriteable2",(A->BufLen - (A->BufPos - ppos))/(A->bytesPerSample * A->nChannels));
       return((A->BufLen - (A->BufPos - ppos))/(A->bytesPerSample * A->nChannels));
     }
   } else { /* Windows multimedia library */
@@ -970,19 +981,19 @@ SnackAudioPlayed(ADesc *A)
     DWORD ppos = 0;
     DWORD status = 0;
 
-    if (A->debug == 1) Snack_WriteLog("Enter SnackAudioPlayed\n");
+    if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioPlayed\n");
     
     hr = IDirectSoundBuffer_GetStatus(A->lplpDsb, &status);
     if (!(status && DSBSTATUS_PLAYING)) return(0);
-    if (A->debug == 1) Snack_WriteLog("bugg?\n");
+    if (A->debug > 2) Snack_WriteLog("    bugg?\n");
     hr = IDirectSoundBuffer_GetCurrentPosition(A->lplpDsb, &ppos, NULL);
-    if (A->debug == 1) Snack_WriteLog("nej\n");
+    if (A->debug > 2) Snack_WriteLog("    no\n");
     if (ppos > A->BufPos) {
-      if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioPlayed1",
+      if (A->debug > 1) Snack_WriteLogInt("    Exit SnackAudioPlayed1",
 					   (A->written - A->BufLen + (ppos - A->BufPos))/(A->bytesPerSample * A->nChannels));
       return ((A->written - A->BufLen + (ppos - A->BufPos))/(A->bytesPerSample * A->nChannels));
     } else {
-      if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioPlayed2",
+      if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioPlayed2",
 					   (A->written - (A->BufPos - ppos))/(A->bytesPerSample * A->nChannels));
       return((A->written - (A->BufPos - ppos))/(A->bytesPerSample * A->nChannels));
     }
@@ -1016,6 +1027,7 @@ SnackWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 static BOOL CALLBACK
 DSEnumProc(LPGUID lpGUID, LPSTR lpszDesc, LPSTR lpszDrvName, LPVOID lpContext)
 {
+  if (numDSOutDevs == MAX_NUM_DEVICES) return(TRUE);
   if (lpGUID != NULL) {
     memcpy(&guidOut[numDSOutDevs], lpGUID, sizeof(GUID));
   } 
@@ -1032,6 +1044,7 @@ DSEnumProc(LPGUID lpGUID, LPSTR lpszDesc, LPSTR lpszDrvName, LPVOID lpContext)
 static BOOL CALLBACK
 DSCEnumProc(LPGUID lpGUID, LPSTR lpszDesc, LPSTR lpszDrvName, LPVOID lpContext)
 {
+  if (numDSInDevs == MAX_NUM_DEVICES) return(TRUE);
   if (lpGUID != NULL) {
     memcpy(&guidIn[numDSInDevs], lpGUID, sizeof(GUID));
   } 
@@ -1053,6 +1066,10 @@ SnackAudioInit()
 
   /*  Snack_WriteLog("SnackAudioInit\n");*/
 
+  inDeviceList[numInDevs] = ckalloc(strlen("Wave Mapper")+1);
+  strcpy(inDeviceList[numInDevs], "Wave Mapper");
+  numInDevs++;
+
   for (i = 0; i < (int)waveInGetNumDevs(); i++) {
     if (waveInGetDevCaps(i, &wInCaps, sizeof(WAVEINCAPS)) == 0) {
       inDeviceList[numInDevs] = ckalloc(strlen(wInCaps.szPname)+17);
@@ -1061,8 +1078,13 @@ SnackAudioInit()
 	strcat(inDeviceList[numInDevs], " (Win multimedia)");
       }
       numInDevs++;
+      if (numInDevs == MAX_NUM_DEVICES) break;
     }
   }
+
+  outDeviceList[numOutDevs] = ckalloc(strlen("Wave Mapper")+1);
+  strcpy(outDeviceList[numOutDevs], "Wave Mapper");
+  numOutDevs++;
 
   for (i = 0; i < (int)waveOutGetNumDevs(); i++) {
     if (waveOutGetDevCaps(i, &wOutCaps, sizeof(WAVEOUTCAPS)) == 0) {
@@ -1072,6 +1094,7 @@ SnackAudioInit()
 	strcat(outDeviceList[numOutDevs], " (Win multimedia)");
       }
       numOutDevs++;
+      if (numOutDevs == MAX_NUM_DEVICES) break;
     }
   }
 
@@ -1082,6 +1105,7 @@ SnackAudioInit()
 	strcpy(mixerDeviceList[numMixDevs], wMixCaps.szPname);
       }
       numMixDevs++;
+      if (numMixDevs == MAX_NUM_DEVICES) break;
     }
   }
 
@@ -1243,10 +1267,10 @@ AGetPlayGain()
   return(g);
 }
 
-void
-SnackAudioGetFormats(char *device, char *buf, int n)
+int
+SnackAudioGetEncodings(char *device)
 {
-  int res, pos = 0, i, devIndex = -1;
+  int res, pos = 0, i, devIndex = -1, lin16 = 0, lin24 = 0;
 
   if (device != NULL) {
     for (i = 0; i < numOutDevs; i++) {
@@ -1280,6 +1304,7 @@ SnackAudioGetFormats(char *device, char *buf, int n)
   }
   
   if (useDSound) {
+    lin16 = 1;
   } else {
     wFormatOut.wFormatTag = WAVE_FORMAT_PCM;
     wFormatOut.nChannels       = 1;
@@ -1291,55 +1316,66 @@ SnackAudioGetFormats(char *device, char *buf, int n)
     res = waveOutOpen(NULL, devIndex, (WAVEFORMATEX *)&wFormatOut,
 		      0, 0L, WAVE_FORMAT_QUERY);
     if (res == MMSYSERR_NOERROR) {
-      pos += sprintf(&buf[pos], "%s", "Lin16");
+      lin16 = 1;
     }
-    
+
     wFormatOut.wFormatTag = WAVE_FORMAT_PCM;
     wFormatOut.nChannels       = 1;
     wFormatOut.nSamplesPerSec  = 11025;
-    wFormatOut.nAvgBytesPerSec = 11025;
-    wFormatOut.nBlockAlign     = 1;
-    wFormatOut.wBitsPerSample  = 8;
+    wFormatOut.nAvgBytesPerSec = 44100;
+    wFormatOut.nBlockAlign     = 4;
+    wFormatOut.wBitsPerSample  = 32;
     wFormatOut.cbSize          = 0;
     res = waveOutOpen(NULL, devIndex, (WAVEFORMATEX *)&wFormatOut,
 		      0, 0L, WAVE_FORMAT_QUERY);
     if (res == MMSYSERR_NOERROR) {
-      pos += sprintf(&buf[pos], "%s", " Lin8offset");
+      lin24 = 1;
     }
-    
-    wFormatOut.wFormatTag = WAVE_FORMAT_MULAW;
-    wFormatOut.nChannels       = 1;
-    wFormatOut.nSamplesPerSec  = 11025;
-    wFormatOut.nAvgBytesPerSec = 11025;
-    wFormatOut.nBlockAlign     = 1;
-    wFormatOut.wBitsPerSample  = 8;
-    wFormatOut.cbSize          = 0;
-    res = waveOutOpen(NULL, devIndex, (WAVEFORMATEX *)&wFormatOut,
-		      0, 0L, WAVE_FORMAT_QUERY);
-    if (res == MMSYSERR_NOERROR) {
-      pos += sprintf(&buf[pos], "%s", " Mulaw");
-    }
-    
-    wFormatOut.wFormatTag = WAVE_FORMAT_ALAW;
-    wFormatOut.nChannels       = 1;
-    wFormatOut.nSamplesPerSec  = 11025;
-    wFormatOut.nAvgBytesPerSec = 11025;
-    wFormatOut.nBlockAlign     = 1;
-    wFormatOut.wBitsPerSample  = 8;
-    wFormatOut.cbSize          = 0;
-    res = waveOutOpen(NULL, devIndex, (WAVEFORMATEX *)&wFormatOut,
-		      0, 0L, WAVE_FORMAT_QUERY);
-    if (res == MMSYSERR_NOERROR) {
-      pos += sprintf(&buf[pos], "%s", " Alaw");
-    }
+  }
+
+  if (lin24 && lin16) {
+    return(LIN24 | LIN16);
+  } else {
+    return(LIN16);
   }
 }
 
 void
-SnackAudioGetFrequencies(char *device, char *buf, int n)
+SnackAudioGetRates(char *device, char *buf, int n)
 {
   strncpy(buf, "8000 11025 16000 22050 32000 44100 48000", n);
   buf[n-1] = '\0';
+}
+
+int
+SnackAudioMaxNumberChannels(char *device)
+{
+  int i, devIndex = -1;
+
+  if (device != NULL) {
+    for (i = 0; i < numOutDevs; i++) {
+      if (strcmp(outDeviceList[i], device) == 0) {
+	useDSound = 0;
+	devIndex = i;
+	break;
+      }
+    }
+    if (waveOutGetDevCaps(i, &wOutCaps, sizeof(WAVEOUTCAPS)) == 0) {
+      return(wOutCaps.wChannels);
+    } 
+    /*    
+    if (devIndex == -1) {
+      for (i = 0; i < numDSOutDevs; i++) {
+	if (strcmp(DSOutDeviceList[i], device) == 0) {
+	  useDSound = 1;
+	  devIndex = i;
+	  break;
+	}
+      }
+    }
+    */
+  }
+  return(2);
 }
 
 void

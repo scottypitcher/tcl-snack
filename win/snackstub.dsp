@@ -49,7 +49,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"Release\snackstub17.lib"
+# ADD LIB32 /nologo /out:"C:\Program Files\Tcl\lib\snack2.0\snackstub20.lib"
 
 !ELSEIF  "$(CFG)" == "snackstub - Win32 Debug"
 

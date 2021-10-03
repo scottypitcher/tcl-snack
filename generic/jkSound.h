@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -41,8 +41,6 @@ extern int strncasecmp(const char *str1, const char *str2, size_t nchars);
 #  define EXPORT(a,b) a b
 #endif
 
-#include "tcl.h"
-
 typedef void (updateProc)(ClientData clientData, int flag);
 
 typedef struct jkCallback {
@@ -60,60 +58,61 @@ typedef enum {
 
 typedef struct SnackLinkedFileInfo {
   Tcl_Channel linkCh;
-  unsigned char *buffer;
+  float *buffer;
   int filePos;
+  int validSamples;
+  int eof;
   struct Sound *sound;
 } SnackLinkedFileInfo;
 
 typedef struct Sound {
-  int    sampfreq;
-  int    sampformat;
+  int    samprate;
+  int    encoding;
   int    sampsize;
   int    nchannels;
   int    length;
   int    maxlength;
-  short  maxsamp;
-  short  minsamp;
-  int    abmax;
-  short  **blocks;
+  float  maxsamp;
+  float  minsamp;
+  float  abmax;
+  float  **blocks;
   int    maxblks;
   int    nblks;
-  int    nPlayed;
-  int    startPos;
-  int    totLen;
-  int    active;
+  int    exact;
+  int    precision;
+  int    writeStatus;
+  int    readStatus;
   short  *tmpbuf;
   int    swap;
   int    storeType;
   int    headSize;
   int    skipBytes;
   int    buffersize;
-  Tcl_Channel    recchan;
-  Tcl_Channel    playchan;
   Tcl_Interp     *interp;
   Tcl_Obj        *cmdPtr;
   char           *fcname;
-  Tcl_TimerToken ptoken;
-  Tcl_TimerToken rtoken;
   struct jkCallback *firstCB;
   char *fileType;
   int blockingPlay;
   int debug;
   int destroy;
-  int guessFormat;
+  int guessEncoding;
   Tcl_Channel rwchan;
   int inByteOrder;
   int firstNRead;
-  int guessFrequency;
+  int guessRate;
   int forceFormat;
   int itemRefCnt;
   int validStart;
   SnackLinkedFileInfo linkInfo;
   char *devStr;
   Tcl_HashTable *soundTable;
+  char *filterName;
+  char *extHead;
+  int loadOffset;
+  Tcl_Obj *changeCmdPtr;
   unsigned int userFlag; /* User flags, for new file formats, etc */
   char *userData;        /* User data pointer */
-  /*  Tcl_Obj *monitorCmdPtr;*/
 
 } Sound;
 
@@ -129,59 +128,69 @@ typedef struct Sound {
 
 #define SNACK_NEW_SOUND	 1
 #define SNACK_MORE_SOUND 2
+#define SNACK_DESTROY_SOUND 3
+
+#define SNACK_SINGLE_PREC 1
+#define SNACK_DOUBLE_PREC 2
 
 extern int Snack_SoundCmd(ClientData cdata, Tcl_Interp *interp,
 			  int objc, Tcl_Obj *CONST objv[]);
+
 extern void Snack_SoundDeleteCmd(ClientData cdata);
+
 extern int Snack_AudioCmd(ClientData cdata, Tcl_Interp *interp,
 			  int objc, Tcl_Obj *CONST objv[]);
+
 extern void Snack_AudioDeleteCmd(ClientData cdata);
+
 extern int Snack_MixerCmd(ClientData cdata, Tcl_Interp *interp, int objc,
 			  Tcl_Obj *CONST objv[]);
+
 extern void Snack_MixerDeleteCmd(ClientData clientData);
 
 #define MAXNBLKS 200
-#define SEXP 18
-#define CEXP (SEXP+1)
-#define SBLKSIZE (1<<SEXP)
+#define FEXP 17
+#define CEXP (FEXP+2)
+#define DEXP (FEXP-1)
+#define FBLKSIZE (1<<FEXP)
+#define DBLKSIZE (1<<DEXP)
 #define CBLKSIZE (1<<CEXP)
 
-#define SSAMPLE(s, i) (s)->blocks[(i)>>SEXP][((i)&(SBLKSIZE-1))]
-#define UCSAMPLE(s, i) ((unsigned char **)(s)->blocks)[(i)>>CEXP][((i)&(CBLKSIZE-1))]
-#define CSAMPLE(s, i) ((char **)(s)->blocks)[(i)>>CEXP][((i)&(CBLKSIZE-1))]
+#define FSAMPLE(s, i) (s)->blocks[(i)>>FEXP][((i)&(FBLKSIZE-1))]
+#define DSAMPLE(s, i) ((double **)(s)->blocks)[(i)>>DEXP][((i)&(DBLKSIZE-1))]
 
-#define Snack_SetSample(s, c, i, val) if ((s)->sampformat == LIN16) { \
-                                     SSAMPLE((s),(i)*(s)->nchannels+(c)) = (val); \
-                                   } else if ((s)->sampformat == MULAW) { \
-                                     UCSAMPLE((s),(i)*(s)->nchannels+(c)) = Snack_Lin2Mulaw(val); \
-                                   } else if ((s)->sampformat == ALAW) { \
-                                     UCSAMPLE((s),(i)*(s)->nchannels+(c)) = Snack_Lin2Alaw(val); \
-                                   } else if ((s)->sampformat==LIN8OFFSET) { \
-                                     UCSAMPLE((s),(i)*(s)->nchannels+(c)) = (unsigned char)(val); \
-                                   } else if ((s)->sampformat == LIN8) { \
-                                     CSAMPLE((s),(i)*(s)->nchannels+(c)) = (char)(val); \
-                                   }
-#define Snack_GetSample(s, c, i) (\
- ((s)->sampformat == LIN16) ? SSAMPLE((s), (i)*(s)->nchannels+(c)): \
- (((s)->sampformat == MULAW) ? Snack_Mulaw2Lin(UCSAMPLE(s, (i)*(s)->nchannels+(c))): \
- ((((s)->sampformat == ALAW) ? Snack_Alaw2Lin(UCSAMPLE(s, (i)*(s)->nchannels+(c))): \
- (((((s)->sampformat == LIN8OFFSET) ? UCSAMPLE(s, (i)*(s)->nchannels+(c)):\
-    CSAMPLE(s, (i)*(s)->nchannels+(c)))))))))
+#define Snack_SetSample(s, c, i, val) \
+                 if ((s)->precision == SNACK_DOUBLE_PREC) { \
+                   DSAMPLE((s),(i)*(s)->nchannels+(c)) = (double) (val); \
+       	         } else { \
+		   FSAMPLE((s),(i)*(s)->nchannels+(c)) = (float) (val); \
+	         }
 
-#define Snack_SetLength(s, len) (s)->length = (len)
-#define Snack_GetLength(s)      (s)->length
-#define Snack_SetFrequency(s, freq) (s)->sampfreq = (freq)
-#define Snack_GetFrequency(s)       (s)->sampfreq
-#define Snack_SetSampleFormat(s, fmt) (s)->sampformat = (fmt)
-#define Snack_GetSampleFormat(s)      (s)->sampformat
+#define Snack_GetSample(s, c, i) ( \
+ ((s)->precision == SNACK_DOUBLE_PREC) ? \
+     DSAMPLE((s), (i)*(s)->nchannels+(c)): \
+     FSAMPLE(s, (i)*(s)->nchannels+(c)))
+
+#define Snack_SetLength(s, len)        (s)->length = (len)
+#define Snack_GetLength(s)             (s)->length
+#define Snack_SetSampleRate(s, rate)   (s)->samprate = (rate)
+#define Snack_GetSampleRate(s)         (s)->samprate
+#define Snack_SetFrequency(s, rate)    (s)->samprate = (rate)
+#define Snack_GetFrequency(s)          (s)->samprate
+#define Snack_SetSampleEncoding(s, en) (s)->encoding = (en)
+#define Snack_GetSampleEncoding(s)     (s)->encoding
+#define Snack_SetSampleFormat(s, en)   (s)->encoding = (en)
+#define Snack_GetSampleFormat(s)       (s)->encoding
 #define Snack_SetNumChannels(s, nchan) (s)->nchannels = (nchan)
 #define Snack_GetNumChannels(s)        (s)->nchannels
-#define Snack_GetBytesPerSample(s) (s)->sampsize
-#define Snack_SetBytesPerSample(s, n) (s)->sampsize = (n)
-#define Snack_GetDebugFlag(s) (s)->debug
-#define Snack_SetHeaderSize(s, size) (s)->headSize = (size)
-#define Snack_GetSoundFilename(s) (s)->fcname
-#define Snack_GetSoundStatus(s) (s)->active
+#define Snack_GetBytesPerSample(s)     (s)->sampsize
+#define Snack_SetBytesPerSample(s, n)  (s)->sampsize = (n)
+#define Snack_GetDebugFlag(s)          (s)->debug
+#define Snack_SetHeaderSize(s, size)   (s)->headSize = (size)
+#define Snack_GetSoundFilename(s)      (s)->fcname
+#define Snack_GetSoundWriteStatus(s)   (s)->writeStatus
+#define Snack_GetSoundReadStatus(s)    (s)->readStatus
+#define Snack_GetSoundPrecision(s)     (s)->precision
 
 #define SOUND_IN_MEMORY 0
 #define SOUND_IN_CHANNEL  1
@@ -201,54 +210,108 @@ typedef void *Snack_DelCmdProc;
 #define SNACK_AUDIO_CMD	2
 #define SNACK_MIXER_CMD	3
 
-#define HEADBUF 1024
+#define HEADBUF 4096
 
 extern char *LoadSound(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj,
 		       int startpos, int endpos);
+
 extern int SaveSound(Sound *s, Tcl_Interp *interp, char *filename,
 		     Tcl_Obj *obj, int startpos, int len, char *type);
+
 extern int GetChannels(Tcl_Interp *interp, Tcl_Obj *obj, int *nchannels);
-extern int GetFormat(Tcl_Interp *interp, Tcl_Obj *obj, 
-		     int *sampformat, int *sampsize);
-extern long SwapLong(long l);
+
+extern int GetEncoding(Tcl_Interp *interp, Tcl_Obj *obj, 
+		       int *encoding, int *sampsize);
+
+extern float Snack_SwapFloat(float f);
+
+extern double Snack_SwapDouble(double d);
+
 extern void ByteSwapSound(Sound *s);
+
 extern void SwapIfBE(Sound *s);
+
 extern void SwapIfLE(Sound *s);
+
 extern int GetHeader(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj);
-extern void PutHeader(Sound *s);
+
+extern int PutHeader(Sound *s, Tcl_Interp *interp, int length);
+
 extern int WriteLELong(Tcl_Channel ch, long l);
+
 extern int WriteBELong(Tcl_Channel ch, long l);
+
 extern int SetFcname(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj);
+
 extern char *NameGuessFileType(char *s);
-extern void AddSnackNativeFormats();
+
+extern void SnackDefineFileFormats(Tcl_Interp *interp);
+
 extern int GetFileFormat(Tcl_Interp *interp, Tcl_Obj *obj, char **filetype);
+
+extern void SnackCopySamples(Sound *dest, int to, Sound *src, int from,
+			     int len);
+
 typedef char *(guessFileTypeProc)(char *buf, int len);
+
 typedef int  (getHeaderProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
 			     Tcl_Obj *obj, char *buf);
+
 typedef char *(extensionFileTypeProc)(char *buf);
-typedef int  (putHeaderProc)(Sound *s, Tcl_Channel ch, Tcl_Obj *obj, int len);
-typedef int  (openProc)(Sound *s, Tcl_Interp *interp,Tcl_Channel *ch,char *mode);
+
+typedef int  (putHeaderProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
+			     Tcl_Obj *obj, int length);
+
+typedef int  (openProc)(Sound *s, Tcl_Interp *interp,Tcl_Channel *ch,
+			char *mode);
+
 typedef int  (closeProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel *ch);
-typedef int  (readSamplesProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf, char *obuf, int len);
+
+typedef int  (readSamplesProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
+			       char *inBuffer, float *outBuffer, int length);
+
 typedef int  (writeSamplesProc)(Sound *s, Tcl_Channel ch, Tcl_Obj *obj,
-				char *buf, int len);
-typedef int  (seekProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, int pos);
+				float *buffer, int length);
 
-typedef struct jkFileFormat {
+typedef int  (seekProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
+			int position);
+
+typedef void (freeHeaderProc)(Sound *s);
+
+/* Deprecated: SnackFileFormat */
+
+typedef struct SnackFileFormat {
   char *formatName;
-  guessFileTypeProc     *guessProc;
-  getHeaderProc         *getHeaderProc;
-  extensionFileTypeProc *extProc;
-  putHeaderProc         *putHeaderProc;
-  openProc              *openProc;
-  closeProc             *closeProc;
-  readSamplesProc       *readProc;
-  writeSamplesProc      *writeProc;
-  seekProc              *seekProc;
-  struct jkFileFormat   *next;
-} jkFileFormat;
+  guessFileTypeProc      *guessProc;
+  getHeaderProc          *getHeaderProc;
+  extensionFileTypeProc  *extProc;
+  putHeaderProc          *putHeaderProc;
+  openProc               *openProc;
+  closeProc              *closeProc;
+  readSamplesProc        *readProc;
+  writeSamplesProc       *writeProc;
+  seekProc               *seekProc;
+  freeHeaderProc         *freeHeaderProc;
+  struct SnackFileFormat *nextPtr;
+} SnackFileFormat;
 
-extern int GuessFormat(Sound *s, unsigned char *buf, int len);
+typedef struct Snack_FileFormat {
+  char                    *name;
+  guessFileTypeProc       *guessProc;
+  getHeaderProc           *getHeaderProc;
+  extensionFileTypeProc   *extProc;
+  putHeaderProc           *putHeaderProc;
+  openProc                *openProc;
+  closeProc               *closeProc;
+  readSamplesProc         *readProc;
+  writeSamplesProc        *writeProc;
+  seekProc                *seekProc;
+  freeHeaderProc          *freeHeaderProc;
+  struct Snack_FileFormat *nextPtr;
+} Snack_FileFormat;
+
+extern int GuessEncoding(Sound *s, unsigned char *buf, int len);
+
 extern char *GuessFileType(char *buf, int len, int eof);
 
 extern int lengthCmd(Sound *s, Tcl_Interp *interp, int objc,
@@ -281,6 +344,18 @@ extern int writeCmd(Sound *s, Tcl_Interp *interp, int objc,
 		    Tcl_Obj *CONST objv[]);
 extern int dataCmd(Sound *s, Tcl_Interp *interp, int objc,
 		   Tcl_Obj *CONST objv[]);
+extern int playCmd(Sound *s, Tcl_Interp *interp, int objc,
+		   Tcl_Obj *CONST objv[]);
+extern int recordCmd(Sound *s, Tcl_Interp *interp, int objc,
+		     Tcl_Obj *CONST objv[]);
+extern int pauseCmd(Sound *s, Tcl_Interp *interp, int objc,
+		    Tcl_Obj *CONST objv[]);
+extern int stopCmd(Sound *s, Tcl_Interp *interp, int objc,
+		   Tcl_Obj *CONST objv[]);
+extern int current_positionCmd(Sound *s, Tcl_Interp *interp, int objc,
+			       Tcl_Obj *CONST objv[]);
+extern int swapCmd(Sound *s, Tcl_Interp *interp, int objc,
+		   Tcl_Obj *CONST objv[]);
 
 #define QUE_STRING "QUE"
 #define RAW_STRING "RAW"
@@ -293,15 +368,23 @@ extern int dataCmd(Sound *s, Tcl_Interp *interp, int objc,
 #define CSL_STRING "CSL"
 
 extern char *GuessMP3File(char *buf, int len);
+
 extern int GetMP3Header(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
 			Tcl_Obj *obj, char *buf);
+
 extern int ReadMP3Samples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
-			  char *ibuf, char *obuf, int len);
+			  char *ibuf, float *obuf, int len);
+
 extern int SeekMP3File(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, int pos);
+
 extern char *ExtMP3File(char *s);
 
-#define NMAX 4096
-#define NMIN 8
+extern int OpenMP3File(Sound *s, Tcl_Interp *interp, Tcl_Channel *ch,
+		       char *mode);
+
+extern int CloseMP3File(Sound *s, Tcl_Interp *interp, Tcl_Channel *ch);
+
+extern void FreeMP3Header(Sound *s);
 
 typedef enum {
   SNACK_WIN_HAMMING,
@@ -328,7 +411,7 @@ extern int reverseCmd(Sound *s, Tcl_Interp *interp, int objc,
 
 #define ITEMBUFFERSIZE 100000
 
-extern short GetSample(SnackLinkedFileInfo *infoPtr, int index);
+extern float GetSample(SnackLinkedFileInfo *infoPtr, int index);
 
 extern int OpenLinkedFile(Sound *s, SnackLinkedFileInfo *infoPtr);
 
@@ -336,66 +419,27 @@ extern void CloseLinkedFile(SnackLinkedFileInfo *infoPtr);
 
 extern void Snack_ExitProc(ClientData clientData);
 
+typedef enum {
+  SNACK_QS_QUEUED = 0,
+  SNACK_QS_PAUSED,
+  SNACK_QS_DRAIN,
+  SNACK_QS_DONE
+} queuedSoundStatus;
+
 typedef struct jkQueuedSound {
   Sound *sound;
   int startPos;
-  int totLen;
+  int endPos;
+  int nWritten;
+  int startTime;
   Tcl_Obj *cmdPtr;
-  int done;
+  queuedSoundStatus status;
   int execd;
-  int id;
+  char *name;
+  char *filterName;
   struct jkQueuedSound *next;
+  struct jkQueuedSound *prev;
 } jkQueuedSound;
-
-/*
-extern Sound *Snack_NewSound(int frequency, int format, int nchannels);
-extern void Snack_PutSoundData(Sound *s, int pos, void *buf, int nBytes);
-extern void Snack_GetSoundData(Sound *s, int pos, void *buf, int nBytes);
-
-extern void Snack_InitWindow(float *hamwin, int winlen, int fftlen, int type);
-extern int  Snack_InitFFT(int n);
-extern void Snack_DBPowerSpectrum(float *x);
-
-extern int Snack_ProgressCallback(Tcl_Obj *cmd, Tcl_Interp *interp, char *type,
-				  double fraction);
-extern int  Snack_AddCallback(Sound *s, updateProc *proc, ClientData cd);
-extern void Snack_RemoveCallback(Sound *s, int id);
-extern void Snack_ExecCallbacks(Sound *s, int flag);
-
-extern void Snack_WriteLog(char *s);
-extern void Snack_WriteLogInt(char *s, int n);
-
-extern int Snack_AddSubCmd(int snackCmd, char *cmdName, 
-				    Snack_CmdProc *cmdProc,
-				    Snack_DelCmdProc *delCmdProc);
-extern Sound *Snack_GetSound(Tcl_Interp *interp, char *name);
-extern void Snack_StopSound(Sound *s, Tcl_Interp *interp);
-extern int Snack_ResizeSoundStorage(Sound *s, int len);
-
-extern short Snack_Alaw2Lin(unsigned char a_val);
-extern short Snack_Mulaw2Lin(unsigned char u_val);
-extern unsigned char Snack_Lin2Alaw(short pcm_val);
-extern unsigned char Snack_Lin2Mulaw(short pcm_val);
-extern void Snack_UpdateExtremes(Sound *s, int start, int end, int flag);
-extern void Snack_DeleteSound(Sound *s);
-extern short Snack_SwapShort(short s);
-extern int Snack_AddFileFormat(char *formatName,
-			       guessFileTypeProc *guessProc,
-			       getHeaderProc *getHeadProc,
-			       extensionFileTypeProc *extProc,
-			       putHeaderProc *putHeadProc,
-			       openProc *openProc,
-			       closeProc *closeProc,
-			       readSamplesProc *readSamplesProc,
-			       writeSamplesProc *writeSamplesProc,
-			       seekProc *seekProc);
-extern int SnackOpenFile(openProc *openProc, Sound *s, Tcl_Interp *interp,
-			 Tcl_Channel *ch, char *mode);
-extern int SnackSeekFile(seekProc *seekProc, Sound *s, Tcl_Interp *interp,
-			 Tcl_Channel ch, int pos);
-extern int SnackCloseFile(closeProc *closeProc, Sound *s, Tcl_Interp *interp,
-			  Tcl_Channel *ch);
-*/
 
 extern int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 		    Tcl_Obj *CONST objv[]);
@@ -405,6 +449,78 @@ extern int dataSamplesCmd(Sound *s, Tcl_Interp *interp, int objc,
 
 extern int strcasecmp(const char *s1, const char *s2);
 extern int strncasecmp(const char *s1, const char *s2, size_t n);
+
+extern int Snack_FilterCmd(ClientData cdata, Tcl_Interp *interp, int objc,
+			   Tcl_Obj *CONST objv[]);
+
+extern void Snack_FilterDeleteCmd(ClientData clientData);
+
+typedef struct SnackFilter     *Snack_Filter;
+typedef struct SnackStreamInfo *Snack_StreamInfo;
+
+typedef Snack_Filter (createProc)(Tcl_Interp *interp, int objc,
+				    Tcl_Obj *CONST objv[]);
+
+typedef int (configProc)(Snack_Filter f, Tcl_Interp *interp, int objc,
+			 Tcl_Obj *CONST objv[]);
+
+typedef int (startProc)(Snack_Filter f, Snack_StreamInfo si);
+
+typedef int (flowProc)(Snack_Filter f, Snack_StreamInfo si,
+		       float *inBuffer, float *outBuffer,
+		       int *inFrames, int *outFrames);
+
+typedef void (freeProc)(Snack_Filter f);
+
+typedef struct SnackStreamInfo {
+  Sound *is1;
+  Sound *is2;
+  Sound *os1;
+  Sound *os2;
+  int streamWidth;
+  int outWidth;
+  int rate;
+} SnackStreamInfo;
+
+typedef struct SnackFilter {
+  configProc *configProc;
+  startProc  *startProc;
+  flowProc   *flowProc;
+  freeProc   *freeProc;
+  Tcl_Interp *interp;
+  Snack_Filter prev;
+  Snack_Filter next;
+  Snack_StreamInfo si;
+  double dataRatio;
+  int reserved[4];
+} SnackFilter;
+
+typedef struct Snack_FilterType {
+  char               *name;
+  createProc         *createProc;
+  configProc         *configProc;
+  startProc          *startProc;
+  flowProc           *flowProc;
+  freeProc           *freeProc;
+  struct Snack_FilterType *nextPtr;
+} Snack_FilterType;
+
+void SnackCreateFilterTypes(Tcl_Interp *interp);
+
+extern int WriteSound(writeSamplesProc *writeProc, Sound *s,
+		      Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
+		      int startpos, int len, int hdsize);
+
+#ifndef MAC
+#  define PBSIZE 100000
+#  define NMAX 16384
+#else
+#  define PBSIZE 64000
+#  define NMAX 8192
+#endif
+#define NMIN 8
+
+extern void SnackPauseAudio();
 
 /*
  * Include the public function declarations that are accessible via

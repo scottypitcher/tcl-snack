@@ -1,7 +1,7 @@
 # Commands covered: sound pitch
 #
 
-package require -exact snack 1.7
+package require -exact snack 2.0
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -21,6 +21,24 @@ test pitch-1.2 {pitch command} {
   $s destroy
   set res
 } {141.0 133.0}
+
+test pitch-2.1 {pitch command, with missing argument for -start option} {
+  set s [snack::sound snd -load ex1.wav]
+  catch {$s pitch -start} msg
+  $s destroy
+  set msg
+} {No argument given for -start option}
+
+test pitch-3.1 {pitch command, -progress option} {
+  set res ""
+  proc prog {msg frac} {
+    lappend ::res [expr 0.1 * int(10*$frac)]
+  }
+  set s [snack::sound snd -load ex1.wav]
+  $s pitch -progress prog
+  $s destroy
+  set res
+} {0.0 0.2 0.4 0.6 0.8 1.0}
 
 # cleanup
 ::tcltest::cleanupTests

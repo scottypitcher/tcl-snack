@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -53,10 +53,25 @@ devicesCmd(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 static int
 selectCmd(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  int i, n, found = 0;
+  char *arr[MAX_NUM_DEVICES];
+  char *devstr;
+
+  n = SnackGetMixerDevices(arr, MAX_NUM_DEVICES);
+
   if (objc == 3) {
-    strncpy(defaultMixerDevice, Tcl_GetStringFromObj(objv[2], NULL), 
-	    MAX_DEVICE_NAME_LENGTH);
-    defaultMixerDevice[MAX_DEVICE_NAME_LENGTH-1] = '\0';
+    devstr = Tcl_GetStringFromObj(objv[2], NULL);
+    for (i = 0; i < n; i++) {
+      if (strncmp(devstr, arr[i], strlen(devstr)) == 0 && found == 0) {
+	strcpy(defaultMixerDevice, arr[i]);
+	found = 1;
+      }
+      ckfree(arr[i]);
+    }
+    if (found == 0) {
+      Tcl_AppendResult(interp, "No such device: ", devstr, (char *) NULL);
+      return TCL_ERROR;
+    }
   } else {
     Tcl_WrongNumArgs(interp, 1, objv, "select device");
     return TCL_ERROR;

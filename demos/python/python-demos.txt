@@ -1,0 +1,17 @@
+Included Python demos
+--------------------------------------------------------------------------
+
+widget.py
+The basic Snack demonstrator.
+
+MinWave.py
+Minimal waveform example
+
+MinSect.py
+Minimal section example
+
+MinSpeg.py
+Minimal spectrogram example
+
+echo.py
+Demo of echo filter with interactive parameter modification.

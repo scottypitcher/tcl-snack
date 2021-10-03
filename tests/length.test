@@ -1,7 +1,7 @@
 # Commands covered: sound length
 #
 
-package require -exact snack 1.7
+package require -exact snack 2.0
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -38,6 +38,31 @@ test length-1.4 {length command, get length in seconds} {
   $s destroy
   set res
 } {1.0}
+
+test length-1.5 {length command, set length for linked sound} {
+  set s [snack::sound snd -file ""]
+  catch {$s length 1000000} msg
+  $s destroy
+  set msg
+} {setting sound length only works with in-memory sounds}
+
+test length-2.1 {length command, set length in samples, change channels} {
+  set s [snack::sound snd -channels 2]
+  $s length 1000000
+  $s configure -channels 1
+  set res [$s length]
+  $s destroy
+  set res
+} {2000000}
+
+test length-2.2 {length command, set length in samples, change channels} {
+  set s [snack::sound snd -channels 1]
+  $s length 900000
+  $s configure -channels 9
+  set res [$s length]
+  $s destroy
+  set res
+} {100000}
 
 # cleanup
 ::tcltest::cleanupTests

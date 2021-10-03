@@ -15,13 +15,13 @@
  * the version string for Snack.
  */
 
-#define SCRIPT_MAJOR_VERSION 1		/* Major number */
-#define SCRIPT_MINOR_VERSION  7		/* Minor number */
-#define SCRIPT_RELEASE_SERIAL  0	/* Really minor number! */
-#define RELEASE_LEVEL final			/* alpha, beta, or final */
-#define SCRIPT_VERSION "1.7"
-#define SCRIPT_PATCH_LEVEL "1.7.0"
-#define FINAL 1				/* Change to 1 if final version. */
+#define SCRIPT_MAJOR_VERSION  2		/* Major number */
+#define SCRIPT_MINOR_VERSION  0		/* Minor number */
+#define SCRIPT_RELEASE_SERIAL 0 	/* Really minor number! */
+#define RELEASE_LEVEL         final	/* alpha, beta, or final */
+#define SCRIPT_VERSION        "2.0"
+#define SCRIPT_PATCH_LEVEL    "2.0.7"
+#define FINAL                 1		/* Change to 1 if final version. */
 
 #if FINAL
 #   define MINOR_VERSION (SCRIPT_MINOR_VERSION * 16) + SCRIPT_RELEASE_SERIAL
@@ -42,7 +42,7 @@ resource 'vers' (2) {
 	SCRIPT_MAJOR_VERSION, MINOR_VERSION,
 	RELEASE_LEVEL, 0x00, verUS,
 	SCRIPT_PATCH_LEVEL,
-	"Snack " SCRIPT_PATCH_LEVEL " © 1997-2000"
+	"Snack " SCRIPT_PATCH_LEVEL " © 1997-2001"
 };
 
 /*
@@ -56,7 +56,7 @@ resource 'STR ' (-16397, purgeable) {
 	"Snack\n\n"
 	"This library is a sound extension "
 	"for Tcl/Tk programs.  To work properly, it "
-	"should be placed in the ŒTool Command Language¹ folder "
+	"should be placed in the Tool Command Language folder "
 	"within the Extensions folder."
 };
 
@@ -70,12 +70,5 @@ resource 'STR ' (-16397, purgeable) {
 #else
   #define TARGET "CFM68K"
 #endif
-
-/*
-data 'TEXT' (4000,"pkgIndex",purgeable,preload) {
-	"# Tcl package index file, version 1.7\n"
-	"package ifneeded snack 1.7 [list source [file join $dir snackPkgInit.tcl]]\n"
-};
-*/
 
 read 'TEXT' (4000,"pkgIndex",purgeable,preload) "snack.res";

@@ -28,11 +28,11 @@
 /* Slot 0 is reserved */
 /* Slot 1 is reserved */
 /* 2 */
-EXTERN int		Snack_AddSubCmd (int snackCmd, char * cmdName, 
-				Snack_CmdProc * cmdProc, 
-				Snack_DelCmdProc * delCmdProc);
+EXTERN int		Snack_AddSubCmd _ANSI_ARGS_((int snackCmd, 
+				char * cmdName, Snack_CmdProc * cmdProc, 
+				Snack_DelCmdProc * delCmdProc));
 /* 3 */
-EXTERN int		Snack_AddFileFormat (char * formatName, 
+EXTERN int		Snack_AddFileFormat _ANSI_ARGS_((char * formatName, 
 				guessFileTypeProc * guessProc, 
 				getHeaderProc * GetHeaderProc, 
 				extensionFileTypeProc * extProc, 
@@ -40,71 +40,86 @@ EXTERN int		Snack_AddFileFormat (char * formatName,
 				openProc * OpenProc, closeProc * CloseProc, 
 				readSamplesProc * ReadSamplesProc, 
 				writeSamplesProc * WriteSamplesProc, 
-				seekProc * SeekProc);
+				seekProc * SeekProc));
 /* 4 */
-EXTERN int		Snack_AddCallback (Sound * s, updateProc * proc, 
-				ClientData cd);
+EXTERN int		Snack_AddCallback _ANSI_ARGS_((Sound * s, 
+				updateProc * proc, ClientData cd));
 /* 5 */
-EXTERN void		Snack_RemoveCallback (Sound * s, int id);
+EXTERN void		Snack_RemoveCallback _ANSI_ARGS_((Sound * s, int id));
 /* 6 */
-EXTERN void		Snack_ExecCallbacks (Sound * s, int flag);
+EXTERN void		Snack_ExecCallbacks _ANSI_ARGS_((Sound * s, int flag));
 /* 7 */
-EXTERN void		Snack_UpdateExtremes (Sound * s, int start, int end, 
-				int flag);
+EXTERN void		Snack_UpdateExtremes _ANSI_ARGS_((Sound * s, 
+				int start, int end, int flag));
 /* 8 */
-EXTERN Sound *		Snack_GetSound (Tcl_Interp * interp, char * name);
+EXTERN Sound *		Snack_GetSound _ANSI_ARGS_((Tcl_Interp * interp, 
+				char * name));
 /* 9 */
-EXTERN Sound *		Snack_NewSound (int frequency, int format, 
-				int nchannels);
+EXTERN Sound *		Snack_NewSound _ANSI_ARGS_((int frequency, 
+				int format, int nchannels));
 /* 10 */
-EXTERN int		Snack_ResizeSoundStorage (Sound * s, int len);
+EXTERN int		Snack_ResizeSoundStorage _ANSI_ARGS_((Sound * s, 
+				int len));
 /* 11 */
-EXTERN void		Snack_DeleteSound (Sound * s);
+EXTERN void		Snack_DeleteSound _ANSI_ARGS_((Sound * s));
 /* 12 */
-EXTERN void		Snack_PutSoundData (Sound * s, int pos, void * buf, 
-				int nBytes);
+EXTERN void		Snack_PutSoundData _ANSI_ARGS_((Sound * s, int pos, 
+				void * buf, int nBytes));
 /* 13 */
-EXTERN void		Snack_GetSoundData (Sound * s, int pos, void * buf, 
-				int nBytes);
+EXTERN void		Snack_GetSoundData _ANSI_ARGS_((Sound * s, int pos, 
+				void * buf, int nBytes));
 /* 14 */
-EXTERN unsigned char	Snack_Lin2Alaw (short pcm_val);
+EXTERN unsigned char	Snack_Lin2Alaw _ANSI_ARGS_((short pcm_val));
 /* 15 */
-EXTERN unsigned char	Snack_Lin2Mulaw (short pcm_val);
+EXTERN unsigned char	Snack_Lin2Mulaw _ANSI_ARGS_((short pcm_val));
 /* 16 */
-EXTERN short		Snack_Alaw2Lin (unsigned char a_val);
+EXTERN short		Snack_Alaw2Lin _ANSI_ARGS_((unsigned char a_val));
 /* 17 */
-EXTERN short		Snack_Mulaw2Lin (unsigned char u_val);
+EXTERN short		Snack_Mulaw2Lin _ANSI_ARGS_((unsigned char u_val));
 /* 18 */
-EXTERN short		Snack_SwapShort (short s);
+EXTERN short		Snack_SwapShort _ANSI_ARGS_((short s));
 /* 19 */
-EXTERN int		SnackSeekFile (seekProc * SeekProc, Sound * s, 
-				Tcl_Interp * interp, Tcl_Channel ch, int pos);
+EXTERN int		SnackSeekFile _ANSI_ARGS_((seekProc * SeekProc, 
+				Sound * s, Tcl_Interp * interp, 
+				Tcl_Channel ch, int pos));
 /* 20 */
-EXTERN int		SnackOpenFile (openProc * OpenProc, Sound * s, 
-				Tcl_Interp * interp, Tcl_Channel * ch, 
-				char * mode);
+EXTERN int		SnackOpenFile _ANSI_ARGS_((openProc * OpenProc, 
+				Sound * s, Tcl_Interp * interp, 
+				Tcl_Channel * ch, char * mode));
 /* 21 */
-EXTERN int		SnackCloseFile (closeProc * CloseProc, Sound * s, 
-				Tcl_Interp * interp, Tcl_Channel * ch);
+EXTERN int		SnackCloseFile _ANSI_ARGS_((closeProc * CloseProc, 
+				Sound * s, Tcl_Interp * interp, 
+				Tcl_Channel * ch));
 /* 22 */
-EXTERN void		Snack_WriteLog (char * s);
+EXTERN void		Snack_WriteLog _ANSI_ARGS_((char * s));
 /* 23 */
-EXTERN void		Snack_WriteLogInt (char * s, int n);
+EXTERN void		Snack_WriteLogInt _ANSI_ARGS_((char * s, int n));
 /* 24 */
-EXTERN jkFileFormat *	Snack_GetFileFormats (void);
+EXTERN SnackFileFormat * Snack_GetFileFormats _ANSI_ARGS_((void));
 /* 25 */
-EXTERN void		Snack_InitWindow (float * hamwin, int winlen, 
-				int fftlen, int type);
+EXTERN void		Snack_InitWindow _ANSI_ARGS_((float * hamwin, 
+				int winlen, int fftlen, int type));
 /* 26 */
-EXTERN int		Snack_InitFFT (int n);
+EXTERN int		Snack_InitFFT _ANSI_ARGS_((int n));
 /* 27 */
-EXTERN int		Snack_DBPowerSpectrum (float * x);
+EXTERN int		Snack_DBPowerSpectrum _ANSI_ARGS_((float * x));
 /* 28 */
-EXTERN void		Snack_StopSound (Sound * s, Tcl_Interp * interp);
+EXTERN void		Snack_StopSound _ANSI_ARGS_((Sound * s, 
+				Tcl_Interp * interp));
 /* 29 */
-EXTERN int		Snack_ProgressCallback (Tcl_Obj * cmd, 
+EXTERN int		Snack_ProgressCallback _ANSI_ARGS_((Tcl_Obj * cmd, 
 				Tcl_Interp * interp, char * type, 
-				double fraction);
+				double fraction));
+/* 30 */
+EXTERN void		Snack_CreateFileFormat _ANSI_ARGS_((
+				Snack_FileFormat * typePtr));
+/* 31 */
+EXTERN long		Snack_SwapLong _ANSI_ARGS_((long s));
+/* 32 */
+EXTERN int		Snack_PlatformIsLittleEndian _ANSI_ARGS_((void));
+/* 33 */
+EXTERN void		Snack_CreateFilterType _ANSI_ARGS_((
+				Snack_FilterType * typePtr));
 
 typedef struct SnackStubs {
     int magic;
@@ -134,12 +149,16 @@ typedef struct SnackStubs {
     int (*snackCloseFile) _ANSI_ARGS_((closeProc * CloseProc, Sound * s, Tcl_Interp * interp, Tcl_Channel * ch)); /* 21 */
     void (*snack_WriteLog) _ANSI_ARGS_((char * s)); /* 22 */
     void (*snack_WriteLogInt) _ANSI_ARGS_((char * s, int n)); /* 23 */
-    jkFileFormat * (*snack_GetFileFormats) _ANSI_ARGS_((void)); /* 24 */
+    SnackFileFormat * (*snack_GetFileFormats) _ANSI_ARGS_((void)); /* 24 */
     void (*snack_InitWindow) _ANSI_ARGS_((float * hamwin, int winlen, int fftlen, int type)); /* 25 */
     int (*snack_InitFFT) _ANSI_ARGS_((int n)); /* 26 */
     int (*snack_DBPowerSpectrum) _ANSI_ARGS_((float * x)); /* 27 */
     void (*snack_StopSound) _ANSI_ARGS_((Sound * s, Tcl_Interp * interp)); /* 28 */
     int (*snack_ProgressCallback) _ANSI_ARGS_((Tcl_Obj * cmd, Tcl_Interp * interp, char * type, double fraction)); /* 29 */
+    void (*snack_CreateFileFormat) _ANSI_ARGS_((Snack_FileFormat * typePtr)); /* 30 */
+    long (*snack_SwapLong) _ANSI_ARGS_((long s)); /* 31 */
+    int (*snack_PlatformIsLittleEndian) _ANSI_ARGS_((void)); /* 32 */
+    void (*snack_CreateFilterType) _ANSI_ARGS_((Snack_FilterType * typePtr)); /* 33 */
 } SnackStubs;
 
 #ifdef __cplusplus
@@ -269,6 +288,22 @@ extern SnackStubs *snackStubsPtr;
 #ifndef Snack_ProgressCallback
 #define Snack_ProgressCallback \
 	(snackStubsPtr->snack_ProgressCallback) /* 29 */
+#endif
+#ifndef Snack_CreateFileFormat
+#define Snack_CreateFileFormat \
+	(snackStubsPtr->snack_CreateFileFormat) /* 30 */
+#endif
+#ifndef Snack_SwapLong
+#define Snack_SwapLong \
+	(snackStubsPtr->snack_SwapLong) /* 31 */
+#endif
+#ifndef Snack_PlatformIsLittleEndian
+#define Snack_PlatformIsLittleEndian \
+	(snackStubsPtr->snack_PlatformIsLittleEndian) /* 32 */
+#endif
+#ifndef Snack_CreateFilterType
+#define Snack_CreateFilterType \
+	(snackStubsPtr->snack_CreateFilterType) /* 33 */
 #endif
 
 #endif /* defined(USE_SNACK_STUBS) && !defined(USE_SNACK_STUB_PROCS) */

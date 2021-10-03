@@ -7,7 +7,6 @@
 # Copyright (c) 1998-1999 by Scriptics Corporation.
 # All rights reserved.
 # 
-# RCS: @(#) $Id: all.tcl,v 1.7 1999/06/29 20:14:17 jenn Exp $
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -48,5 +47,6 @@ foreach file [lsort [::tcltest::getMatchingFiles]] {
 # cleanup
 puts stdout "\nTests ended at [eval $timeCmd]"
 ::tcltest::cleanupTests 1
-return
+exit
+#return
 

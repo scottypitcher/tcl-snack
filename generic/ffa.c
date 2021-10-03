@@ -151,7 +151,7 @@ Snack_DBPowerSpectrum(float *z)
 	  &y[0], &y[1], &y[2], &y[3]);
     break;
   default:
-    fprintf (stderr, "-- Algorithm Error Snack_DBPowerSpectrum\n");
+    /*    fprintf (stderr, "-- Algorithm Error Snack_DBPowerSpectrum\n");*/
     exit (1);
   }
   for (i = 0; i < 15; i++) {

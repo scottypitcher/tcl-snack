@@ -2,7 +2,7 @@
 <html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-   <meta name="GENERATOR" content="Mozilla/4.6 [en] (X11; I; HP-UX B.10.20 9000/778) [Netscape]">
+   <meta name="GENERATOR" content="Mozilla/4.72 [en] (X11; U; Linux 2.2.14-5.0 i686) [Netscape]">
    <meta name="Author" content="Kåre Sjölander">
    <title>Snack library</title>
 </head>
@@ -11,41 +11,42 @@
 <center>
 <h1>
 <font face="Arial,Helvetica">Snack library functions</font></h1></center>
-<tt><font size=-1>This is the public API of Snack to be used by C/C++-level
-extensions. The functions are contained in Snack's stub library, libsnackstub1.6.a
-(unix), snackstub16.lib (win). Linking with this will make your extension
-usable with different versions of Snack without recompilation.</font></tt>
-<p><tt><font size=-1><a href="Callback.html">Snack_AddCallback</a></font></tt>
-<p><tt><font size=-1><a href="FileFormat.html">Snack_AddFileFormat</a></font></tt>
-<p><tt><font size=-1><a href="AddSubCmd.html">Snack_AddSubCmd</a></font></tt>
-<p><tt><font size=-1><a href="SampConv.html">Snack_Alaw2Lin</a></font></tt>
-<p><tt><font size=-1><a href="SoundObj.html">Snack_DeleteSound</a></font></tt>
-<p><tt><font size=-1><a href="Callback.html">Snack_ExecCallbacks</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_GetBytesPerSample</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_GetFrequency</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_GetLength</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_GetNumChannels</a></font></tt>
-<p><tt><font size=-1><a href="SoundSamp.html">Snack_GetSample</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_GetSampleFormat</a></font></tt>
-<p><tt><font size=-1><a href="SoundObj.html">Snack_GetSound</a></font></tt>
-<p><tt><font size=-1><a href="SoundData.html">Snack_GetSoundData</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_GetSoundFilename</a></font></tt>
-<p><tt><font size=-1><a href="SampConv.html">Snack_Lin2Alaw</a></font></tt>
-<p><tt><font size=-1><a href="SampConv.html">Snack_Lin2Mulaw</a></font></tt>
-<p><tt><font size=-1><a href="SampConv.html">Snack_Mulaw2Lin</a></font></tt>
-<p><tt><font size=-1><a href="SoundObj.html">Snack_NewSound</a></font></tt>
-<p><tt><font size=-1><a href="SoundData.html">Snack_PutSoundData</a></font></tt>
-<p><tt><font size=-1><a href="Callback.html">Snack_RemoveCallback</a></font></tt>
-<p><tt><font size=-1><a href="SoundObj.html">Snack_ResizeSoundStorage</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_SetBytesPerSample</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_SetFrequency</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_SetHeaderSize</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_SetLength</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_SetNumChannels</a></font></tt>
-<p><tt><font size=-1><a href="SoundSamp.html">Snack_SetSample</a></font></tt>
-<p><tt><font size=-1><a href="SoundProp.html">Snack_SetSampleFormat</a></font></tt>
-<p><tt><font size=-1><a href="SampConv.html">Snack_SwapShort</a></font></tt>
-<p><tt><font size=-1><a href="SoundObj.html">Snack_UpdateExtremes</a></font></tt>
+<tt>This is the public API of Snack to be used by C/C++-level extensions.
+The functions are contained in Snack's stub library, libsnackstub2.0.a
+(unix), snackstub20.lib (win). Linking with this will make your extension
+usable with different versions of Snack without recompilation.</tt><tt></tt>
+<p><tt><a href="Callback.html">Snack_AddCallback</a></tt><tt></tt>
+<p><tt><a href="AddSubCmd.html">Snack_AddSubCmd</a></tt><tt></tt>
+<p><tt><a href="SampConv.html">Snack_Alaw2Lin</a></tt><tt></tt>
+<p><tt><a href="CreateFilter.html">Snack_CreateFilterType</a></tt><tt></tt>
+<p><tt><a href="FileFormat.html">Snack_CreateFileFormat</a></tt><tt></tt>
+<p><tt><a href="SoundObj.html">Snack_DeleteSound</a></tt><tt></tt>
+<p><tt><a href="Callback.html">Snack_ExecCallbacks</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_GetBytesPerSample</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_GetFrequency</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_GetLength</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_GetNumChannels</a></tt><tt></tt>
+<p><tt><a href="SoundSamp.html">Snack_GetSample</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_GetSampleFormat</a></tt><tt></tt>
+<p><tt><a href="SoundObj.html">Snack_GetSound</a></tt><tt></tt>
+<p><tt><a href="SoundData.html">Snack_GetSoundData</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_GetSoundFilename</a></tt><tt></tt>
+<p><tt><a href="SampConv.html">Snack_Lin2Alaw</a></tt><tt></tt>
+<p><tt><a href="SampConv.html">Snack_Lin2Mulaw</a></tt><tt></tt>
+<p><tt><a href="SampConv.html">Snack_Mulaw2Lin</a></tt><tt></tt>
+<p><tt><a href="SoundObj.html">Snack_NewSound</a></tt><tt></tt>
+<p><tt><a href="SoundData.html">Snack_PutSoundData</a></tt><tt></tt>
+<p><tt><a href="Callback.html">Snack_RemoveCallback</a></tt><tt></tt>
+<p><tt><a href="SoundObj.html">Snack_ResizeSoundStorage</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_SetBytesPerSample</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_SetFrequency</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_SetHeaderSize</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_SetLength</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_SetNumChannels</a></tt><tt></tt>
+<p><tt><a href="SoundSamp.html">Snack_SetSample</a></tt><tt></tt>
+<p><tt><a href="SoundProp.html">Snack_SetSampleFormat</a></tt><tt></tt>
+<p><tt><a href="SampConv.html">Snack_SwapShort</a></tt><tt></tt>
+<p><tt><a href="SoundObj.html">Snack_UpdateExtremes</a></tt><tt></tt>
 <p>
 <hr WIDTH="100%">
 <p><b><font face="Arial,Helvetica"><font size=-1><a href="index.html">Snack

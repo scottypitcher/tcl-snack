@@ -1,8 +1,8 @@
 /* 
- * Copyright (C) 2000 Kåre Sjölander <kare@speech.kth.se>
+ * Copyright (C) 2001 Kåre Sjölander <kare@speech.kth.se>
  * Copyright (C) 1997 Philippe Langlais <felipe@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -25,8 +25,7 @@
 #include <string.h>
 #include <math.h>
 #include "tcl.h"
-#include "jkAudIO.h"
-#include "jkSound.h"
+#include "snack.h"
 
 /* ********************************************************************* */
 /*                LES PARAMETRES GLOBAUX DU DETECTEUR                    */
@@ -112,7 +111,8 @@ static RESULT	      *(Coeff_Amdf[cst_pics_amdf]);
 static ZONE          zone;
 static double	      *Hamming;
 static int           max_amdf,min_amdf,amplitude_amdf;
-static short         *Signal,*Nrj,*Dpz,*Vois,*Fo;
+static short         *Nrj,*Dpz,*Vois,*Fo;
+static float         *Signal;
 static int           **Resultat;
 
 
@@ -306,7 +306,7 @@ amdf(Sound *s, int i, int *Hammer, int *result, int nrj, int start)
   double coeff, delai;
   static double odelai[FILTRE_PASSE_BAS];
 
-  Snack_GetSoundData(s, start+i, Signal, s->sampsize * cst_length_hamming);
+  Snack_GetSoundData(s, start+i, Signal, cst_length_hamming);
 
   if (i == 0) {
     for (k = 0; k < FILTRE_PASSE_BAS; k++) {
@@ -318,7 +318,7 @@ amdf(Sound *s, int i, int *Hammer, int *result, int nrj, int start)
     delai = odelai[k];
     coeff = ( PI_2 * cst_freq_coupure ) / cst_freq_ech;
     for (j = 0; j < cst_length_hamming; j++) {
-      Signal[j] = (short) (delai = (double) (Signal[j] * coeff)
+      Signal[j] = (float) (delai = (double) (Signal[j] * coeff)
 			   + (delai * (1-coeff)));
     }
     odelai[k] = (double) Signal[cst_step_hamming-1];
@@ -762,7 +762,7 @@ static int calcul_nrj_dpz(Sound *s, Tcl_Interp *interp, int start,int longueur)
   for (trame=i=0; i<longueur; i += cst_step_hamming,trame++) {
     J = minimum(s->length,(i+cst_length_hamming));
     JJ = J-1;
-    Snack_GetSoundData(s, i+start, Signal, s->sampsize * cst_length_hamming);
+    Snack_GetSoundData(s, i+start, Signal, cst_length_hamming);
     
     /* ---- nrj ---- */
     for (nrj=0.0,j=0; j<J-i; j++) 
@@ -775,7 +775,7 @@ static int calcul_nrj_dpz(Sound *s, Tcl_Interp *interp, int start,int longueur)
     
     /* ---- dpz ---- */
     for (dpz=0,j=0; j<J-i; j++) {
-      while ( (j<J-i) && (abs(Signal[j]) > EPSILON) ) j++; /* looking just close to zero values */
+      while ( (j<J-i) && (abs((int)Signal[j]) > EPSILON) ) j++; /* looking just close to zero values */
       if (j<J-i) dpz ++;
       sens = ( ((j-1) >= 0) && (Signal[j-1] > Signal[j])); 
       if (sens) while ( (j<JJ-i) && (Signal[j] > Signal[j+1]) ) j++;
@@ -839,15 +839,17 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     START, END, F0MAX, F0MIN, PROGRESS
   };
 
-  if (s->sampformat != LIN16) {
-    Tcl_AppendResult(interp, "pitch only works with Lin16 sounds",
-		     (char *) NULL);
-    return TCL_ERROR;
-  }
+  if (s->debug > 0) { Snack_WriteLog("Enter pitchCmd\n"); }
+
   if (s->nchannels != 1) {
     Tcl_AppendResult(interp, "pitch only works with Mono sounds",
 		     (char *) NULL);
     return TCL_ERROR;
+  }
+
+  if (s->cmdPtr != NULL) {
+    Tcl_DecrRefCount(s->cmdPtr);
+    s->cmdPtr = NULL;
   }
 
   for (arg = 2; arg < objc; arg += 2) {
@@ -857,7 +859,13 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 			    "option", 0, &index) != TCL_OK) {
       return TCL_ERROR;
     }
-	
+
+    if (arg + 1 == objc) {
+      Tcl_AppendResult(interp, "No argument given for ",
+		       subOptionStrings[index], " option", (char *) NULL);
+      return TCL_ERROR;
+    }
+    
     switch ((enum subOptions) index) {
     case START:
       {
@@ -893,8 +901,12 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       }
     case PROGRESS:
       {
-	Tcl_IncrRefCount(objv[arg+1]);
-	s->cmdPtr = objv[arg+1];
+	char *str = Tcl_GetStringFromObj(objv[arg+1], NULL);
+	
+	if (strlen(str) > 0) {
+	  Tcl_IncrRefCount(objv[arg+1]);
+	  s->cmdPtr = objv[arg+1];
+	}
 	break;
       }
     }
@@ -909,18 +921,18 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   if (startpos > endpos) return TCL_OK;
 
   quick = lquick;
-  init(s->sampfreq, fmin, fmax);
+  init(s->samprate, fmin, fmax);
 
   start = startpos - (cst_length_hamming / 2);
   if (start < 0) start = 0;
   longueur = endpos - start + 1;
 
-  if ((Signal = (short *) ckalloc(s->sampsize * cst_length_hamming)) == NULL) {
+  if ((Signal = (float *) ckalloc(cst_length_hamming * sizeof(float))) == NULL) {
     Tcl_AppendResult(interp, "Couldn't allocate buffer!", NULL);
     return TCL_ERROR;
   }
 
-  /*  if (adjust) adjust_signal(longueur,s->sampfreq,s->debug);*/
+  /*  if (adjust) adjust_signal(longueur,s->samprate,s->debug);*/
 
   nb_trames = (longueur / cst_step_hamming) + 10;
   Nrj =  (short *) ckalloc(sizeof(short) * nb_trames);   
@@ -984,5 +996,8 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   ckfree((char *) Dpz);
   ckfree((char *) Vois);
   ckfree((char *) Fo);
+
+  if (s->debug > 0) { Snack_WriteLog("Exit pitchCmd\n"); }
+
   return TCL_OK;
 }

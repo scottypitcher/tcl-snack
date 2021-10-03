@@ -8,7 +8,7 @@ load libsquare[info sharedlibext]
 
 # Create a sound object
 
-snack::sound s -channels 2
+snack::sound s
 
 # Set its length to 10000 samples
 

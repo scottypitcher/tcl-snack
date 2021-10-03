@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -31,24 +31,24 @@ typedef struct SnackItemInfo {
   int    winlen;
   float  spacing;
   float  *hamwin;
-  double preemph;
+  float  preemph;
   int    BufPos;
   int    RestartPos;
   short  *frame[100];
   int    nfrms;
   int    frlen;
-  short  **blocks;
+  float  **blocks;
   Pixmap pixmap;
   int    nfft;
   int    fftmax;
   int    fftmin;
   int    debug;
-  int    sampfreq;
-  int    sampformat;
+  int    samprate;
+  int    encoding;
   int    nchannels;
   int    channel;
   int    channelSet;
-  int    abmax;
+  float  abmax;
   double bright;
   double contrast;
   double topfrequency;
@@ -97,6 +97,10 @@ extern int  CheckWinlen(Tcl_Interp *interp, int winlen);
 
 #if defined WIN || defined MAC
 #  define XFree(data) {if ((data) != NULL) ckfree((char *) (data));}
+#endif
+
+#if defined MAC
+#include <tclMacMath.h>
 #endif
 
 #define OptSpecified(option) (configSpecs[option].specFlags & TK_CONFIG_OPTION_SPECIFIED)

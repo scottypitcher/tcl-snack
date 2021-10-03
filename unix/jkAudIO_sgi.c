@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -456,19 +456,23 @@ AGetPlayGain()
   return(g);
 }
 
-void
-SnackAudioGetFormats(char *device, char *buf, int n)
+int
+SnackAudioGetEncodings(char *device)
 {
-  /*  strcpy(buf, "Lin16 Lin8");*/
-  strncpy(buf, "Lin16", n);
-  buf[n-1] = '\0';
+  return(LIN24 | LIN16);
 }
 
 void
-SnackAudioGetFrequencies(char *device, char *buf, int n)
+SnackAudioGetRates(char *device, char *buf, int n)
 {
   strncpy(buf, "8000 11025 16000 22050 32000 44100 48000", n);
   buf[n-1] = '\0';
+}
+
+int
+SnackAudioMaxNumberChannels(char *device)
+{
+  return(8);
 }
 
 void

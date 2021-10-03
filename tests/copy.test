@@ -1,7 +1,7 @@
 # Commands covered: sound copy
 #
 
-package require -exact snack 1.7
+package require -exact snack 2.0
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -17,6 +17,15 @@ test copy-1.1 {copy command} {
   $s2 destroy
   set res
 } {7443 779}
+
+test copy-1.2 {copy command, missing argument for -end option} {
+  set s1 [snack::sound snd1 -load ex1.wav]
+  set s2 [snack::sound snd2]
+  catch {$s2 copy $s1 -start 5000 -end} msg
+  $s1 destroy
+  $s2 destroy
+  set msg
+} {No argument given for -end option}
 
 # cleanup
 ::tcltest::cleanupTests

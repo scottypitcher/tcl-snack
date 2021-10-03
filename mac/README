@@ -1,12 +1,21 @@
-In order to use Snack you will have to install Tcl/Tk 8.3.0 first.
+In order to use Snack you will have to install Tcl/Tk 8.3 first.
 
-Building Snack
+Building Snack using MPW
 -------------------------------------------------------------------
-Snack can be compiled using Apple's free MPW compiler which can be downloaded
-at http://developer.apple.com/tools/mpw-tools/
+Snack can be compiled using Apple's free MPW compiler which can be
+downloaded from http://developer.apple.com/tools/mpw-tools/
 
 You will have to edit the makefile in order to specify the location of the
 Tcl/Tk include files which are part of the Tcl/Tk source distribution.
+
+
+Building Snack using Metrowerks CodeWarrior
+-------------------------------------------------------------------
+Building Snack using CodeWarrior is not as tested as with MPW.
+Use the CodeWarrior project file: snack.mcp.sit.hqx
+
+You will have to specify the location of the Tcl/Tk include files
+which are part of the Tcl/Tk source distribution.
 
 
 Installation
@@ -14,5 +23,9 @@ Installation
 You must put the file snack.shlb in the standard library location, 
 i.e. the "Tool Command Language" folder within the Extensions folder. 
 
-Known bugs:
-some mp3 files causes lock-up
+You have to give Tcl scripts ample memory. This is done by marking the
+wish icon and selecting Edit | Show info | Memory. 
+
+You also have to use the 'millions of colors' display setting in order
+to get spectrograms to display correctly. Failure to do this will cause
+the computer to lock up when running scripts that display spectrograms.

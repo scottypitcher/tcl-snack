@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000 Claude Barras
- * contribution to the Snack sound extension for Tcl/Tk
+ * contribution to the Snack Sound Toolkit
  */
  
 #include <stdlib.h>
@@ -9,10 +9,7 @@
 #include <math.h>
 #include "snack.h"
 
-#if defined Linux || defined WIN || defined _LITTLE_ENDIAN
-#  define LE
-#endif
-
+extern int littleEndian;
 extern int useOldObjAPI;
 
 typedef struct {
@@ -27,36 +24,21 @@ static short GetShortSample(Sound *s, long i, int c) {
       return 0;
    i = i * Snack_GetNumChannels(s) + c;
    if (s->storeType == SOUND_IN_MEMORY) {
-      switch (Snack_GetSampleFormat(s)) {
-      case LIN16:
-	 return SSAMPLE(s, i);
-      case ALAW:
-	 return Snack_Alaw2Lin(UCSAMPLE(s, i));
-      case MULAW:
-	 return Snack_Mulaw2Lin(UCSAMPLE(s, i));
-      case LIN8OFFSET:
-	 return ((char)UCSAMPLE(s, i) ^ 128) << 8;
-      case LIN8:
-	 return UCSAMPLE(s, i) << 8;
-      }
+     return (short) FSAMPLE(s, i);
    } else {
       if (s->linkInfo.linkCh == NULL) {
-	 OpenLinkedFile(s, &s->linkInfo);
+ 	 OpenLinkedFile(s, &s->linkInfo);
       }
-      switch (Snack_GetSampleFormat(s)) {
-      case LIN16:
-	 return GetSample(&s->linkInfo, i);
-      case ALAW:
-	 return Snack_Alaw2Lin((unsigned char)GetSample(&s->linkInfo, i));
-      case MULAW:
-	 return Snack_Mulaw2Lin((unsigned char)GetSample(&s->linkInfo, i));
-      case LIN8OFFSET:
-	 return (GetSample(&s->linkInfo, i) ^ 128) << 8;
-      case LIN8:
-	 return GetSample(&s->linkInfo, i) << 8;
-      }
+ 	 return (short) GetSample(&s->linkInfo, i);
    }
    return 0;
+}
+
+static void SetShortSample(Sound *s, long i, int c, short val) {
+  if (i >= Snack_GetLength(s) || s->storeType != SOUND_IN_MEMORY)
+    return;
+  i = i * Snack_GetNumChannels(s) + c;
+  FSAMPLE(s, i) = (float) val;
 }
 
 /* --------------------------------------------------------------------- */
@@ -66,7 +48,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 {
   int arg, width = 0, pps = 0, startpos = 0, endpos = -1, check = 0;
   int byteOrder = SNACK_NATIVE;
-  int sampformat, sampsize;
+  int encoding, sampsize;
   Sound *shp = NULL, *preshp = NULL;
   long k0, k1;
   int i, c, first, nc, nbytes = 0, mn, mx;
@@ -105,7 +87,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
       
     /* default values for the sound target case */
     pps = 100;
-    sampformat = Snack_GetSampleFormat(s);
+    encoding = Snack_GetSampleEncoding(s);
     sampsize = Snack_GetBytesPerSample(s);
 
     for (arg = 3; arg < objc; arg += 2) {
@@ -134,7 +116,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 	}
       case FORMAT:
 	{
-	  if (GetFormat(interp, objv[arg+1], &sampformat, &sampsize) != TCL_OK)
+	  if (GetEncoding(interp, objv[arg+1], &encoding, &sampsize) != TCL_OK)
 	    return TCL_ERROR;
 	  break;
 	}
@@ -219,7 +201,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 
   /* Characteristics of 'shaped' sound */
   nc = Snack_GetNumChannels(s);
-  Fe = Snack_GetFrequency(s);
+  Fe = Snack_GetSampleRate(s);
 
   /* Adjust boundaries to fit the sound and satisfy the constraint: */
   /*    len = (endpos-startpos+1)/Fe = width/pps */
@@ -227,7 +209,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
   if (width > 0 && pps > 0) {
     endpos = startpos + (int) (Fe * width / (float) pps - 1);
   }
-  if (endpos >= (Snack_GetLength(s) - 1) || endpos == -1)
+  if (/* endpos >= (Snack_GetLength(s) - 1) || */ endpos == -1)
     endpos = Snack_GetLength(s) - 1;
   begin = (double) startpos / Fe;
   len = (double) (endpos - startpos + 1) / Fe;
@@ -241,10 +223,10 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 
   /* Only checks if existing shape seems compatible with sound then exits */
   if (shp && check) {
-     float shpLen = (float) Snack_GetLength(shp) / Snack_GetFrequency(shp);
+     float shpLen = (float) Snack_GetLength(shp) / Snack_GetSampleRate(shp);
      if (Snack_GetNumChannels(shp) == 2 * nc
 	 && fabs(len - shpLen) < 0.05 * len
-	 && Snack_GetFrequency(shp) < 1000) {
+	 && Snack_GetSampleRate(shp) < 1000) {
 	Tcl_SetObjResult(interp, Tcl_NewBooleanObj(1));
      } else {
 	Tcl_SetObjResult(interp, Tcl_NewBooleanObj(0));
@@ -255,10 +237,10 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
   /* Try to use precomputed shape instead of original sound */
   if (preshp != NULL
       && Snack_GetNumChannels(preshp) == 2 * nc
-      && Snack_GetFrequency(preshp) * len / width > 2.0) {
-     Fe = Snack_GetFrequency(preshp);
+      && Snack_GetSampleRate(preshp) * len / width > 2.0) {
+     Fe = Snack_GetSampleRate(preshp);
   } else {
-     Fe = Snack_GetFrequency(s);
+     Fe = Snack_GetSampleRate(s);
      preshp = NULL;
   }
 
@@ -277,14 +259,15 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 
     /* update shape parameters and get free space into sound target */
     Tcl_Obj *empty = Tcl_NewStringObj("",-1);
-    if (Snack_GetSoundStatus(shp) != IDLE) {
+    if (Snack_GetSoundWriteStatus(shp) != IDLE &&
+	Snack_GetSoundReadStatus(shp) != IDLE) {
       Snack_StopSound(shp, interp);
     }
     SetFcname(shp, interp, empty);
     Tcl_DecrRefCount(empty);
     shp->storeType = SOUND_IN_MEMORY;
-    Snack_SetFrequency(shp, pps);
-    Snack_SetSampleFormat(shp, sampformat);
+    Snack_SetSampleRate(shp, pps);
+    Snack_SetSampleEncoding(shp, encoding);
     Snack_SetBytesPerSample(shp, sampsize);
     Snack_SetNumChannels(shp, 2 * nc);
     Snack_SetLength(shp, (int) ceil((endpos+1-pos)/hRatio));
@@ -331,8 +314,10 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
      if (first && k0 > endpos) break;
      if (shp) {
        for (c=0; c<nc; c++) {
-	 Snack_SetSample(shp, 2*c,   i, q[c].max);
-	 Snack_SetSample(shp, 2*c+1, i, q[c].min);
+	 SetShortSample(shp, i, 2*c,   q[c].max);
+	 SetShortSample(shp, i, 2*c+1, q[c].min);
+	 /* Snack_SetSample(shp, 2*c,   i, q[c].max);
+	    Snack_SetSample(shp, 2*c+1, i, q[c].min); */
        }
      } else {
        for (c=0; c<nc; c++) {
@@ -348,14 +333,16 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
   } else {
 
     /* Use correct byte order */
-#ifdef LE
-    if (byteOrder == SNACK_BIGENDIAN) {
-#else
-    if (byteOrder == SNACK_LITTLEENDIAN) {
-#endif
-      /*swab(p, p, nbytes);*/
-      for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
-	((short *)p)[i] = Snack_SwapShort(((short *)p)[i]);
+    if (littleEndian) {
+      if (byteOrder == SNACK_BIGENDIAN) {
+	for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
+	  ((short *)p)[i] = Snack_SwapShort(((short *)p)[i]);
+      }
+    } else {
+      if (byteOrder == SNACK_LITTLEENDIAN) {
+	for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
+	  ((short *)p)[i] = Snack_SwapShort(((short *)p)[i]);
+      }
     }
     
     Tcl_SetObjResult( interp, resObj);
@@ -421,7 +408,7 @@ int dataSamplesCmd(Sound *s, Tcl_Interp *interp, int objc,
    
   /* Adjust boundaries */
   if (startpos < 0) startpos = 0;
-  if (endpos >= (Snack_GetLength(s) - 1) || endpos == -1)
+  if (/* endpos >= (Snack_GetLength(s) - 1) || */ endpos == -1)
     endpos = Snack_GetLength(s) - 1;
   if (startpos > endpos) return TCL_OK;
 
@@ -446,14 +433,16 @@ int dataSamplesCmd(Sound *s, Tcl_Interp *interp, int objc,
   }
 
   /* Use correct byte order */
-#ifdef LE
-  if (byteOrder == SNACK_BIGENDIAN) {
-#else
-  if (byteOrder == SNACK_LITTLEENDIAN) {
-#endif
-    /*swab(p, p, nbytes);*/
-    for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
-      p[i] = Snack_SwapShort(p[i]);
+  if (littleEndian) {
+    if (byteOrder == SNACK_BIGENDIAN) {
+      for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
+	p[i] = Snack_SwapShort(p[i]);
+    }
+  } else {
+    if (byteOrder == SNACK_LITTLEENDIAN) {
+      for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
+	p[i] = Snack_SwapShort(p[i]);
+    }
   }
 
   Tcl_SetObjResult( interp, resObj);

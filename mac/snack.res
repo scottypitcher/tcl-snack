@@ -21,7 +21,15 @@
 
 load [file join $dir snack.shlb]
 
-package provide snack 1.7
+package provide snack 2.0
+
+# Set playback latency according to the environment variable PLAYLATENCY
+
+if {$::tcl_platform(platform) == "unix"} {
+    if {[info exists env(PLAYLATENCY)] && $env(PLAYLATENCY) > 0} {
+	snack::audio playLatency $env(PLAYLATENCY)
+    }
+}
 
 namespace eval snack {
     namespace export gainBox get* add* menu* frequencyAxis timeAxis \
@@ -112,7 +120,7 @@ namespace eval snack {
 			-anchor w
 	    }
 	}
-	pack [button $wi.b1 -text Close -com "destroy $wi"]
+	pack [button $wi.b1 -text Close -command "destroy $wi"]
     }
 
     #
@@ -166,8 +174,11 @@ namespace eval snack {
 	variable loadTypes
 	variable filebox
 
-	set l [concat {{{MS Wav Files} {.wav}} {{Smp Files} {.smp}} {{Snd Files} {.snd}} {{AU Files} {.au}} {{AIFF Files} {.aif}} {{AIFF Files} {.aiff}} {{Waves Files} {.sd}} {{MP3 Files} {.mp3}} {{CSL Files} {.nsp}}} $loadTypes {{{All Files} * }}]
-
+	if {$::tcl_platform(platform) == "windows"} {
+	    set l [concat {{{MS Wav Files} {.wav}} {{Smp Files} {.smp}} {{Snd Files} {.snd}} {{AU Files} {.au}} {{AIFF Files} {.aif}} {{AIFF Files} {.aiff}} {{Waves Files} {.sd}} {{MP3 Files} {.mp3}} {{CSL Files} {.nsp}}} $loadTypes {{{All Files} * }}]
+	} else {
+	    set l [concat {{{MS Wav Files} {.wav .WAV}} {{Smp Files} {.smp .SMP}} {{Snd Files} {.snd .SND}} {{AU Files} {.au .AU}} {{AIFF Files} {.aif .AIF}} {{AIFF Files} {.aiff .AIFF}} {{Waves Files} {.sd .SD}} {{MP3 Files} {.mp3 .MP3}} {{CSL Files} {.nsp .NSP}}} $loadTypes {{{All Files} * }}]
+	}
 	return [swapListElem $l $filebox(l$fmt)]
     }
 
@@ -266,8 +277,11 @@ namespace eval snack {
 	if {[info exists filebox(s$fmt)] == 0} {
 	    set fmt RAW
 	}
-	set l [concat {{{MS Wav Files} {.wav}} {{Smp Files} {.smp}} {{Snd Files} {.snd}} {{AU Files} {.au}} {{AIFF Files} {.aif}} {{AIFF Files} {.aiff}} {{CSL Files} {.nsp}}} $saveTypes {{{All Files} * }}]
-
+	if {$::tcl_platform(platform) == "windows"} {
+	    set l [concat {{{MS Wav Files} {.wav}} {{Smp Files} {.smp}} {{Snd Files} {.snd}} {{AU Files} {.au}} {{AIFF Files} {.aif}} {{AIFF Files} {.aiff}} {{CSL Files} {.nsp}}} $saveTypes {{{All Files} * }}]
+	} else {
+	    set l [concat {{{MS Wav Files} {.wav .WAV}} {{Smp Files} {.smp .SMP}} {{Snd Files} {.snd .SND}} {{AU Files} {.au .AU}} {{AIFF Files} {.aif .AIF}} {{AIFF Files} {.aiff .AIFF}} {{CSL Files} {.nsp .NSP}}} $saveTypes {{{All Files} * }}]
+	}
 	return [swapListElem $l $filebox(s$fmt)]
     }
 
@@ -308,7 +322,7 @@ namespace eval snack {
 	set menu(uid) 0
     }
 
-    proc menuPane {label {u 0}} {
+    proc menuPane {label {u 0} {postcommand ""}} {
 	variable menu
 	
 	if [info exists menu(menu,$label)] {
@@ -319,7 +333,7 @@ namespace eval snack {
 	} else {
 	    set name $menu(menubar).mb$menu(uid)
 	}
-	set m [menu $name -tearoff 1]
+	set m [menu $name -tearoff 1 -postcommand $postcommand]
 	$menu(menubar) add cascade -label $label -menu $name -underline $u
 	incr menu(uid)
 	set menu(menu,$label) $m
@@ -336,6 +350,10 @@ namespace eval snack {
 	[menuGet $menuName] delete $index
     }
 
+    proc menuDeleteByIndex {menuName index} {
+	[menuGet $menuName] delete $index
+    }
+
     proc menuGet menuName {
 	variable menu
 	if [catch {set menu(menu,$menuName)} m] {
@@ -345,8 +363,6 @@ namespace eval snack {
     }
 
     proc menuCommand {menuName label command} {
-	variable menu
-	
 	[menuGet $menuName] add command -label $label -command $command
     }
 
@@ -398,10 +414,11 @@ namespace eval snack {
 	set command [$m entrycget $index -command]
 	if {$::tcl_platform(platform) == "unix"} {
 	    bind $what <Alt-$char> $command
-	    $m entryconfigure $index -accelerator <Alt-$char>
+	    $m entryconfigure $index -accelerator Alt-$char
 	} else {
 	    bind $what <Control-$char> $command
-	    $m entryconfigure $index -accelerator <Control-$char>
+	    set char [string toupper $char]
+	    $m entryconfigure $index -accelerator Ctrl-$char
 	}
     }
 
@@ -430,34 +447,22 @@ namespace eval snack {
     #
 
     proc frequencyAxis {canvas x y width height args} {
-	set tags snack_y_axis
-	set font {Helvetica 8}
-	set topfr 8000
-	set fill black
-	set draw0 0
-
-	for {set i 0} {$i < [expr [llength $args]]} {incr i 2} {
-	    if {[lindex $args $i] == "-tags"} {
-		set tags [lindex $args [expr $i+1]]
-	    } elseif {[lindex $args $i] == "-font"} {
-		set font [lindex $args [expr $i+1]]
-	    } elseif {[lindex $args $i] == "-topfrequency"} {
-		set topfr [lindex $args [expr $i+1]]
-	    } elseif {[lindex $args $i] == "-fill"} {
-		set fill [lindex $args [expr $i+1]]
-	    } elseif {[lindex $args $i] == "-draw0"} {
-		set draw0 [lindex $args [expr $i+1]]
-	    } else {
-		error "Unknown option: [lindex $args $i]"
-	    }
-	}
+	array set a [list \
+		-tags snack_y_axis \
+		-font {Helvetica 8} \
+		-topfr 8000 \
+		-fill black \
+		-draw0 0
+	]
+	array set a $args
 
 	if {$height <= 0} return
-	set ticklist [list 10 20 50 100 200 500 1000 2000 5000 10000 20000 50000]
+	set ticklist [list 10 20 50 100 200 500 1000 2000 5000 \
+		10000 20000 50000 100000 200000 500000 1000000]
 	set npt 10
-	set dy [expr {double($height * $npt) / $topfr}]
+	set dy [expr {double($height * $npt) / $a(-topfr)}]
 
-	while {$dy < [font metrics $font -linespace]} {
+	while {$dy < [font metrics $a(-font) -linespace]} {
 	    foreach elem $ticklist {
 		if {$elem <= $npt} {
 		    continue
@@ -465,7 +470,7 @@ namespace eval snack {
 		set npt $elem
 		break
 	    }
-	    set dy [expr {double($height * $npt) / $topfr}]
+	    set dy [expr {double($height * $npt) / $a(-topfr)}]
 	}
 
 	if {$npt < 1000} { 
@@ -474,7 +479,7 @@ namespace eval snack {
 	    set hztext kHz
 	}
 
-	if $draw0 {
+	if $a(-draw0) {
 	    set i0 0
 	    set j0 0
 	} else {
@@ -491,21 +496,21 @@ namespace eval snack {
 		set t [expr {$j * $npt / 1000}]
 	    }
 	    if {$yc > [expr {8 + $y}]} {
-		if {[expr {$yc - [font metrics $font -ascent]}] > \
-			[expr {$y + [font metrics $font -linespace]}] ||
-		[font measure $font $hztext]  < \
-			[expr {$width - 8 - [font measure $font $t]}]} {
-		    $canvas create text [expr {$x + $width - 8}] [expr {$yc-2}]\
-			    -text $t \
-			    -font $font -anchor e -tags $tags -fill $fill
+		if {[expr {$yc - [font metrics $a(-font) -ascent]}] > \
+			[expr {$y + [font metrics $a(-font) -linespace]}] ||
+		[font measure $a(-font) $hztext]  < \
+			[expr {$width - 8 - [font measure $a(-font) $t]}]} {
+		    $canvas create text [expr {$x +$width - 8}] [expr {$yc-2}]\
+			    -text $t -fill $a(-fill)\
+			    -font $a(-font) -anchor e -tags $a(-tags)
 		}
 		$canvas create line [expr {$x + $width - 5}] $yc \
 			[expr {$x + $width}]\
-			$yc -tags $tags -fill $fill
+			$yc -tags $a(-tags) -fill $a(-fill)
 	    }
 	}
 	$canvas create text [expr {$x + 2}] [expr {$y + 1}] -text $hztext \
-		-font $font -anchor nw -tags $tags -fill $fill
+		-font $a(-font) -anchor nw -tags $a(-tags) -fill $a(-fill)
 
 	return $npt
     }
@@ -514,70 +519,133 @@ namespace eval snack {
     # Horizontal time axis
     #
 
-    proc timeAxis {canvas x y width height pps npt args} {
-	set tags snack_t_axis
-	set font {Helvetica 8}
-	set starttime 0.0
-	set fill black
+    proc timeAxis {canvas ox oy width height pps args} {
+	array set a [list \
+		-tags snack_t_axis \
+		-font {Helvetica 8} \
+		-starttime 0.0 \
+		-fill black \
+		-draw0 0 \
+		-drawvisible 0
+	]
+	array set a $args
 
-	if {$pps <= 0} { return $npt }
-	for {set i 0} {$i < [expr [llength $args]]} {incr i 2} {
-	    if {[lindex $args $i] == "-tags"} {
-		set tags [lindex $args [expr $i+1]]
-	    } elseif {[lindex $args $i] == "-font"} {
-		set font [lindex $args [expr $i+1]]
-	    } elseif {[lindex $args $i] == "-starttime"} {
-		set starttime [lindex $args [expr $i+1]]
-	    } elseif {[lindex $args $i] == "-fill"} {
-		set fill [lindex $args [expr $i+1]]
-	    } else {
-		error "Unknown option: [lindex $args $i]"
-	    }
-	}
+	if {$pps <= 0.004} return
 
-	set ticklist [list 1 2 5 10 20 50 100 200 500 1000 2000 5000 10000 20000 50000 100000 200000 500000 1000000 2000000 5000000]
+	set deltalist [list .0001 .0002 .0005 .001 .002 .005 \
+		.01 .02 .05 .1 .2 .5 1 2 5 \
+		10 20 30 60 120 240 360 600 900 1800 3600 7200 14400]
 
-	if {$npt < 0} {
-	    set npt 1
-	}
-	set dx [expr {$pps * $npt / 1000.0}]
+	set majTickH [expr {$height - [font metrics $a(-font) -linespace]}]
+	set minTickH [expr {$majTickH / 2}]
 
-# Compute the maximum width of a time label
+# Create a typical time label
 
-        if {$width < 0.001} { set width 0.001 }
-	if {$npt < 1000} { 
-	    set l [expr {int(log10(1000*(double($width)/$pps+$starttime)))+1}]
+	set maxtime [expr {double($width) / $pps + $a(-starttime)}]
+	if {$maxtime < 60} {
+	    set wtime 00
+	} elseif {$maxtime < 3600} {
+	    set wtime 00:00
 	} else {
-	    set l [expr {int(log10(double($width)/$pps+$starttime))+1}]
+	    set wtime 00:00:00
 	}
-	set tmp ""
-	for {set i 0} {$i < $l} {incr i} { append tmp 0 }
+	if {$pps > 50} {
+	    append wtime .0
+	} elseif {$pps > 500} {
+	    append wtime .00
+	} elseif {$pps > 5000} {
+	    append wtime .000
+	} elseif {$pps > 50000} {
+	    append wtime .0000
+	}
 
-# Compute the distance in pixels between tick marks
+# Compute the distance in pixels (and time) between tick marks
 
-	while {$dx < [expr {4+[font measure $font $tmp]}]} {
-	    foreach elem $ticklist {
-		if {$elem <= $npt} {
-		    continue
-		}
-		set npt $elem
-		break
+	set dx [expr {10+[font measure $a(-font) $wtime]}]
+        set dt [expr {double($dx) / $pps}]
+
+	foreach elem $deltalist {
+	    if {$elem <= $dt} {
+		continue
 	    }
-	    set dx [expr {$pps * $npt / 1000.0}]
+	    set dt $elem
+	    break
+	}
+	set dx [expr {$pps * $dt}]
+
+	if {$dt < 0.00099} {
+	    set ndec 4
+	} elseif {$dt < 0.0099} {
+	    set ndec 3
+	} elseif {$dt < 0.099} {
+	    set ndec 2
+	} else {
+	    set ndec 1
+	}
+	
+	if {$a(-starttime) > 0.0} {
+	    set ft [expr {(int($a(-starttime) / $dt) + 1) * $dt}]
+	    set fx [expr {$pps * ($ft - $a(-starttime))}]
+	} else {
+	    set ft 0
+	    set fx 0.0
 	}
 
-	set xo [expr {(int(0.5 + $starttime * 1000) % $npt) * $pps / 1000.0}]
+	set lx [expr {($ox + $width) * [lindex [$canvas xview] 0] - 50}]
+	set rx [expr {($ox + $width) * [lindex [$canvas xview] 1] + 50}]
 
-	for {set i 0.0} {$i < $width} {set i [expr {$i + $dx}]} {
-	    if {$npt < 1000} { 
-		set t [expr {int(0.5 + 1000 * (($i - $xo) / $pps + $starttime))}]
+	set jinit 0
+
+	if {$a(-drawvisible)} {
+         set jinit [expr {int($lx/$dx)}]
+         set fx [expr {$fx + $jinit * $dx}]
+	}
+
+	for {set x $fx;set j $jinit} {$x < $width} \
+		{set x [expr {$x+$dx}];incr j} {
+
+	    if {$a(-drawvisible) && $x < $lx} continue
+	    if {$a(-drawvisible) && $x > $rx} break
+
+	    set t [expr {$j * $dt + $ft}]
+
+	    if {$maxtime < 60} {
+		set tmp [expr {int($t)}]
+	    } elseif {$maxtime < 3600} {
+		set tmp x[clock format [expr {int($t)}] -format "%M:%S" -gmt 1]
+		regsub x0 $tmp "" tmp
+		regsub x $tmp "" tmp
 	    } else {
-		set t [expr {int(0.5 + (($i - $xo) / $pps + $starttime))}]
+		set tmp [clock format [expr {int($t)}] -format "%H:%M:%S" -gmt 1]
+	    }	    
+	    if {$dt < 1.0} {
+		set t $tmp[string trimleft [format "%.${ndec}f" \
+			[expr {($t-int($t))}]] 0]
+	    } else {
+		set t $tmp
 	    }
-	    $canvas create text [expr {$x+$i+2-$xo}] [expr {$y+$height/2}] -text $t -font $font -anchor w -tags $tags -fill $fill
-	    $canvas create line [expr {$x+$i-$xo}] $y [expr {$x+$i-$xo}] [expr {$y+$height}] -tags $tags -fill $fill
+
+	    if {$a(-draw0) == 1 || $j > 0 || $a(-starttime) > 0.0} {
+		$canvas create text [expr {$ox+$x}] [expr {$oy+$height}] \
+			-text $t -font $a(-font) -anchor s -tags $a(-tags) \
+			-fill $a(-fill)
+	    }
+	    $canvas create line [expr {$ox+$x}] $oy [expr {$ox+$x}] \
+		    [expr {$oy+$majTickH}] -tags $a(-tags) -fill $a(-fill)
+
+	    if {[string match *5 $dt] || [string match 5* $dt]} {
+		set nt 5
+	    } else {
+		set nt 2
+	    }
+	    for {set k 1} {$k < $nt} {incr k} {
+		set xc [expr {$k * $dx / $nt}]
+		$canvas create line [expr {$ox+$x+$xc}] $oy \
+			[expr {$ox+$x+$xc}] [expr {$oy+$minTickH}]\
+			-tags $a(-tags) -fill $a(-fill)
+	    }
+	    
 	}
-	return $npt
     }
 
     #
@@ -651,7 +719,8 @@ namespace eval snack {
 	    } else {
 		set s [snack::sound]
 		$s config -file $fileName
-		set soundSize [expr {200*[$s length -units seconds]}]
+		set soundSize [expr {200 * [$s length -unit seconds] * \
+		    [$s cget -channels]}]
 		set shapeSize [file size $shapeName]
 		if {[expr {$soundSize*0.95}] > $shapeSize || \
 			[expr {$soundSize*1.05}] < $shapeSize} {
@@ -685,6 +754,7 @@ namespace eval snack {
     proc progressCallback {message fraction} {
 	set w .snackProgressDialog
 
+#	if {$fraction == 0.0} return
 	if {$fraction == 1.0} {
 
 	    # Task is finished close dialog
@@ -715,36 +785,413 @@ namespace eval snack {
 	} elseif {![winfo exists $w.b]} {
 
 	    # User hit Stop button, close dialog
-
 	    destroy $w
 	    return -code error
 	}
 	switch -- $message {
-	    "Convert frequency" {
-		set message "Converting frequency..."
+	    "Converting rate" {
+		set message "Converting sample rate..."
 	    }
-	    "Convert format" {
+	    "Converting encoding" {
 		set message "Converting sample encoding format..."
 	    }
-	    "Convert channels" {
+	    "Converting channels" {
 		set message "Converting number of channels..."
 	    }
 	    "Computing pitch" {
 		set message "Computing pitch..."
 	    }
-	    "Read sound" {
+	    "Reading sound" {
 		set message "Reading sound..."
 	    }
-	    "Write sound" {
+	    "Writing sound" {
 		set message "Writing sound..."
 	    }
 	    "Computing waveform" {
 		set message "Waveform is being precomputed and\
 			stored on disk..."
 	    }
+	    "Reversing sound" {
+		set message "Reversing sound..."
+	    }
+	    "Filtering sound" {
+		set message "Filtering sound..."
+	    }
 	}
 	$w.l configure -text $message
 	$w.c coords bar 0 0 [expr {$fraction * 200}] 20
 	update
+    }
+
+    #
+    # Convenience function to create dialog boxes, derived from tk_messageBox
+    #
+
+    proc makeDialogBox {toplevel args} {
+	variable tkPriv
+	
+	set w tkPrivMsgBox
+	upvar #0 $w data
+	
+	#
+	# The default value of the title is space (" ") not the empty string
+	# because for some window managers, a 
+	#		wm title .foo ""
+	# causes the window title to be "foo" instead of the empty string.
+	#
+	set specs {
+	    {-default "" "" ""}
+	    {-message "" "" ""}
+	    {-parent "" "" .}
+	    {-title "" "" " "}
+	    {-type "" "" "okcancel"}
+	}
+	
+	tclParseConfigSpec $w $specs "" $args
+	
+	if {![winfo exists $data(-parent)]} {
+	    error "bad window path name \"$data(-parent)\""
+	}
+	
+	switch -- $data(-type) {
+	    abortretryignore {
+		set buttons {
+		    {abort  -width 6 -text Abort -under 0}
+		    {retry  -width 6 -text Retry -under 0}
+		    {ignore -width 6 -text Ignore -under 0}
+		}
+	    }
+	    ok {
+		set buttons {
+		    {ok -width 6 -text OK -under 0}
+		}
+		if {![string compare $data(-default) ""]} {
+		    set data(-default) "ok"
+		}
+	    }
+	    okcancel {
+		set buttons {
+		    {ok     -width 6 -text OK     -under 0}
+		    {cancel -width 6 -text Cancel -under 0}
+		}
+	    }
+	    retrycancel {
+		set buttons {
+		    {retry  -width 6 -text Retry  -under 0}
+		    {cancel -width 6 -text Cancel -under 0}
+		}
+	    }
+	    yesno {
+		set buttons {
+		    {yes    -width 6 -text Yes -under 0}
+		    {no     -width 6 -text No  -under 0}
+		}
+	    }
+	    yesnocancel {
+		set buttons {
+		    {yes    -width 6 -text Yes -under 0}
+		    {no     -width 6 -text No  -under 0}
+		    {cancel -width 6 -text Cancel -under 0}
+		}
+	    }
+	    default {
+		error "bad -type value \"$data(-type)\": must be abortretryignore, ok, okcancel, retrycancel, yesno, or yesnocancel"
+	    }
+	}
+	
+	if {[string compare $data(-default) ""]} {
+	    set valid 0
+	    foreach btn $buttons {
+		if {![string compare [lindex $btn 0] $data(-default)]} {
+		    set valid 1
+		    break
+		}
+	    }
+	    if {!$valid} {
+		error "invalid default button \"$data(-default)\""
+	    }
+	}
+	
+	# 2. Set the dialog to be a child window of $parent
+	#
+	#
+	if {[string compare $data(-parent) .]} {
+	    set w $data(-parent)$toplevel
+	} else {
+	    set w $toplevel
+	}
+	
+	# 3. Create the top-level window and divide it into top
+	# and bottom parts.
+	
+	#    catch {destroy $w}
+	#    toplevel $w -class Dialog
+	wm title $w $data(-title)
+	wm iconname $w Dialog
+	wm protocol $w WM_DELETE_WINDOW { }
+	
+	# Message boxes should be transient with respect to their parent so that
+	# they always stay on top of the parent window.  But some window managers
+	# will simply create the child window as withdrawn if the parent is not
+	# viewable (because it is withdrawn or iconified).  This is not good for
+	# "grab"bed windows.  So only make the message box transient if the parent
+	# is viewable.
+	#
+	if { [winfo viewable [winfo toplevel $data(-parent)]] } {
+	    wm transient $w $data(-parent)
+	}    
+	
+	if {![string compare $::tcl_platform(platform) "macintosh"]} {
+	    unsupported1 style $w dBoxProc
+	}
+	
+	frame $w.bot
+	pack $w.bot -side bottom -fill both
+	if {[string compare $::tcl_platform(platform) "macintosh"]} {
+	    $w.bot configure -relief raised -bd 1
+	}
+	
+	# 4. Fill the top part with bitmap and message (use the option
+	# database for -wraplength and -font so that they can be
+	# overridden by the caller).
+	
+	option add *Dialog.msg.wrapLength 3i widgetDefault
+	if {![string compare $::tcl_platform(platform) "macintosh"]} {
+	    option add *Dialog.msg.font system widgetDefault
+	} else {
+	    option add *Dialog.msg.font {Times 18} widgetDefault
+	}
+	
+	
+	# 5. Create a row of buttons at the bottom of the dialog.
+	
+	set i 0
+	foreach but $buttons {
+	    set name [lindex $but 0]
+	    set opts [lrange $but 1 end]
+	    if {![llength $opts]} {
+		# Capitalize the first letter of $name
+		set capName [string toupper \
+			[string index $name 0]][string range $name 1 end]
+		set opts [list -text $capName]
+	    }
+	    
+	    eval button [list $w.$name] $opts [list -command \
+		[list set [namespace current]::tkPriv(button) $name]]
+	    
+	    if {![string compare $name $data(-default)]} {
+		$w.$name configure -default active
+	    }
+	    pack $w.$name -in $w.bot -side left -expand 1 -padx 3m -pady 2m
+	    
+	    # create the binding for the key accelerator, based on the underline
+	    #
+	    set underIdx [$w.$name cget -under]
+	    if {$underIdx >= 0} {
+		set key [string index [$w.$name cget -text] $underIdx]
+		bind $w <Alt-[string tolower $key]>  [list $w.$name invoke]
+		bind $w <Alt-[string toupper $key]>  [list $w.$name invoke]
+	    }
+	    incr i
+	}
+	
+	if {[string compare {} $data(-default)]} {
+	    bind $w <FocusIn> {
+		if {0 == [string compare Button [winfo class %W]]} {
+		    %W configure -default active
+		}
+	    }
+	    bind $w <FocusOut> {
+		if {0 == [string compare Button [winfo class %W]]} {
+		    %W configure -default normal
+		}
+	    }
+	}
+	
+	# 6. Create a binding for <Return> on the dialog
+	
+	bind $w <Return> {
+	    if {0 == [string compare Button [winfo class %W]]} {
+		tkButtonInvoke %W
+	    }
+	}
+	
+	# 7. Withdraw the window, then update all the geometry information
+	# so we know how big it wants to be, then center the window in the
+	# display and de-iconify it.
+	
+	wm withdraw $w
+	update idletasks
+	set x [expr {[winfo screenwidth $w]/2 - [winfo reqwidth $w]/2 \
+		- [winfo vrootx [winfo parent $w]]}]
+	set y [expr {[winfo screenheight $w]/2 - [winfo reqheight $w]/2 \
+		- [winfo vrooty [winfo parent $w]]}]
+	wm geom $w +$x+$y
+	wm deiconify $w
+	
+	# 8. Set a grab and claim the focus too.
+	
+	set oldFocus [focus]
+	set oldGrab [grab current $w]
+	if {[string compare $oldGrab ""]} {
+	    set grabStatus [grab status $oldGrab]
+	}
+	grab $w
+	if {[string compare $data(-default) ""]} {
+	    focus $w.$data(-default)
+	} else {
+	    focus $w
+	}
+	
+	# 9. Wait for the user to respond, then restore the focus and
+	# return the index of the selected button.  Restore the focus
+	# before deleting the window, since otherwise the window manager
+	# may take the focus away so we can't redirect it.  Finally,
+	# restore any grab that was in effect.
+	
+	tkwait variable [namespace current]::tkPriv(button)
+	
+	catch {focus $oldFocus}
+	destroy $w
+	if {[string compare $oldGrab ""]} {
+	    if {![string compare $grabStatus "global"]} {
+		grab -global $oldGrab
+	    } else {
+		grab $oldGrab
+	    }
+	}
+	return $tkPriv(button)
+    }
+
+    #
+    # Snack level meter implemented as minimal mega widget
+    #
+
+    proc levelMeter {w args} {
+
+	array set a [list \
+		-oncolor red \
+		-offcolor grey10 \
+		-background black \
+		-width 6 \
+		-length 80 \
+		-level 0.0 \
+		-orient horizontal \
+		]
+	array set a $args
+
+	# Widget specific storage
+
+	namespace eval [namespace current]::$w {
+	    variable levelmeter
+	}
+	upvar [namespace current]::${w}::levelmeter lm
+	set lm(level) 0
+	set lm(orient) $a(-orient)
+	set lm(oncolor) $a(-oncolor)
+	set lm(offcolor) $a(-offcolor)
+	set lm(bg) $a(-background)
+	if {[string match horiz* $lm(orient)]} {
+	    set lm(height) $a(-width)
+	    set lm(width)  $a(-length)
+	} else {
+	    set lm(height) $a(-length)
+	    set lm(width)  $a(-width)
+	}
+
+	proc drawLevelMeter {w} {
+            upvar [namespace current]::${w}::levelmeter lm
+
+	    set c ${w}_levelMeter
+	    $c configure -width $lm(width) -height $lm(height)
+	    $c delete all
+
+	    $c create rectangle 0 0 $lm(width) $lm(height) \
+		    -fill $lm(oncolor) -outline ""
+	    $c create rectangle 0 0 0 0 -outline "" -fill $lm(offcolor) \
+		    -tag mask
+	    $c create rectangle 0 0 [expr $lm(width)-1] [expr $lm(height)-1] \
+		    -outline $lm(bg)
+	    if {[string match horiz* $lm(orient)]} {
+		$c coords mask [expr {$lm(level)*$lm(width)}] 0 \
+			$lm(width) $lm(height)
+		for {set x 5} {$x < $lm(width)} {incr x 5} {
+		    $c create line $x 0 $x [expr $lm(width)-1] -fill black \
+			    -width 2
+		}
+	    } else {
+		$c coords mask 0 0 $lm(width) \
+			[expr {$lm(height)-$lm(level)*$lm(height)}]
+		for {set y 5} {$y < $lm(height)} {incr y 5} {
+		    $c create line 0 [expr $lm(height)-$y] \
+			    [expr $lm(width)-1] [expr $lm(height)-$y] \
+			    -fill black -width 2
+		}
+	    }
+	}
+
+	proc levelMeterHandler {w cmd args} {
+          upvar [namespace current]::${w}::levelmeter lm
+
+          if {[string match conf* $cmd]} {
+              switch -- [lindex $args 0] {
+    	      -level {
+		  set arg [lindex $args 1]
+		  set arg [expr {$arg/32768.0}]
+		  if {$arg < 0.00001} { set arg 0.00001 }
+		  set lm(level) [expr {log($arg)/4.516+1.0}]
+		  if {[string match horiz* $lm(orient)]} {
+		      ${w}_levelMeter coords mask \
+			      [expr {$lm(level)*$lm(width)}] 0 \
+			      $lm(width) $lm(height)
+		  } else {
+		      ${w}_levelMeter coords mask 0 0 $lm(width) \
+			      [expr {$lm(height)-$lm(level)*$lm(height)}]
+		  }	 
+	      }
+	      -length {
+		  if {[string match horiz* $lm(orient)]} {
+		      set lm(width) [lindex $args 1]
+		  } else {
+		      set lm(height) [lindex $args 1]
+		  }
+		  drawLevelMeter $w
+	      }
+	      -width {
+		  if {[string match horiz* $lm(orient)]} {
+		      set lm(height) [lindex $args 1]
+		  } else {
+		      set lm(width)  [lindex $args 1]
+		  }
+		  drawLevelMeter $w
+	      }
+	      default {
+		  error "unknown option \"[lindex $args 0]\""
+	      }
+	    }
+	  } else {
+	      error "bad option \"$cmd\": must be configure"
+	  }
+        }
+
+	# Create a canvas where the widget is to be rendered
+
+	canvas $w -highlightthickness 0
+
+	# Replave the canvas widget command
+	
+	rename $w ${w}_levelMeter
+	
+	# Draw level meter
+
+	drawLevelMeter $w
+
+	# Create level meter widget command
+
+	proc ::$w {cmd args} \
+		"return \[eval snack::levelMeterHandler $w \$cmd \$args\]"
+
+	return $w
+
     }
 }

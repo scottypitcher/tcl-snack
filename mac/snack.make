@@ -28,13 +28,16 @@ SrcFiles        =  è
 				  "{SrcDir}jkCanvWave.c" è
 				  "{SrcDir}jkPitchCmd.c" è
 				  "{SrcDir}jkSound.c" è
+				  "{SrcDir}jkSoundEngine.c" è
 				  "{SrcDir}jkSoundEdit.c" è
 				  "{SrcDir}jkSoundFile.c" è
 				  "{SrcDir}jkSoundProc.c" è
 				  "{SrcDir}snack.c" è
-				  "{SrcDir}SnackMP3amp.c" è
+				  "{SrcDir}jkFormatMP3.c" è
 				  "{SrcDir}jkMixer.c" è
 				  "{SrcDir}jkAudio.c" è
+				  "{SrcDir}jkFilter.c" è
+				  "{SrcDir}jkSynthesis.c" è
 				  "{SrcDir}shape.c" è
 				  "{SrcDir}snackStubInit.c"
 				  
@@ -51,13 +54,16 @@ ObjFiles-PPC    =  è
 				  "{ObjDir}jkCanvWave.c.x" è
 				  "{ObjDir}jkPitchCmd.c.x" è
 				  "{ObjDir}jkSound.c.x" è
+				  "{ObjDir}jkSoundEngine.c.x" è
 				  "{ObjDir}jkSoundEdit.c.x" è
 				  "{ObjDir}jkSoundFile.c.x" è
 				  "{ObjDir}jkSoundProc.c.x" è
 				  "{ObjDir}snack.c.x" è
-				  "{ObjDir}SnackMP3amp.c.x" è
+				  "{ObjDir}jkFormatMP3.c.x" è
 				  "{ObjDir}jkMixer.c.x" è
 				  "{ObjDir}jkAudio.c.x" è
+				  "{ObjDir}jkFilter.c.x" è
+				  "{ObjDir}jkSynthesis.c.x" è
 				  "{ObjDir}shape.c.x" è
 				  "{ObjDir}snackStubInit.c.x"
 
@@ -108,12 +114,15 @@ snack  üü  snack.shlb
 "{ObjDir}jkCanvWave.c.x"  ü  "{SrcDir}jkCanvWave.c"
 "{ObjDir}jkPitchCmd.c.x"  ü  "{SrcDir}jkPitchCmd.c"
 "{ObjDir}jkSound.c.x"  ü  "{SrcDir}jkSound.c"
+"{ObjDir}jkSoundEngine.c.x"  ü  "{SrcDir}jkSoundEngine.c"
 "{ObjDir}jkSoundEdit.c.x"  ü  "{SrcDir}jkSoundEdit.c"
 "{ObjDir}jkSoundFile.c.x"  ü  "{SrcDir}jkSoundFile.c"
 "{ObjDir}jkSoundProc.c.x"  ü  "{SrcDir}jkSoundProc.c"
 "{ObjDir}snack.c.x"  ü  "{SrcDir}snack.c"
-"{ObjDir}SnackMP3amp.c.x"  ü  "{SrcDir}SnackMP3amp.c"
+"{ObjDir}jkFormatMP3.c.x"  ü  "{SrcDir}jkFormatMP3.c"
 "{ObjDir}jkAudio.c.x"  ü  "{SrcDir}jkAudio.c"
+"{ObjDir}jkFilter.c.x"  ü  "{SrcDir}jkFilter.c"
+"{ObjDir}jkSynthesis.c.x"  ü  "{SrcDir}jkSynthesis.c"
 "{ObjDir}jkMixer.c.x"  ü  "{SrcDir}jkMixer.c"
 "{ObjDir}shape.c.x"  ü  "{SrcDir}shape.c"
 "{ObjDir}snackStubInit.c.x"  ü  "{SrcDir}snackStubInit.c"

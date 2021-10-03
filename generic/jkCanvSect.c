@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -70,6 +70,7 @@ typedef struct SectionItem  {
   double minValue;
   char *windowTypeStr;
   Tcl_Interp *interp;
+  double preemph;
 
 } SectionItem;
 
@@ -123,7 +124,7 @@ static Tk_ConfigSpec configSpecs[] = {
    "256", Tk_Offset(SectionItem, si.winlen), 0},
   
   {TK_CONFIG_DOUBLE, "-preemphasisfactor", (char *) NULL, (char *) NULL,
-   "0.0", Tk_Offset(SectionItem, si.preemph), 0},
+   "0.0", Tk_Offset(SectionItem, preemph), 0},
   
   {TK_CONFIG_INT, "-start", (char *) NULL, (char *) NULL,
    "0", Tk_Offset(SectionItem, startSmp), 0},
@@ -257,15 +258,15 @@ CreateSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   sectPtr->newSoundName = NULL;
   sectPtr->soundName = NULL;
   sectPtr->sound = NULL;
-  sectPtr->si.sampfreq = 16000;
+  sectPtr->si.samprate = 16000;
   sectPtr->si.BufPos = 0;
   sectPtr->si.fftlen = 512;
   sectPtr->si.winlen = 256;
-  sectPtr->si.preemph = 0.0;
+  sectPtr->preemph = 0.0;
   sectPtr->si.fftmax = -10000;
   sectPtr->si.fftmin = 10000;
   sectPtr->si.hamwin = (float *) ckalloc(NMAX * sizeof(float));
-  sectPtr->si.abmax = 0;
+  sectPtr->si.abmax = 0.0f;
   sectPtr->xfft = (float *)  ckalloc(NMAX * sizeof(float));
   sectPtr->ffts = (double *) ckalloc(NMAX / 2 * sizeof(double));
   sectPtr->height = 256;
@@ -360,9 +361,11 @@ ComputeSectionCoords(Tk_Item *itemPtr)
   float xscale = (float) (sectPtr->width) / nPoints;
   float yscale = (float) ((float) (sectPtr->height - 1) /
     (sectPtr->minValue - sectPtr->maxValue));
-  float fscale = (float) (sectPtr->si.topfrequency / (sectPtr->si.sampfreq / 2.0));
+  float fscale = (float) (sectPtr->si.topfrequency / (sectPtr->si.samprate / 2.0));
 
-  if (sectPtr->debug) Snack_WriteLogInt("Enter ComputeSectionCoords", nPoints);
+  if (sectPtr->debug > 1) {
+    Snack_WriteLogInt("  Enter ComputeSectionCoords", nPoints);
+  }
 
   if (sectPtr->coords != NULL) ckfree((char *) sectPtr->coords);
   sectPtr->coords = (double *) ckalloc((unsigned)
@@ -391,25 +394,25 @@ ComputeSection(Tk_Item *itemPtr)
   SnackItemInfo *siPtr = &sectPtr->si;
   int i, j;
   int fftlen     = siPtr->fftlen;
-  double preemph = siPtr->preemph;
+  float preemph  = siPtr->preemph;
   int RestartPos = siPtr->RestartPos - siPtr->validStart;
-  int sampformat = siPtr->sampformat;
   int storeType  = siPtr->storeType;
   int n, skip = siPtr->skip;
   double Max = -1000.0, Min = 1000.0;
   SnackLinkedFileInfo info;
 
-  if (sectPtr->debug) Snack_WriteLogInt("Enter ComputeSection", sectPtr->ssmp); 
+  if (sectPtr->debug) Snack_WriteLogInt("Enter ComputeSection", sectPtr->ssmp);
+
   if (skip < 1) {
     skip = fftlen;
   }
   n = (sectPtr->esmp - siPtr->RestartPos) / skip;
 
-  if (n == 0) return;
-
   for (i = 0; i < fftlen/2; i++) {
     sectPtr->ffts[i] = 0.0;
   }
+
+  if (n == 0) return;
 
   Snack_InitFFT(siPtr->fftlen);
 
@@ -423,26 +426,12 @@ ComputeSection(Tk_Item *itemPtr)
     if (storeType == SOUND_IN_MEMORY) {
       if (siPtr->nchannels == 1 || siPtr->channel != -1) {
 	int p = (RestartPos + j * skip) * siPtr->nchannels + siPtr->channel;
-	if (sampformat == LIN16) {
-	  for (i = 0; i < fftlen; i++) {
-	    sectPtr->xfft[i] = (float) ((SSAMPLE(siPtr, p + siPtr->nchannels)
-					 - preemph * SSAMPLE(siPtr, p))
-					* siPtr->hamwin[i]);
-	    p += siPtr->nchannels;
-	  }
-	} else {
-	  for (i = 0; i < fftlen; i++) {
-	    if (sampformat == MULAW) {
-	      sectPtr->xfft[i] = (float) ((Snack_Mulaw2Lin(UCSAMPLE(siPtr, p + siPtr->nchannels)) - preemph * Snack_Mulaw2Lin(UCSAMPLE(siPtr, p))) * siPtr->hamwin[i]);
-	    } else if (sampformat == ALAW) {
-	      sectPtr->xfft[i] = (float) ((Snack_Alaw2Lin(UCSAMPLE(siPtr, p + siPtr->nchannels)) - preemph * Snack_Alaw2Lin(UCSAMPLE(siPtr, p))) * siPtr->hamwin[i]);
-	    } else if (sampformat == LIN8OFFSET) {
-	      sectPtr->xfft[i] = (float) ((UCSAMPLE(siPtr, p + siPtr->nchannels) - preemph * UCSAMPLE(siPtr, p)) * siPtr->hamwin[i]);
-	    } else if (sampformat == LIN8) {
-	      sectPtr->xfft[i] = (float) ((CSAMPLE(siPtr, p + siPtr->nchannels) - preemph * CSAMPLE(siPtr, p)) * siPtr->hamwin[i]);
-	    }
-	    p += siPtr->nchannels;
-	  }
+
+	for (i = 0; i < fftlen; i++) {
+	  sectPtr->xfft[i] = (float) ((FSAMPLE(siPtr, p + siPtr->nchannels)
+				       - preemph * FSAMPLE(siPtr, p))
+				      * siPtr->hamwin[i]);
+	  p += siPtr->nchannels;
 	}
       } else {
 	int c;
@@ -453,26 +442,11 @@ ComputeSection(Tk_Item *itemPtr)
 	for (c = 0; c < siPtr->nchannels; c++) {
 	  int p = (RestartPos + j * skip) * siPtr->nchannels + c;
 	  
-	  if (sampformat == LIN16) {
-	    for (i = 0; i < fftlen; i++) {
-	      sectPtr->xfft[i] += (float) ((SSAMPLE(siPtr, p + siPtr->nchannels)
-					    - preemph * SSAMPLE(siPtr, p))
-					   * siPtr->hamwin[i]);
-	      p += siPtr->nchannels;
-	    }
-	  } else {
-	    for (i = 0; i < fftlen; i++) {
-	      if (sampformat == MULAW) {
-		sectPtr->xfft[i] += (float) ((Snack_Mulaw2Lin(UCSAMPLE(siPtr, p + siPtr->nchannels)) - preemph * Snack_Mulaw2Lin(UCSAMPLE(siPtr, p))) * siPtr->hamwin[i]);
-	      } else if (sampformat == ALAW) {
-		sectPtr->xfft[i] += (float) ((Snack_Alaw2Lin(UCSAMPLE(siPtr, p + siPtr->nchannels)) - preemph * Snack_Alaw2Lin(UCSAMPLE(siPtr, p))) * siPtr->hamwin[i]);
-	      } else if (sampformat == LIN8OFFSET) {
-		sectPtr->xfft[i] += (float) ((UCSAMPLE(siPtr, p + siPtr->nchannels) - preemph * UCSAMPLE(siPtr, p)) * siPtr->hamwin[i]);
-	      } else if (sampformat == LIN8) {
-		sectPtr->xfft[i] += (float) ((CSAMPLE(siPtr, p + siPtr->nchannels) - preemph * CSAMPLE(siPtr, p)) * siPtr->hamwin[i]);
-	      }
-	      p += siPtr->nchannels;
-	    }
+	  for (i = 0; i < fftlen; i++) {
+	    sectPtr->xfft[i] += (float) ((FSAMPLE(siPtr, p + siPtr->nchannels)
+					  - preemph * FSAMPLE(siPtr, p))
+					 * siPtr->hamwin[i]);
+	    p += siPtr->nchannels;
 	  }
 	}
 	for (i = 0; i < fftlen; i++) {
@@ -482,24 +456,12 @@ ComputeSection(Tk_Item *itemPtr)
     } else { /* storeType != SOUND_IN_MEMORY */
       if (siPtr->nchannels == 1 || siPtr->channel != -1) {
 	int p = (RestartPos + j * skip) * siPtr->nchannels + siPtr->channel;
-	if (sampformat == LIN16) {
-	  for (i = 0; i < fftlen; i++) {
-	    sectPtr->xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels)
-					 - preemph * GetSample(&info, p))
-					* siPtr->hamwin[i]);
-	    p += siPtr->nchannels;
-	  }
-	} else {
-	  for (i = 0; i < fftlen; i++) {
-	    if (sampformat == MULAW) {
-	      sectPtr->xfft[i] = (float) ((Snack_Mulaw2Lin((unsigned char)GetSample(&info, p + siPtr->nchannels)) - preemph * Snack_Mulaw2Lin((unsigned char)GetSample(&info, p))) * siPtr->hamwin[i]);
-	    } else if (sampformat == ALAW) {
-	      sectPtr->xfft[i] = (float) ((Snack_Alaw2Lin((unsigned char)GetSample(&info, p + siPtr->nchannels)) - preemph * Snack_Alaw2Lin((unsigned char)GetSample(&info, p))) * siPtr->hamwin[i]);
-	    } else {
-	      sectPtr->xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels) - preemph * GetSample(&info, p)) * siPtr->hamwin[i]);
-	    }
-	    p += siPtr->nchannels;
-	  }
+	
+	for (i = 0; i < fftlen; i++) {
+	  sectPtr->xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels)
+				       - preemph * GetSample(&info, p))
+				      * siPtr->hamwin[i]);
+	  p += siPtr->nchannels;
 	}
       } else {
 	int c;
@@ -510,24 +472,11 @@ ComputeSection(Tk_Item *itemPtr)
 	for (c = 0; c < siPtr->nchannels; c++) {
 	  int p = (RestartPos + j * skip) * siPtr->nchannels + c;
 	  
-	  if (sampformat == LIN16) {
-	    for (i = 0; i < fftlen; i++) {
-	      sectPtr->xfft[i] += (float) ((GetSample(&info, p + siPtr->nchannels)
-					    - preemph * GetSample(&info, p))
-					   * siPtr->hamwin[i]);
-	      p += siPtr->nchannels;
-	    }
-	  } else {
-	    for (i = 0; i < fftlen; i++) {
-	      if (sampformat == MULAW) {
-		sectPtr->xfft[i] += (float) ((Snack_Mulaw2Lin((unsigned char)GetSample(&info, p + siPtr->nchannels)) - preemph * Snack_Mulaw2Lin((unsigned char)GetSample(&info, p))) * siPtr->hamwin[i]);
-	      } else if (sampformat == ALAW) {
-		sectPtr->xfft[i] += (float) ((Snack_Alaw2Lin((unsigned char)GetSample(&info, p + siPtr->nchannels)) - preemph * Snack_Alaw2Lin((unsigned char)GetSample(&info, p))) * siPtr->hamwin[i]);
-	      } else {
-		sectPtr->xfft[i] += (float) ((GetSample(&info, p + siPtr->nchannels) - preemph * GetSample(&info, p)) * siPtr->hamwin[i]);
-	      }
-	      p += siPtr->nchannels;
-	    }
+	  for (i = 0; i < fftlen; i++) {
+	    sectPtr->xfft[i] += (float) ((GetSample(&info, p +siPtr->nchannels)
+					  - preemph * GetSample(&info, p))
+					 * siPtr->hamwin[i]);
+	    p += siPtr->nchannels;
 	  }
 	}
 	for (i = 0; i < fftlen; i++) {
@@ -566,6 +515,13 @@ UpdateSection(ClientData clientData, int flag)
 
   if (sectPtr->canvas == NULL) return;
 
+  if (flag == SNACK_DESTROY_SOUND) {
+    sectPtr->sound = NULL;
+    if (sectPtr->id) Snack_RemoveCallback(s, sectPtr->id);
+    sectPtr->id = 0;
+    return;
+  }
+
   Tk_CanvasEventuallyRedraw(sectPtr->canvas,
 			    sectPtr->header.x1, sectPtr->header.y1,
 			    sectPtr->header.x2, sectPtr->header.y2);
@@ -573,8 +529,8 @@ UpdateSection(ClientData clientData, int flag)
   sectPtr->si.blocks = s->blocks;
   sectPtr->si.BufPos = s->length;
   sectPtr->si.storeType = s->storeType;
-  sectPtr->si.sampfreq = s->sampfreq;
-  sectPtr->si.sampformat = s->sampformat;
+  sectPtr->si.samprate = s->samprate;
+  sectPtr->si.encoding = s->encoding;
   sectPtr->si.nchannels = s->nchannels;
   
   if (flag == SNACK_MORE_SOUND) {
@@ -620,9 +576,9 @@ UpdateSection(ClientData clientData, int flag)
     }
 
     if (sectPtr->topFrequency <= 0.0) {
-      sectPtr->si.topfrequency = sectPtr->si.sampfreq / 2.0;
-    } else if (sectPtr->topFrequency > sectPtr->si.sampfreq / 2.0) {
-      sectPtr->si.topfrequency = sectPtr->si.sampfreq / 2.0;
+      sectPtr->si.topfrequency = sectPtr->si.samprate / 2.0;
+    } else if (sectPtr->topFrequency > sectPtr->si.samprate / 2.0) {
+      sectPtr->si.topfrequency = sectPtr->si.samprate / 2.0;
     } else {
       sectPtr->si.topfrequency = sectPtr->topFrequency;
     }
@@ -661,10 +617,12 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   XGCValues gcValues;
   GC newGC;
   unsigned long mask;
-  int DoCompute = 0;
+  int doCompute = 0;
 #if defined(MAC)
   int i;
 #endif
+
+  if (argc == 0) return TCL_OK;
 
   if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc, argv,
 			 (char *) sectPtr, flags) != TCL_OK) return TCL_ERROR;
@@ -709,7 +667,7 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
       if (sectPtr->id) Snack_RemoveCallback(s, sectPtr->id);
       sectPtr->id = 0;
       sectPtr->si.BufPos = 0;
-      DoCompute = 1;
+      doCompute = 1;
     } else {
       if ((s = Snack_GetSound(interp, sectPtr->newSoundName)) == NULL) {
 	return TCL_ERROR;
@@ -743,11 +701,11 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
       
       sectPtr->si.blocks = s->blocks;
       sectPtr->si.BufPos = s->length;
-      sectPtr->si.sampfreq = s->sampfreq;
-      sectPtr->si.sampformat = s->sampformat;
+      sectPtr->si.samprate = s->samprate;
+      sectPtr->si.encoding = s->encoding;
       sectPtr->si.nchannels = s->nchannels;
       sectPtr->si.storeType = s->storeType;
-      DoCompute = 1;
+      doCompute = 1;
     }
   }
   sectPtr->esmp = sectPtr->endSmp;
@@ -781,28 +739,30 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   }
 
   if (OptSpecified(OPTION_WINLEN))
-    DoCompute = 1;
+    doCompute = 1;
 
   if (OptSpecified(OPTION_FFTLEN)) {
-    DoCompute = 1;
+    doCompute = 1;
   }
 
+  sectPtr->si.preemph = (float) sectPtr->preemph;
+
   if (OptSpecified(OPTION_SKIP)) {
-    DoCompute = 1;
+    doCompute = 1;
   }
 
   if (OptSpecified(OPTION_START)) {
-    DoCompute = 1;
+    doCompute = 1;
   }
 
   if (OptSpecified(OPTION_END)) {
-    DoCompute = 1;
+    doCompute = 1;
   }
 
   if (sectPtr->topFrequency <= 0.0) {
-    sectPtr->si.topfrequency = sectPtr->si.sampfreq / 2.0;
-  } else if (sectPtr->topFrequency > sectPtr->si.sampfreq / 2.0) {
-    sectPtr->si.topfrequency = sectPtr->si.sampfreq / 2.0;
+    sectPtr->si.topfrequency = sectPtr->si.samprate / 2.0;
+  } else if (sectPtr->topFrequency > sectPtr->si.samprate / 2.0) {
+    sectPtr->si.topfrequency = sectPtr->si.samprate / 2.0;
   } else {
     sectPtr->si.topfrequency = sectPtr->topFrequency;
   }
@@ -812,7 +772,7 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 		   &sectPtr->si.channelSet) != TCL_OK) {
       return TCL_ERROR;
     }
-    DoCompute = 1;
+    doCompute = 1;
   }
   sectPtr->si.channel = sectPtr->si.channelSet;
   if (sectPtr->si.nchannels == 1) {
@@ -825,11 +785,11 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 	!= TCL_OK) {
       return TCL_ERROR;
     }
-    DoCompute = 1;
+    doCompute = 1;
   }
   sectPtr->si.windowType = sectPtr->si.windowTypeSet;
 
-  if (DoCompute) {
+  if (doCompute) {
     sectPtr->nPoints = sectPtr->si.fftlen / 2;
     sectPtr->si.RestartPos = sectPtr->ssmp;
     sectPtr->si.fftmax = -10000;
@@ -881,7 +841,7 @@ DeleteSection(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display)
     Snack_RemoveCallback(sectPtr->sound, sectPtr->id);
   }
 
-  ckfree(sectPtr->soundName);
+  if (sectPtr->soundName != NULL) ckfree(sectPtr->soundName);
 
   if (sectPtr->coords != NULL) ckfree((char *) sectPtr->coords);
 
@@ -897,8 +857,10 @@ DeleteSection(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display)
 
   if (sectPtr->gc != None) Tk_FreeGC(display, sectPtr->gc);
 
-  if (sectPtr->sound->storeType == SOUND_IN_FILE) {
-    sectPtr->sound->itemRefCnt--;
+  if (sectPtr->sound != NULL) {
+    if (sectPtr->sound->storeType == SOUND_IN_FILE) {
+      sectPtr->sound->itemRefCnt--;
+    }
   }
 }
 

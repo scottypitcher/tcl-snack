@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -80,7 +80,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   long            status;
   int             n = 0;
 
-  if (A->debug == 1) Snack_WriteLog("Enter SnackAudioOpen\n");
+  if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioOpen\n");
 
   ASetErrorHandler(newHandler);
 
@@ -213,7 +213,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   A->time = SnackCurrentTime();
   A->freq = freq;
   */
-  if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioOpen",
+  if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioOpen",
 				       A->bytesPerSample);
 
   return TCL_OK;
@@ -222,14 +222,14 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
 int
 SnackAudioClose(ADesc *A)
 {
-  if (A->debug == 1) Snack_WriteLog("Enter SnackAudioClose\n");
+  if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioClose\n");
 
   close(A->Socket);
   ASetCloseDownMode(A->audio, AKeepTransactions, NULL);
   ACloseAudio(A->audio, NULL);
   A->audio = NULL;
 
-  if (A->debug == 1) Snack_WriteLog("Exit SnackAudioClose\n");
+  if (A->debug > 1) Snack_WriteLog("  Exit SnackAudioClose\n");
 
   return(0);
 }
@@ -252,7 +252,7 @@ SnackAudioResume(ADesc *A)
 void
 SnackAudioFlush(ADesc *A)
 {
-  if (A->debug == 1) Snack_WriteLog("Enter SnackAudioFlush\n");
+  if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioFlush\n");
 
   if (A->mode == RECORD) {
     short buffer[FLUSH_BUFSIZE];
@@ -270,7 +270,7 @@ SnackAudioFlush(ADesc *A)
     AFlushAudio(A->audio, A->transid, NULL, NULL);
   }
 
-  if (A->debug == 1) Snack_WriteLog("Exit SnackAudioFlush\n");
+  if (A->debug > 1) Snack_WriteLog("  Exit SnackAudioFlush\n");
 }
 
 void
@@ -334,17 +334,17 @@ SnackAudioPlayed(ADesc *A)
   trans_stat.time.type = ATTSamples;
   AGetTransStatus(A->audio, A->transid, &trans_stat, &status);
   if (trans_stat.state == ATSStopped || status != AENoError || trans_stat.time.u.samples < 0) return(0);
-  
-  if (A->last >= 0 && A->last >= trans_stat.time.u.samples) {
+  /*
+    if (A->last >= 0 && A->last >= trans_stat.time.u.samples) {
     A->last++;
-  } else {
-    A->last = trans_stat.time.u.samples;
-  }/*
-  int res;
-  
-  res = (A->freq * (SnackCurrentTime() - A->time) +.5);
-  return(res);
-  */
+    } else {*/
+  A->last = trans_stat.time.u.samples;
+  /* }*//*
+     int res;
+     
+     res = (A->freq * (SnackCurrentTime() - A->time) +.5);
+     return(res);
+     */
   return(A->last);
 }
 
@@ -434,18 +434,23 @@ AGetPlayGain()
   return(g);
 }
 
-void
-SnackAudioGetFormats(char *device, char *buf, int n)
+int
+SnackAudioGetEncodings(char *device)
 {
-  strncpy(buf, "Lin16 Lin8offset Mulaw Alaw", n);
-  buf[n-1] = '\0';
+  return(LIN16);
 }
 
 void
-SnackAudioGetFrequencies(char *device, char *buf, int n)
+SnackAudioGetRates(char *device, char *buf, int n)
 {
   strncpy(buf, "8000 11025 16000 22050 32000 44100 48000", n);
   buf[n-1] = '\0';
+}
+
+int
+SnackAudioMaxNumberChannels(char *device)
+{
+  return(2);
 }
 
 void

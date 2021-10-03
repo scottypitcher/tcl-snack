@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 1998-2000
+ * Copyright (C) 1998-2001
  * Dan Ellis
  * Leonid Spektor
  * Frederic Bonnet
  * Kåre Sjölander
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -185,7 +185,7 @@ static void
 AUWaitNoData(ADesc *A)
 {   /* Wait until the double-back procedure indicates that the current data
        has all been copied into buffers. */
-  if (A->debug == 1) Snack_WriteLog("AUWaitNoData\n");
+  if (A->debug > 2) Snack_WriteLog("    AUWaitNoData\n");
   while(A->data != NULL) {
     MySndIdle(A->schn);
   }
@@ -196,7 +196,7 @@ AUWaitNotBusy(ADesc *A)
 {   /* block until the current playing is complete */
   /* can look at channel to see if it's busy, also look at double buffers
      to see when they have reached the end.  We'll look at the channel */
-  if (A->debug == 1) Snack_WriteLog("AUWaitNotBusy\n");
+  if (A->debug > 2) Snack_WriteLog("    AUWaitNotBusy\n");
   while(MySndIdle(A->schn))
     ;
   A->running = 0;
@@ -205,7 +205,7 @@ AUWaitNotBusy(ADesc *A)
 static void 
 AUNewData(ADesc *A, void *buf, long frames)
 {   /* queue up some new data */
-  if (A->debug == 1) Snack_WriteLog("AUNewData\n");
+  if (A->debug > 2) Snack_WriteLog("    AUNewData\n");
   AUWaitNoData(A);
   A->data = buf;
   A->totalFrames = frames;
@@ -216,7 +216,7 @@ static long
 AUStart(ADesc *A, void *buf, long frames)
 {   /* Have not actually started the double buffering yet - wait for
        both bufs to fill */
-  if (A->debug == 1) Snack_WriteLog("AUStart\n");
+  if (A->debug > 2) Snack_WriteLog("    AUStart\n");
   /*ASSERT(A->data == NULL);*/  /* if we really haven't started, but there is
 			       waiting data, AUNewData will block forever */
   AUNewData(A, buf, frames);
@@ -240,7 +240,7 @@ AUInBufStartNext(ADesc *A) {
   SPBPtr spb = A->spb[nextbuf];
   SndDoubleBufferPtr db = A->bufs[nextbuf];
   
-  if (A->debug == 1) Snack_WriteLog("AUInBufStartNext\n");
+  if (A->debug > 2) Snack_WriteLog("    AUInBufStartNext\n");
   
   /* If the next buf hasn't been emptied, it's an overrun */
   if (A->bufFull[nextbuf] != -1) {
@@ -283,7 +283,7 @@ AUInBufStart(ADesc *A) {
   SPBPtr spb;
   int i;
   
-  if (A->debug == 1) Snack_WriteLog("AUInBufStart\n");
+  if (A->debug > 2) Snack_WriteLog("    AUInBufStart\n");
 
   for (i=0; i<NBUFS; ++i) {
     spb = (SPB*)NewPtr(sizeof(SPB));
@@ -338,10 +338,8 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   else if (21000 < freq && freq < 23000)  fxSr = rate22khz;
   else if (10500 < freq && freq < 11500)  fxSr = rate11khz;	
   
-#ifdef DEBUG
-  if (A->debug == 1) Snack_WriteLogInt("SnackAudioOpen, mode: ", (int)mode);
-  if (A->debug == 1) Snack_WriteLogInt(" rate: ", (int)freq);
-#endif /* DEBUG */
+  if (A->debug > 1) Snack_WriteLogInt("  SnackAudioOpen, mode: ", (int)mode);
+  if (A->debug > 2) Snack_WriteLogInt("    rate: ", (int)freq);
  
   A->nChannels = nchannels;
 
@@ -385,8 +383,8 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
     } 
     dbbytes = sizeof(SndDoubleBuffer) + desbuf*A->bytesPerSample*nchannels;
     
-    if (A->debug == 1) Snack_WriteLog("SnackAudioOpen:play\n");
-    if (A->debug == 1) Snack_WriteLogInt(" desbuf: ", desbuf);
+    if (A->debug > 1) Snack_WriteLog("  SnackAudioOpen:play\n");
+    if (A->debug > 2) Snack_WriteLogInt("    desbuf: ", desbuf);
     
     for(i = 0; i<NBUFS; ++i) {
       A->bufs[i] = (SndDoubleBuffer *)NewPtr(dbbytes);
@@ -444,7 +442,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
     int count, oe;
     int bits_per_samp;
 
-    if (A->debug == 1) Snack_WriteLog("AInit:rec\n");
+    if (A->debug > 1) Snack_WriteLog("  SnackAudioOpen:rec\n");
 
     /* Open the default input device */
     oe = SPBOpenDevice((unsigned char *)devname, permission, &inRefNum);
@@ -482,7 +480,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
 	    bestsr = newsr;
 	  }
         }
-        freq = bestsr;
+	freq = bestsr;
       }
       HUnlock(tmpHan);
       DisposeHandle(tmpHan);    
@@ -592,7 +590,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
 	    } */
       desbuf = hbuflen * max(1, (desbuf+hbuflen/2)/hbuflen);
     }
-    if (A->debug == 1) Snack_WriteLogInt(" desbuf: ", desbuf);
+    if (A->debug > 2) Snack_WriteLogInt("    desbuf: ", desbuf);
     /* allocate double buffer handles */
     dbbytes = sizeof(SndDoubleBuffer) + desbuf*A->bytesPerSample*A->nChannels;
     for(i = 0; i<NBUFS; ++i) {
@@ -621,11 +619,11 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
 int
 SnackAudioClose(ADesc *A)
 {
-  int i, now = 0;
+  int i;
   
   switch (A->mode) {
   case RECORD:
-    if (A->debug == 1) Snack_WriteLog("SnackAudioClose:rec\n");
+    if (A->debug > 1) Snack_WriteLog("  SnackAudioClose:rec\n");
     
     A->running = 0;
     while (A->bufsCompleted < A->bufsIssued) {
@@ -644,23 +642,22 @@ SnackAudioClose(ADesc *A)
     break;
     
   case PLAY:
-    if (A->debug == 1) Snack_WriteLog("AClose:play\n");
+    if (A->debug > 1) Snack_WriteLog("  SnackAudioClose:play\n");
     
-    if (!now) {
-      AUWaitNoData(A);   /* use up the current buffers */
-      /* mark the last, partially-full buffer as the last */
-      A->bufs[A->currentBuf]->dbFlags |= (dbBufferReady|dbLastBuffer);
-      if (!A->running) {
-	A->bufFull[0] = A->bufFull[1] = 1;   /* trick AUStart into starting */
-	AUStart(A, NULL, 0);
-      }
-      AUWaitNotBusy(A);  /* wait for it to be played */
-    } else {
-      A->scmd.cmd = quietCmd;
-      A->scmd.param1 = 0;
-      A->scmd.param2 = 0;
-      SndDoImmediate(A->schn, &(A->scmd));
+    /* Return -1 if buffers haven't been used up */
+    if (A->data != NULL) {
+      MySndIdle(A->schn);
+      return -1;
     }
+    /* mark the last, partially-full buffer as the last */
+    A->bufs[A->currentBuf]->dbFlags |= (dbBufferReady|dbLastBuffer);
+    if (!A->running) {
+      A->bufFull[0] = A->bufFull[1] = 1;   /* trick AUStart into starting */
+      AUStart(A, NULL, 0);
+    }
+    /* Return -1 if data remains to be played */
+    if(MySndIdle(A->schn)) return -1;
+    A->running = 0;
     SndDisposeChannel(A->schn, FALSE); /* doesn't wait for commands to end */
     /* free all the data */
     for (i = 0; i < NBUFS; ++i) {
@@ -675,7 +672,7 @@ SnackAudioClose(ADesc *A)
 int
 SnackAudioPause(ADesc *A)
 {
-  if (A->debug == 1) Snack_WriteLog("SnackAudioPause\n");
+  if (A->debug > 1) Snack_WriteLog("  SnackAudioPause\n");
   
   if (!A->pause) {
     switch (A->mode) {
@@ -698,7 +695,7 @@ SnackAudioPause(ADesc *A)
 void
 SnackAudioResume(ADesc *A)
 {
-  if (A->debug == 1) Snack_WriteLog("SnackAudioResume\n");
+  if (A->debug > 1) Snack_WriteLog("  SnackAudioResume\n");
   
   if (A->pause) {
     switch (A->mode) {
@@ -725,7 +722,24 @@ SnackAudioResume(ADesc *A)
 void
 SnackAudioFlush(ADesc *A)
 {
-  if (A->debug == 1) Snack_WriteLog("SnackAudioFlush\n");
+  if (A->debug > 1) Snack_WriteLog("  SnackAudioFlush\n");
+  
+  switch (A->mode) {
+  case RECORD:      
+    break;
+
+  case PLAY:
+    A->scmd.cmd = flushCmd_MacOS;
+    A->scmd.param1 = 0;
+    A->scmd.param2 = 0;
+    SndDoImmediate(A->schn, &(A->scmd));
+
+    A->scmd.cmd = quietCmd;
+    A->scmd.param1 = 0;
+    A->scmd.param2 = 0;
+    SndDoImmediate(A->schn, &(A->scmd));
+    break;
+  }
 }
 
 void
@@ -738,10 +752,10 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
 {
   int gotframes = 0;
   
-  if (A->debug == 1) Snack_WriteLogInt("SnackAudioRead, samps:", nFrames); 
-  if (A->debug == 1) Snack_WriteLogInt(" curbuf: ", A->currentBuf); 
-  if (A->debug == 1) Snack_WriteLogInt(" cmpbuf: ", A->bufsCompleted); 
-  if (A->debug == 1) Snack_WriteLogInt(" issbuf: ", A->bufsIssued);
+  if (A->debug > 1) Snack_WriteLogInt("  SnackAudioRead, samps:", nFrames); 
+  if (A->debug > 2) Snack_WriteLogInt("    curbuf: ", A->currentBuf); 
+  if (A->debug > 2) Snack_WriteLogInt("    cmpbuf: ", A->bufsCompleted); 
+  if (A->debug > 2) Snack_WriteLogInt("    issbuf: ", A->bufsIssued);
   
   /* Start recording if necessary */
   if (A->running == 0 && A->pause == 0) {
@@ -762,7 +776,7 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
        will == -1; note that this implies pause = 1. */
     while (remain > 0 && A->bufFull[curbuf] != -1) {
       
-      if (A->debug == 1) Snack_WriteLogInt(" dbnumf: ", db->dbNumFrames);
+      if (A->debug > 2) Snack_WriteLogInt("    dbnumf: ", db->dbNumFrames);
       
       /* if current buffer is filling, block until it is full */
       while (A->bufFull[curbuf] == 0) {
@@ -804,27 +818,30 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
   
   A->doneFrames += gotframes;
   
-  if (A->debug == 1) Snack_WriteLogInt("ARead got: ", gotframes * A->nChannels);
+  if (A->debug > 1) {
+    Snack_WriteLogInt("  ARead got: ", gotframes * A->nChannels);
+  }
   
   return gotframes * A->nChannels;
 }
 
+static int block = 0;
+
 int
 SnackAudioWrite(ADesc *A, void *buf, int nFrames)
 {
-  if (A->debug == 1) Snack_WriteLog("Enter SnackAudioWrite\n");
-  
+  if (A->debug > 1) Snack_WriteLog("  Enter SnackAudioWrite\n");
+
+  if (block) return 0;
   if (!A->running) {
     AUStart(A, buf, nFrames);
   } else {
     AUNewData(A, buf, nFrames);
   }
-  /* we can't return until this data is all used up - else collision */
-  while(A->data && A->doneFrames < A->totalFrames) {
-    MySndIdle(A->schn);
-  }
 
-  if (A->debug == 1) Snack_WriteLogInt("Exit SnackAudioWrite", nFrames);
+  block = 1;
+
+  if (A->debug > 1) Snack_WriteLogInt("  Exit SnackAudioWrite", nFrames);
   return nFrames;
 }
 
@@ -839,13 +856,16 @@ SnackAudioReadable(ADesc *A)
   int bytesPerBuffer = spb->bufferLength;
   int bytesPerFrame = A->bytesPerSample*A->nChannels;
   int nsamps = (bytesPerFrame * db->dbNumFrames \
-		+ bytesPerBuffer * (A->bufsIssued - A->bufsCompleted))/A->bytesPerSample;
+		+ bytesPerBuffer * (A->bufsIssued - A->bufsCompleted))/
+    A->bytesPerSample;
   
   static ncalls = 0;
   
-  if (A->debug == 1) Snack_WriteLogInt("SnackAudioReadable, curbuf: ", A->currentBuf);
-  if (A->debug == 1) Snack_WriteLogInt(" dbNumF: ", db->dbNumFrames);
-  if (A->debug == 1) Snack_WriteLogInt(" smpslft: ", nsamps);
+  if (A->debug > 1) {
+    Snack_WriteLogInt("  SnackAudioReadable, curbuf: ", A->currentBuf);
+  }
+  if (A->debug > 2) Snack_WriteLogInt("    dbNumF: ", db->dbNumFrames);
+  if (A->debug > 2) Snack_WriteLogInt("    smpslft: ", nsamps);
   
   ++ncalls;
   if (ncalls > 1000) {
@@ -858,6 +878,14 @@ SnackAudioReadable(ADesc *A)
 int
 SnackAudioWriteable(ADesc *A)
 {
+  if (block) {
+    if (A->data && A->doneFrames < A->totalFrames) {
+      MySndIdle(A->schn);
+      return 0;
+    }
+  }
+  block = 0;
+  
   return -1;
 }
 
@@ -923,16 +951,14 @@ AGetPlayGain()
   return(g);
 }
 
-void
-SnackAudioGetFormats(char *device, char *buf, int n)
+int
+SnackAudioGetEncodings(char *device)
 {
   OSErr oe;
   char *devname = NULL;	/* how to ask for default input device */
   long inRefNum;
   short permission = siReadPermission;  /* only want to read status, not change state */
-  
-  /* default to empty list */
-  buf[0] = '\0';
+  int lin24 = 0;
   
   /* Open the default input device */
   oe = SPBOpenDevice((unsigned char *)devname, permission, &inRefNum);
@@ -952,34 +978,40 @@ SnackAudioGetFormats(char *device, char *buf, int n)
       sp = *(short **)tmpHan;
       
       for (i=0; i<count; ++i) {
-	if (strlen(buf)) strcat(buf, " ");
-	sprintf(buf+strlen(buf), "Lin%d", (int)sp[i]);
+	if ((int)sp[i] == 24) {
+	  lin24 = 1;
+	}
       }
       HUnlock(tmpHan);
       DisposeHandle(tmpHan);
     }
     SPBCloseDevice(inRefNum);
   }
+  if (lin24) {
+    return(LIN24 | LIN16);
+  } else {
+    return(LIN16);
+  }
 }
 
 void
-SnackAudioGetFrequencies(char *device, char *buf, int n)
-{
+SnackAudioGetRates(char *device, char *buf, int n)
+{/*
   OSErr oe;
-  char *devname = NULL;	/* how to ask for default input device */
+  char *devname = NULL;	*//* how to ask for default input device *//*
   long inRefNum;
-  short permission = siReadPermission;  /* only want to read status, not change state */
+  short permission = siReadPermission;  *//* only want to read status, not change state */
   
-  /* default to empty list */
+  /* default to empty list *//*
   buf[0] = '\0';
   
-  /* Open the default input device */
+   *//* Open the default input device *//*
   oe = SPBOpenDevice((unsigned char *)devname, permission, &inRefNum);
   if (oe == 0) {
-    /* managed to open it */
+   *//* managed to open it *//*
     unsigned short usbuf[32];
     
-    /* Scan available sample rates */
+     *//* Scan available sample rates *//*
     oe = SPBGetDeviceInfo(inRefNum, siSampleRateAvailable, (void *)usbuf);
     if (oe == 0) {
       int count = usbuf[0];
@@ -1000,7 +1032,16 @@ SnackAudioGetFrequencies(char *device, char *buf, int n)
       DisposeHandle(tmpHan);
     }
     SPBCloseDevice(inRefNum);
-  }
+  } 
+	*/
+  strncpy(buf, "8000 11025 16000 22050 32000 44100 48000", n);
+  buf[n-1] = '\0';
+}
+
+int
+SnackAudioMaxNumberChannels(char *device)
+{
+  return(2);
 }
 
 void

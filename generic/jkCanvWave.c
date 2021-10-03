@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -40,8 +40,10 @@ typedef struct WaveItem  {
   Tk_Canvas canvas;
   double x, y;
   Tk_Anchor anchor;
-  int nPoints;
-  double *coords;
+  double *x0;
+  double *y0;
+  double *x1;
+  double *y1;
   XColor *fg;
   Pixmap fillStipple;
   GC gc;
@@ -51,15 +53,16 @@ typedef struct WaveItem  {
   int channel;
   int channelSet;
   int nchannels;
-  int sampfreq;
-  int sampformat;
-  short **blocks;
+  int samprate;
+  int encoding;
+  float **blocks;
   int bufPos;
-  int limit;
+  double limit;
   int subSample;
   double pixpsec;
   int height;
   int width;
+  int widthSet;
   int startSmp;
   int endSmp;
   int ssmp;
@@ -81,6 +84,10 @@ typedef struct WaveItem  {
   char *progressCmd;
   Tcl_Obj *cmdPtr;
   Tcl_Interp *interp;
+  int trimstart;
+  float maxv;
+  float minv;
+  int remove; /* remove for 2.1 */
 
 } WaveItem;
 
@@ -105,7 +112,8 @@ typedef enum {
   OPTION_SUBSAMPLE,
   OPTION_CHANNEL,
   OPTION_PRECOMPWAVE,
-  OPTION_PROGRESS
+  OPTION_PROGRESS,
+  OPTION_TRIMSTART
 } ConfigSpec;
 
 static Tk_ConfigSpec configSpecs[] = {
@@ -123,7 +131,7 @@ static Tk_ConfigSpec configSpecs[] = {
    "100", Tk_Offset(WaveItem, height), 0},
   
   {TK_CONFIG_PIXELS, "-width", (char *) NULL, (char *) NULL,
-   "378", Tk_Offset(WaveItem, width), 0},
+   "378", Tk_Offset(WaveItem, widthSet), 0},
   
   {TK_CONFIG_DOUBLE, "-pixelspersecond", "pps", (char *) NULL,
    "250.0", Tk_Offset(WaveItem, pixpsec), 0},
@@ -146,10 +154,10 @@ static Tk_ConfigSpec configSpecs[] = {
   {TK_CONFIG_BOOLEAN, "-frame", (char *) NULL, (char *) NULL,
    "no", Tk_Offset(WaveItem, frame), TK_CONFIG_NULL_OK},
 
-  {TK_CONFIG_INT, "-limit", (char *) NULL, (char *) NULL,
-   "-1", Tk_Offset(WaveItem, limit), 0},
+  {TK_CONFIG_DOUBLE, "-limit", (char *) NULL, (char *) NULL,
+   "-1.0", Tk_Offset(WaveItem, limit), 0},
   
-  {TK_CONFIG_INT, "-subsample", "subsample", (char *) NULL,
+  {TK_CONFIG_INT, "-subsample", (char *) NULL, (char *) NULL,
    "1", Tk_Offset(WaveItem, subSampleInt), TK_CONFIG_NULL_OK},
 
   {TK_CONFIG_STRING, "-channel", (char *) NULL, (char *) NULL,
@@ -160,6 +168,13 @@ static Tk_ConfigSpec configSpecs[] = {
 
   {TK_CONFIG_STRING, "-progress", (char *) NULL, (char *) NULL,
    "", Tk_Offset(WaveItem, progressCmd), TK_CONFIG_NULL_OK},
+
+  {TK_CONFIG_INT, "-trimstart", (char *) NULL, (char *) NULL,
+   "0", Tk_Offset(WaveItem, trimstart), 0},
+
+  /* To be removed for 2.1 */
+  {TK_CONFIG_INT, "-tround", (char *) NULL, (char *) NULL,
+   "0", Tk_Offset(WaveItem, remove), 0},
 
   {TK_CONFIG_INT, "-debug", (char *) NULL, (char *) NULL,
    "0", Tk_Offset(WaveItem, debug), 0},
@@ -253,8 +268,10 @@ CreateWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 
   wavePtr->canvas = canvas;
   wavePtr->anchor = TK_ANCHOR_NW;
-  wavePtr->nPoints = 0;
-  wavePtr->coords = NULL;
+  wavePtr->x0 = NULL;
+  wavePtr->y0 = NULL;
+  wavePtr->x1 = NULL;
+  wavePtr->y1 = NULL;
   wavePtr->fg = None;
   wavePtr->fillStipple = None;
   wavePtr->gc = None;
@@ -263,7 +280,8 @@ CreateWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   wavePtr->sound = NULL;
   wavePtr->pixpsec = 250.0;
   wavePtr->height = 100;
-  wavePtr->width = 378;
+  wavePtr->width = -1;
+  wavePtr->widthSet = 378;
   wavePtr->startSmp = 0;
   wavePtr->endSmp = -1;
   wavePtr->ssmp = 0;
@@ -276,10 +294,10 @@ CreateWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   wavePtr->channel = -1;
   wavePtr->channelSet = -1;
   wavePtr->nchannels = 1;
-  wavePtr->sampfreq = 16000;
-  wavePtr->sampformat = LIN16;
+  wavePtr->samprate = 16000;
+  wavePtr->encoding = LIN16;
   wavePtr->bufPos = 0;
-  wavePtr->limit = -1;
+  wavePtr->limit = -1.0;
   wavePtr->subSampleInt = 1;
   wavePtr->subSample = 1;
   wavePtr->preCompFile = NULL;
@@ -290,6 +308,9 @@ CreateWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   wavePtr->progressCmd = NULL;
   wavePtr->cmdPtr = NULL;
   wavePtr->interp = interp;
+  wavePtr->trimstart = 0;
+  wavePtr->maxv = 0.0f;
+  wavePtr->minv = 0.0f;
   wavePtr->debug = 0;
   wavePtr->x = 0;
   wavePtr->y = 0;
@@ -307,20 +328,21 @@ CreateWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 
 static void
 WaveMaxMin(WaveItem *wavePtr, SnackLinkedFileInfo *info, int start, int stop,
-	   int *maxi, int *mini)
+	   float *maxi, float *mini)
 {
-  int i, j, maxval = -32768, minval = 32767, allFlag = 0, val;
+  int i, j, allFlag = 0;
+  float maxval = -8388608.0, minval = 8388607.0, val;
   int nchan = wavePtr->nchannels, chan = wavePtr->channel;
   int inc = nchan * wavePtr->subSample;
 
   if (start < 0 || stop > wavePtr->bufPos - 1 || stop == 0 ||
       (wavePtr->blocks[0] == NULL && wavePtr->storeType == SOUND_IN_MEMORY)) {
-    if (wavePtr->sampformat == LIN8OFFSET) {
-      *maxi = 128;
-      *mini = 128;
+    if (wavePtr->encoding == LIN8OFFSET) {
+      *maxi = 128.0;
+      *mini = 128.0;
     } else {
-      *maxi = 0;
-      *mini = 0;
+      *maxi = 0.0;
+      *mini = 0.0;
     }
     return;
   }
@@ -332,148 +354,37 @@ WaveMaxMin(WaveItem *wavePtr, SnackLinkedFileInfo *info, int start, int stop,
   start = start * wavePtr->nchannels + chan;
   stop  = stop  * wavePtr->nchannels + chan + wavePtr->nchannels - 1;
 
-  switch (wavePtr->sampformat) {
-  case LIN16:
-    for (i = start; i <= stop; i += inc) {
-      if (wavePtr->storeType == SOUND_IN_MEMORY) {
-	val = SSAMPLE(wavePtr, i);
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += SSAMPLE(wavePtr, i + j);
-	  }
-	  val = val / nchan;
+  for (i = start; i <= stop; i += inc) {
+    if (wavePtr->storeType == SOUND_IN_MEMORY) {
+      val = FSAMPLE(wavePtr, i);
+      if (allFlag) {
+	for (j = 1; j < nchan; j++) {
+	  val += FSAMPLE(wavePtr, i + j);
 	}
-      } else {
-	val = GetSample(info, i);	
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += GetSample(info, i + j);
-	  }
-	  val = val / nchan;
+	val = val / nchan;
+      }
+    } else {
+      val = GetSample(info, i);	
+      if (allFlag) {
+	for (j = 1; j < nchan; j++) {
+	  val += GetSample(info, i + j);
 	}
-      }
-      if (val > maxval) {
-	maxval = val;
-      }
-      if (val < minval) {
-	minval = val;
+	val = val / nchan;
       }
     }
-    break;
-  case ALAW:
-    for (i = start; i <= stop; i += inc) {
-      if (wavePtr->storeType == SOUND_IN_MEMORY) {
-	val = Snack_Alaw2Lin(UCSAMPLE(wavePtr, i));
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += Snack_Alaw2Lin(UCSAMPLE(wavePtr, i + j));
-	  }
-	  val = val / nchan;
-	}
-      } else {
-	val = Snack_Alaw2Lin((unsigned char)GetSample(info, i));	
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += Snack_Alaw2Lin((unsigned char)GetSample(info, i + j));
-	  }
-	  val = val / nchan;
-	}
-      }
-      if (val > maxval) {
-	maxval = val;
-      }
-      if (val < minval) {
-	minval = val;
-      }
+    if (val > maxval) {
+      maxval = val;
     }
-    break;
-  case MULAW:
-    for (i = start; i <= stop; i += inc) {
-      if (wavePtr->storeType == SOUND_IN_MEMORY) {
-	val = Snack_Mulaw2Lin(UCSAMPLE(wavePtr, i));
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += Snack_Mulaw2Lin(UCSAMPLE(wavePtr, i + j));
-	  }
-	  val = val / nchan;
-	}
-      } else {
-	val = Snack_Mulaw2Lin((unsigned char)GetSample(info, i));	
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += Snack_Mulaw2Lin((unsigned char)GetSample(info, i + j));
-	  }
-	  val = val / nchan;
-	}
-      }
-      if (val > maxval) {
-	maxval = val;
-      }
-      if (val < minval) {
-	minval = val;
-      }
-    }
-    break;
-  case LIN8OFFSET:
-    for (i = start; i <= stop; i += inc) {
-      if (wavePtr->storeType == SOUND_IN_MEMORY) {
-	val = UCSAMPLE(wavePtr, i);
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += UCSAMPLE(wavePtr, i + j);
-	  }
-	  val = val / nchan;
-	}
-      } else {
-	val = GetSample(info, i);
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += GetSample(info, i + j);
-	  }
-	  val = val / nchan;
-	}
-      }
-      if (val > maxval) {
-	maxval = val;
-      }
-      if (val < minval) {
-	minval = val;
-      }
-    }
-    break;
-  default:
-    for (i = start; i <= stop; i += inc) {
-      if (wavePtr->storeType == SOUND_IN_MEMORY) {
-	val = CSAMPLE(wavePtr, i);
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += (int) CSAMPLE(wavePtr, i + j);
-	  }
-	  val = val / nchan;
-	}
-      } else {
-	val = GetSample(info, i);
-	if (allFlag) {
-	  for (j = 1; j < nchan; j++) {
-	    val += GetSample(info, i + j);
-	  }
-	  val = val / nchan;
-	}
-      }
-      if (val > maxval) {
-	maxval = val;
-      }
-      if (val < minval) {
-	minval = val;
-      }
+    if (val < minval) {
+      minval = val;
     }
   }
-  if (wavePtr->limit > 0) {
+  if (wavePtr->limit > 0.0) {
     if (maxval > wavePtr->limit) {
-      maxval = wavePtr->limit;
+      maxval = (float) wavePtr->limit;
     }
     if (minval < -wavePtr->limit) {
-      minval = -wavePtr->limit;
+      minval = (float) -wavePtr->limit;
     }
   }
   *maxi = maxval;
@@ -509,81 +420,91 @@ WaveCoords(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr, int argc,
   return TCL_OK;
 }
 
-#define WIDEWAVE 100000
+/*#define WIDEWAVE 100000*/
 
 static int
 ComputeWaveCoords(Tk_Item *itemPtr)
 {
   WaveItem *wavePtr = (WaveItem *) itemPtr;
-  int i = 0, maxv, minv;
-  float scale = 1000000.0;
+  int i = 0;
+  float maxv, minv, abmax;
   int yh = wavePtr->height / 2;
-  int nPoints = wavePtr->nPoints;
+  int nPoints = wavePtr->width;
   SnackLinkedFileInfo info;
   Tcl_Interp *interp;
   int usePre = 0;
 
-  if (wavePtr->debug == 1) Snack_WriteLog("Enter ComputeWaveCoords\n"); 
+  if (wavePtr->debug > 1) Snack_WriteLog("  Enter ComputeWaveCoords\n"); 
 
-  if (wavePtr->coords != NULL) ckfree((char *) wavePtr->coords);
-  wavePtr->coords = (double *) ckalloc(sizeof(double) * 2 * nPoints);
+  if (wavePtr->x0 != NULL) {
+    ckfree((char *) wavePtr->x0);
+  }
+  if (wavePtr->y0 != NULL) {
+    ckfree((char *) wavePtr->y0);
+  }
+  if (wavePtr->x1 != NULL) {
+    ckfree((char *) wavePtr->x1);
+  }
+  if (wavePtr->y1 != NULL) {
+    ckfree((char *) wavePtr->y1);
+  }
+  wavePtr->x0 = (double *) ckalloc(sizeof(double) * nPoints);
+  wavePtr->y0 = (double *) ckalloc(sizeof(double) * nPoints);
+  wavePtr->x1 = (double *) ckalloc(sizeof(double) * nPoints);
+  wavePtr->y1 = (double *) ckalloc(sizeof(double) * nPoints);
 
   if (wavePtr->sound == NULL) {
     for (i = 0; i < nPoints; i++) {
-      wavePtr->coords[i*2]   = (double) i;
-      wavePtr->coords[i*2+1] = (double) yh;
+      wavePtr->x0[i] = (double) i;
+      wavePtr->y0[i] = (double) yh;
+      wavePtr->x1[i] = (double) i;
+      wavePtr->y1[i] = (double) yh;
     }
     return TCL_OK;
   }
 
   maxv = wavePtr->sound->maxsamp;
   minv = wavePtr->sound->minsamp;
+  abmax = wavePtr->sound->abmax;
   interp = wavePtr->sound->interp;
 
-  if (wavePtr->storeType != SOUND_IN_MEMORY) {
-    if (OpenLinkedFile(wavePtr->sound, &info) != TCL_OK) {
-      for (i = 0; i < nPoints; i++) {
-	wavePtr->coords[i*2]   = (double) i;
-	wavePtr->coords[i*2+1] = (double) yh;
-      }
-      return TCL_OK;
-    }
-  }
-
-  if (wavePtr->preCompFile != NULL && wavePtr->sound->active != READ) {
+  if (wavePtr->preCompFile != NULL && wavePtr->sound->readStatus != READ) {
     char *type = NULL;
 
     if (wavePtr->preSound != NULL) {
       wavePtr->preSound->fcname = NULL;
       Snack_DeleteSound(wavePtr->preSound);
     }
-    wavePtr->preSound = Snack_NewSound(16000, LIN8, SNACK_MONO);
+    wavePtr->preSound = Snack_NewSound(100, LIN8, wavePtr->sound->nchannels);
     if (wavePtr->preSound != NULL) {
       wavePtr->preSound->fcname = wavePtr->preCompFile;
       type = LoadSound(wavePtr->preSound, interp, NULL, 0, -1);
       if (wavePtr->preWI != NULL) ckfree((char *)wavePtr->preWI);
       wavePtr->preWI = (WaveItem *) ckalloc(sizeof(WaveItem));
       if (wavePtr->preWI != NULL) {
-	wavePtr->preWI->nchannels = 1;
-	wavePtr->preWI->channel =   0;
+	wavePtr->preWI->nchannels = wavePtr->preSound->nchannels;
+	wavePtr->preWI->channel = 0;
 	wavePtr->preWI->subSample = 1;
 	wavePtr->preWI->bufPos = wavePtr->preSound->length;
 	wavePtr->preWI->blocks = wavePtr->preSound->blocks;
 	wavePtr->preWI->storeType = SOUND_IN_MEMORY;
-	wavePtr->preWI->sampformat = LIN8;
+	wavePtr->preWI->encoding = LIN8;
 	wavePtr->preWI->limit = wavePtr->limit;
       }
     }
 
-    if ((type == NULL || wavePtr->preCompInvalid) && wavePtr->preSound != NULL) {
+    if ((type == NULL || wavePtr->preCompInvalid) && wavePtr->preSound!=NULL) {
 
       /* Compute and store wave */
 
-      int nStore = (int) (200.0 * wavePtr->sound->length /
-	wavePtr->sound->sampfreq);
-      maxv = 0;
-      minv = 0;
-      if (wavePtr->debug == 1) Snack_WriteLog("Saving computed waveform\n");
+      int nStore = (int) (200.0 * wavePtr->sound->length 
+			  / wavePtr->sound->samprate);
+      int j;
+      int tmp = wavePtr->channel;
+      
+      maxv = 0.0f;
+      minv = 0.0f;
+      if (wavePtr->debug > 2) Snack_WriteLog("    Saving computed waveform\n");
       wavePtr->preCompInvalid = 0;
       Snack_ResizeSoundStorage(wavePtr->preSound, nStore);
       wavePtr->preSound->length = nStore;
@@ -591,42 +512,78 @@ ComputeWaveCoords(Tk_Item *itemPtr)
 	Snack_ProgressCallback(wavePtr->cmdPtr, interp,
 			       "Computing waveform", 0.0);
       }
-      for (i = 0; i < nStore / 2; i++) {
-	float fraq = (float) wavePtr->sound->length / (nStore / 2);
-	int start = (int) (i     * fraq);
-	int stop  = (int) ((i+1) * fraq);
-	int wtop, wbot;
-	
-	WaveMaxMin(wavePtr, &info, start, stop, &wtop, &wbot);
 
-	if (maxv < wtop) maxv = wtop;
-	if (minv > wbot) minv = wbot;
-
-	switch (wavePtr->sampformat) {
-	case LIN16:
-	case MULAW:
-	case ALAW:
-	  wtop = wtop >> 8;
-	  wbot = wbot >> 8;
-	  break;
-	case LIN8OFFSET:
-	  wtop -= 128;
-	  wbot -= 128;
-	  break;
-	case LIN8:
-	  break;
+      if (wavePtr->storeType != SOUND_IN_MEMORY) {
+	if (OpenLinkedFile(wavePtr->sound, &info) != TCL_OK) {
+	  for (i = 0; i < nPoints; i++) {
+	    wavePtr->x0[i] = (double) i;
+	    wavePtr->y0[i] = (double) yh;
+	    wavePtr->x1[i] = (double) i;
+	    wavePtr->y1[i] = (double) yh;
+	  }
+	  if (wavePtr->cmdPtr != NULL) {
+	    Snack_ProgressCallback(wavePtr->cmdPtr, interp,
+				   "Computing waveform", 1.0);
+	  }
+	  return TCL_OK;
 	}
-	Snack_SetSample(wavePtr->preSound, 0, i*2,   (char) wtop);
-	Snack_SetSample(wavePtr->preSound, 0, i*2+1, (char) wbot);
-	if ((wavePtr->cmdPtr != NULL) && ((i % 1000) == 999)) {
-	  int res = Snack_ProgressCallback(wavePtr->cmdPtr, interp,
-				 "Computing waveform", (double) i/(nStore/2));
-	  if (res != TCL_OK) {
-	    for (;i < nStore / 2; i++) {
-	      Snack_SetSample(wavePtr->preSound, 0, i*2,   (char) 0);
-	      Snack_SetSample(wavePtr->preSound, 0, i*2+1, (char) 0);
-	    }
+      }
+      for (i = 0; i < nStore / 2; i++) {
+	for (j = 0; j < wavePtr->sound->nchannels; j++) {
+	  float fraq = (float) wavePtr->sound->length / (nStore / 2);
+	  int start = (int) (i     * fraq);
+	  int stop  = (int) ((i+1) * fraq);
+	  float wtop, wbot;
+
+	  wavePtr->channel = j;
+	  WaveMaxMin(wavePtr, &info, start, stop, &wtop, &wbot);
+	  
+	  if (maxv < wtop) maxv = wtop;
+	  if (minv > wbot) minv = wbot;
+	  
+	  switch (wavePtr->encoding) {
+	  case LIN16:
+	  case MULAW:
+	  case ALAW:
+	    wtop = wtop / 256.0f;
+	    wbot = wbot / 256.0f;
 	    break;
+	  case LIN24:
+	    wtop = wtop / 65536.0f;
+	    wbot = wbot / 65536.0f;
+	    break;
+	  case LIN32:
+	    wtop = wtop / 16777216.0f;
+	    wbot = wbot / 16777216.0f;
+	    break;
+	  case SNACK_FLOAT:
+	    wtop = (wtop / abmax) * 128.0f;
+	    wbot = (wbot / abmax) * 128.0f;
+	    break;
+	  case LIN8OFFSET:
+	    wtop -= 128.0f;
+	    wbot -= 128.0f;
+	    break;
+	  case LIN8:
+	    break;
+	  }
+	  Snack_SetSample(wavePtr->preSound, j, i*2,   (char) wtop);
+	  Snack_SetSample(wavePtr->preSound, j, i*2+1, (char) wbot);
+	  if (j == 0 && (wavePtr->cmdPtr != NULL) && ((i % 1000) == 999)) {
+	    int res = Snack_ProgressCallback(wavePtr->cmdPtr, interp,
+			     "Computing waveform", (double) i/(nStore/2));
+	    if (res != TCL_OK) {
+	      if (wavePtr->debug > 2) {
+		Snack_WriteLog("    Aborting ComputeWaveCoords\n"); 
+	      }
+	      for (;i < nStore / 2; i++) {
+		for (j = 0; j < wavePtr->sound->nchannels; j++) {
+		  Snack_SetSample(wavePtr->preSound, j, i*2,   (char) 0);
+		  Snack_SetSample(wavePtr->preSound, j, i*2+1, (char) 0);
+		}
+	      }
+	      break;
+	    }
 	  }
 	}
       }
@@ -635,16 +592,16 @@ ComputeWaveCoords(Tk_Item *itemPtr)
 			       "Computing waveform", 1.0);
       }
       if (SaveSound(wavePtr->preSound, interp, wavePtr->preCompFile, NULL,
-		0, wavePtr->preSound->length, RAW_STRING) == TCL_ERROR) {
-	if (wavePtr->debug == 1) Snack_WriteLog("Failed saving waveform\n");
+		0, wavePtr->preSound->length, AIFF_STRING) == TCL_ERROR) {
+	if (wavePtr->debug > 2) Snack_WriteLog("    Failed saving waveform\n");
 	wavePtr->preCompFile = NULL;
       }
       wavePtr->preWI->bufPos = wavePtr->preSound->length;
       wavePtr->preWI->blocks = wavePtr->preSound->blocks;
-      /*      if (wavePtr->sound->cmdPtr != NULL) {
-	Tcl_DecrRefCount(wavePtr->sound->cmdPtr);
-	wavePtr->sound->cmdPtr = NULL;
-      }*/
+      if (wavePtr->storeType != SOUND_IN_MEMORY) {
+	CloseLinkedFile(&info);
+      }
+      wavePtr->channel = tmp;
     }
 
     if (wavePtr->preSound != NULL && wavePtr->preWI != NULL) {
@@ -655,50 +612,66 @@ ComputeWaveCoords(Tk_Item *itemPtr)
 	wavePtr->preSound->length;
       float right = ((float) wavePtr->esmp / wavePtr->sound->length) *
 	wavePtr->preSound->length;
-      float fraq  = (right - left) / nPoints;
+      float fraq  = (right - left) / (nPoints * 2);
 
       if (fraq > 1.0) {
 	usePre = 1;
-	switch (wavePtr->sampformat) {
+	switch (wavePtr->encoding) {
 	case LIN16:
 	case MULAW:
 	case ALAW:
-	  maxv = maxv >> 8;
-	  minv = minv >> 8;
+	  maxv = maxv / 256.0f;
+	  minv = minv / 256.0f;
+	  break;
+	case LIN24:
+	  maxv = maxv / 65536.0f;
+	  minv = minv / 65536.0f;
+	  break;
+	case LIN32:
+	  maxv = maxv / 16777216.0f;
+	  minv = minv / 16777216.0f;
+	  break;
+	case SNACK_FLOAT:
+	  maxv = (maxv / abmax) * 128.0f;
+	  minv = (minv / abmax) * 128.0f;
 	  break;
 	case LIN8OFFSET:
-	  maxv -= 128;
-	  minv -= 128;
+	  maxv -= 128.0f;
+	  minv -= 128.0f;
 	  break;
 	case LIN8:
 	  break;
 	}
 
-	if (wavePtr->debug == 1) Snack_WriteLog("Using precomputed waveform\n");
-	for (i = 0; i < nPoints/2; i++) {
+	if (wavePtr->debug > 2) {
+	  Snack_WriteLog("    Using precomputed waveform\n");
+	}
+
+	wavePtr->preWI->channel = wavePtr->channel;
+	for (i = 0; i < nPoints; i++) {
 	  int start = (int) (left + 2*(i * fraq));
 	  int stop  = (int) (left + 2*(i+1)*fraq);
-	  int wtop, wbot;
+	  float wtop, wbot;
 
-	  WaveMaxMin(wavePtr->preWI, &info, start, stop, &wtop, &wbot);
+	  WaveMaxMin(wavePtr->preWI, NULL, start, stop, &wtop, &wbot);
 
 	  if (maxv < wtop) maxv = wtop;
 	  if (minv > wbot) minv = wbot;
 
-	  wavePtr->coords[i*4]   = i;
-	  wavePtr->coords[i*4+2] = i;
-	  if (i > 0 && wavePtr->coords[i*4-1] <= wtop) {
-	    wavePtr->coords[i*4+1] = wtop;
-	    wavePtr->coords[i*4+3] = wbot;
+	  wavePtr->x0[i] = i;
+	  wavePtr->x1[i] = i;
+	  if (i > 0 && wavePtr->y1[i-1] <= wtop) {
+	    wavePtr->y0[i] = wtop;
+	    wavePtr->y1[i] = wbot;
 	  } else {
-	    wavePtr->coords[i*4+1] = wbot;
-	    wavePtr->coords[i*4+3] = wtop;
+	    wavePtr->y0[i] = wbot;
+	    wavePtr->y1[i] = wtop;
 	  }
 	}
 
-	if (wavePtr->sampformat == LIN8OFFSET) {
-	  maxv += 128;
-	  minv += 128;
+	if (wavePtr->encoding == LIN8OFFSET) {
+	  maxv += 128.0f;
+	  minv += 128.0f;
 	}
       } else {
 	usePre = 0;
@@ -707,58 +680,56 @@ ComputeWaveCoords(Tk_Item *itemPtr)
   }
 
   if (!usePre) {
-    /* int doCallback = ((wavePtr->esmp - wavePtr->ssmp) > WIDEWAVE) ? 1:0;*/
 
-    if (wavePtr->debug == 1) Snack_WriteLog("Default waveform computation\n");
-    /*
-    if ((wavePtr->cmdPtr != NULL) && doCallback) {
-      Snack_ProgressCallback(wavePtr->cmdPtr, interp,
-			     "Drawing waveform", 0.0);
-    }*/
-    for (i = 0; i < nPoints / 2; i++) {
-      float fraq = (float) (wavePtr->esmp - wavePtr->ssmp) / (nPoints / 2);
+    if (wavePtr->debug > 2) {
+      Snack_WriteLog("    Default waveform computation\n");
+    }
+
+    if (wavePtr->storeType != SOUND_IN_MEMORY) {
+      if (OpenLinkedFile(wavePtr->sound, &info) != TCL_OK) {
+	for (i = 0; i < nPoints; i++) {
+	  wavePtr->x0[i] = (double) i;
+	  wavePtr->y0[i] = (double) yh;
+	  wavePtr->x1[i] = (double) i;
+	  wavePtr->y1[i] = (double) yh;
+	}
+	  return TCL_OK;
+      }
+    }
+
+    for (i = 0; i < nPoints; i++) {
+      float fraq = (float) (wavePtr->esmp - wavePtr->ssmp) / nPoints;
       int start = wavePtr->ssmp + (int) (i     * fraq) - wavePtr->validStart;
       int stop  = wavePtr->ssmp + (int) ((i+1) * fraq) - wavePtr->validStart;
-      int wtop, wbot;
-      /*      int interval = (int) (0.5 + 100000 / fraq);*/
+      float wtop, wbot;
+
+      if (wavePtr->trimstart == 1) {
+	start = (int)(wavePtr->subSample*ceil((float)start/wavePtr->subSample));
+      }
 
       WaveMaxMin(wavePtr, &info, start, stop, &wtop, &wbot);
 
       if (maxv < wtop) maxv = wtop;
       if (minv > wbot) minv = wbot;
 
-      if (wavePtr->sampformat == LIN8OFFSET) {
-	wtop -= 128;
-	wbot -= 128;
+      if (wavePtr->encoding == LIN8OFFSET) {
+	wtop -= 128.0f;
+	wbot -= 128.0f;
       }
-      
-      wavePtr->coords[i*4]   = i;
-      wavePtr->coords[i*4+2] = i;
-      if (i > 0 && wavePtr->coords[i*4-1] <= wtop) {
-	wavePtr->coords[i*4+1] = wtop;
-	wavePtr->coords[i*4+3] = wbot;
+
+      wavePtr->x0[i] = i;
+      wavePtr->x1[i] = i;
+      if (i > 0 && wavePtr->y1[i-1] <= wtop) {
+	wavePtr->y0[i] = wtop;
+	wavePtr->y1[i] = wbot;
       } else {
-	wavePtr->coords[i*4+1] = wbot;
-	wavePtr->coords[i*4+3] = wtop;
+	wavePtr->y0[i] = wbot;
+	wavePtr->y1[i] = wtop;
       }
-      /*if ((wavePtr->cmdPtr != NULL) && ((i % interval) == (interval-1))) {
-	int res = Snack_ProgressCallback(wavePtr->cmdPtr, interp,
-			    "Drawing waveform", (double) i/(nPoints/2));
-	if (res != TCL_OK) {
-	  for (;i < nPoints / 2; i++) {
-	    wavePtr->coords[i*4]   = i;
-	    wavePtr->coords[i*4+2] = i;
-	    wavePtr->coords[i*4+1] = 0;
-	    wavePtr->coords[i*4+3] = 0;
-	  }
-	  break;
-	}
-      }*/
     }
-    /*if ((wavePtr->cmdPtr != NULL) && doCallback) {
-      Snack_ProgressCallback(wavePtr->cmdPtr, interp,
-			     "Drawing waveform", 1.0);
-    }*/
+    if (wavePtr->storeType != SOUND_IN_MEMORY) {
+      CloseLinkedFile(&info);
+    }
   }
 
   if (maxv > wavePtr->sound->maxsamp) {
@@ -769,38 +740,42 @@ ComputeWaveCoords(Tk_Item *itemPtr)
   }
 
   if (wavePtr->limit > 0) {
-    maxv = wavePtr->limit;
-    minv = -wavePtr->limit;
+    maxv = (float) wavePtr->limit;
+    minv = (float) -wavePtr->limit;
   }
-  if (wavePtr->sampformat == LIN8OFFSET) {
-    maxv -= 128;
-    minv -= 128;
-  }
-  if (wavePtr->height > 2) {
-    scale = 2 * ((maxv > -minv) ? maxv : -minv) / (float)(wavePtr->height - 2);
-  }
-  if (scale < 0.00001) {
-    scale = (float) 0.00001;
+  if (wavePtr->encoding == LIN8OFFSET) {
+    maxv -= 128.0f;
+    minv -= 128.0f;
   }
 
-  for (i = 0; i < nPoints / 2; i++) {
-    wavePtr->coords[i*4+1] = yh - wavePtr->coords[i*4+1] / scale;
-    wavePtr->coords[i*4+3] = yh - wavePtr->coords[i*4+3] / scale;
-  }
+  wavePtr->maxv = maxv;
+  wavePtr->minv = minv;
 
   ComputeWaveBbox(wavePtr->canvas, wavePtr);
 
   if (usePre) {
-    switch (wavePtr->sampformat) {
+    switch (wavePtr->encoding) {
     case LIN16:
     case MULAW:
     case ALAW:
-      maxv = maxv * 256;
-      minv = minv * 256;
+      maxv = maxv * 256.0f;
+      minv = minv * 256.0f;
+      break;
+    case LIN24:
+      maxv = maxv * 65536.0f;
+      minv = minv * 65536.0f;
+      break;
+    case LIN32:
+      maxv = maxv / 16777216.0f;
+      minv = minv / 16777216.0f;
+      break;
+    case SNACK_FLOAT:
+      maxv = maxv / 128.0f;
+      minv = minv / 128.0f;
       break;
     case LIN8OFFSET:
-      maxv += 128;
-      minv += 128;
+      maxv += 128.0f;
+      minv += 128.0f;
       break;
     case LIN8:
       break;
@@ -813,11 +788,7 @@ ComputeWaveCoords(Tk_Item *itemPtr)
     }
   }
 
-  if (wavePtr->storeType != SOUND_IN_MEMORY) {
-    CloseLinkedFile(&info);
-  }
-
-  if (wavePtr->debug == 1) Snack_WriteLog("Exit ComputeWaveCoords\n"); 
+  if (wavePtr->debug > 1) Snack_WriteLog("  Exit ComputeWaveCoords\n"); 
 
   return TCL_OK;
 }
@@ -830,9 +801,16 @@ UpdateWave(ClientData clientData, int flag)
   WaveItem *wavePtr = (WaveItem *) clientData;
   Sound *s = wavePtr->sound;
 
-  if (wavePtr->debug == 1) Snack_WriteLogInt("Enter UpdateWave", flag);
+  if (wavePtr->debug > 1) Snack_WriteLogInt("  Enter UpdateWave", flag);
 
   if (wavePtr->canvas == NULL || wavePtr->sound == NULL) return;
+
+  if (flag == SNACK_DESTROY_SOUND) {
+    wavePtr->sound = NULL;
+    if (wavePtr->id) Snack_RemoveCallback(s, wavePtr->id);
+    wavePtr->id = 0;
+    return;
+  }
 
   Tk_CanvasEventuallyRedraw(wavePtr->canvas,
 			    wavePtr->header.x1, wavePtr->header.y1, 
@@ -860,8 +838,8 @@ UpdateWave(ClientData clientData, int flag)
   if (wavePtr->ssmp > wavePtr->esmp)
     wavePtr->ssmp = wavePtr->esmp;
 
-  wavePtr->sampfreq = s->sampfreq;
-  wavePtr->sampformat = s->sampformat;
+  wavePtr->samprate = s->samprate;
+  wavePtr->encoding = s->encoding;
   wavePtr->nchannels = s->nchannels;
 
   wavePtr->channel = wavePtr->channelSet;
@@ -871,20 +849,18 @@ UpdateWave(ClientData clientData, int flag)
 
   if (wavePtr->mode == CONF_WIDTH) {
     if (wavePtr->esmp != wavePtr->ssmp) {
-      wavePtr->pixpsec = (float) wavePtr->width * wavePtr->sampfreq /
+      wavePtr->pixpsec = (float) wavePtr->width * wavePtr->samprate /
 	(wavePtr->esmp - wavePtr->ssmp);
     }
   }
   else if (wavePtr->mode == CONF_PPS) {
 
-    wavePtr->nPoints = 2 * (int)((wavePtr->esmp - wavePtr->ssmp) * 
-				 wavePtr->pixpsec / wavePtr->sampfreq);
-    wavePtr->width = wavePtr->nPoints / 2;
+    wavePtr->width = (int)((wavePtr->esmp - wavePtr->ssmp) * 
+			   wavePtr->pixpsec / wavePtr->samprate/* + 0.5*/);
   } 
   else if (wavePtr->mode == CONF_WIDTH_PPS) {
     wavePtr->ssmp = (int) (wavePtr->esmp - wavePtr->width *
-			   wavePtr->sampfreq / wavePtr->pixpsec);
-    wavePtr->nPoints = 2 * wavePtr->width;
+			   wavePtr->samprate / wavePtr->pixpsec);
   }
 
   if (wavePtr->subSampleInt == 0) {
@@ -907,7 +883,9 @@ UpdateWave(ClientData clientData, int flag)
 			    wavePtr->header.x1, wavePtr->header.y1,
 			    wavePtr->header.x2, wavePtr->header.y2);
 
-  if (wavePtr->debug == 1) Snack_WriteLogInt("Exit UpdateWave", wavePtr->nPoints);
+  if (wavePtr->debug > 1) {
+    Snack_WriteLogInt("  Exit UpdateWave", wavePtr->width);
+  }
 }
 
 static int
@@ -920,6 +898,7 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   XGCValues gcValues;
   GC newGC;
   unsigned long mask;
+  int doCompute = 0, oldMode;
 #if defined(MAC)
   int i;
 #endif
@@ -929,7 +908,7 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc, argv,
 			 (char *) wavePtr, flags) != TCL_OK) return TCL_ERROR;
 
-  if (wavePtr->debug == 1) Snack_WriteLog("Enter ConfigureWave\n");
+  if (wavePtr->debug > 1) Snack_WriteLog("  Enter ConfigureWave\n");
 
 #if defined(MAC)
   for (i = 0; i < argc; i++) {
@@ -986,7 +965,7 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 	ckfree(wavePtr->soundName);
 	wavePtr->soundName = ckalloc(strlen(wavePtr->newSoundName)+1);
 	strcpy(wavePtr->soundName, wavePtr->newSoundName);
-	wavePtr->nPoints = 0;
+	wavePtr->width = 0;
 	wavePtr->ssmp    = 0;
 	wavePtr->esmp    = -1;
 	Snack_RemoveCallback(t, wavePtr->id);
@@ -998,11 +977,12 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
       
       wavePtr->blocks = s->blocks;
       wavePtr->bufPos = s->length;
-      wavePtr->sampfreq = s->sampfreq;
-      wavePtr->sampformat = s->sampformat;
+      wavePtr->samprate = s->samprate;
+      wavePtr->encoding = s->encoding;
       wavePtr->nchannels = s->nchannels;
       wavePtr->storeType = s->storeType;
     }
+    doCompute = 1;
   }
   wavePtr->esmp = wavePtr->endSmp;
 
@@ -1023,37 +1003,67 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   if (wavePtr->ssmp > wavePtr->esmp)
     wavePtr->ssmp = wavePtr->esmp;
 
+  if (OptSpecified(OPTION_START)) {
+    doCompute = 1;
+  }
+
+  if (OptSpecified(OPTION_END)) {
+    doCompute = 1;
+  }
+
+  if (OptSpecified(OPTION_LIMIT)) {
+    doCompute = 1;
+  }
+
+  if (OptSpecified(OPTION_SUBSAMPLE)) {
+    doCompute = 1;
+  }
+
+  oldMode = wavePtr->mode;
   if (OptSpecified(OPTION_PIXPSEC) && OptSpecified(OPTION_WIDTH)) {
     wavePtr->mode = CONF_WIDTH_PPS;
+    doCompute = 1;
   }
   else if (OptSpecified(OPTION_PIXPSEC)) {
     wavePtr->mode = CONF_PPS;
+    doCompute = 1;
   }
   else if (OptSpecified(OPTION_WIDTH)) {
     wavePtr->mode = CONF_WIDTH;
+  }
+
+  if (oldMode != wavePtr->mode) {
+    doCompute = 1;
+  }
+  
+  if (wavePtr->width != wavePtr->widthSet) {
+    wavePtr->width = wavePtr->widthSet;
+    doCompute = 1;
   }
   
   if (wavePtr->mode == CONF_WIDTH_PPS) {
     if (OptSpecified(OPTION_END) && !OptSpecified(OPTION_START)) {
       wavePtr->ssmp = (int) (wavePtr->esmp - wavePtr->width *
-			     wavePtr->sampfreq / wavePtr->pixpsec);
+			     wavePtr->samprate / wavePtr->pixpsec);
     } else {
       wavePtr->esmp = (int) (wavePtr->ssmp + wavePtr->width *
-			     wavePtr->sampfreq / wavePtr->pixpsec);
+			     wavePtr->samprate / wavePtr->pixpsec);
     }
-    wavePtr->nPoints = 2 * wavePtr->width;
   }
   else if (wavePtr->mode == CONF_PPS) {
-    wavePtr->nPoints = 2 * (int)((wavePtr->esmp - wavePtr->ssmp) * 
-				 wavePtr->pixpsec / wavePtr->sampfreq);
-    wavePtr->width = wavePtr->nPoints / 2;
+    wavePtr->width = (int)((wavePtr->esmp - wavePtr->ssmp) * 
+			   wavePtr->pixpsec / wavePtr->samprate/* + 0.5*/);
   }
   else if (wavePtr->mode == CONF_WIDTH) {
-    wavePtr->nPoints = 2 * wavePtr->width;
     if (wavePtr->esmp != wavePtr->ssmp) {
-      wavePtr->pixpsec = (float) wavePtr->width * wavePtr->sampfreq /
+      wavePtr->pixpsec = (float) wavePtr->width * wavePtr->samprate /
 	(wavePtr->esmp - wavePtr->ssmp);
     }
+  }
+
+  if (OptSpecified(OPTION_PRECOMPWAVE)) {
+    wavePtr->preCompInvalid = 0;
+    doCompute = 1;
   }
 
   if (OptSpecified(OPTION_CHANNEL)) {
@@ -1061,6 +1071,7 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 		   &wavePtr->channelSet) != TCL_OK) {
       return TCL_ERROR;
     }
+    doCompute = 1;
   }
   wavePtr->channel = wavePtr->channelSet;
   if (wavePtr->nchannels == 1) {
@@ -1068,8 +1079,15 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   }
 
   if (OptSpecified(OPTION_PROGRESS)) {
-    wavePtr->cmdPtr = Tcl_NewStringObj(wavePtr->progressCmd, -1);
-    Tcl_IncrRefCount(wavePtr->cmdPtr);
+    if (wavePtr->progressCmd != NULL) {
+      wavePtr->cmdPtr = Tcl_NewStringObj(wavePtr->progressCmd, -1);
+      Tcl_IncrRefCount(wavePtr->cmdPtr);
+    } else {
+      if (wavePtr->cmdPtr != NULL) {
+	Tcl_DecrRefCount(wavePtr->cmdPtr);
+	wavePtr->cmdPtr = NULL;
+      }
+    }
   }
 
   if (wavePtr->subSampleInt == 0) {
@@ -1081,6 +1099,20 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   } else {
     wavePtr->subSample = wavePtr->subSampleInt;
   }
+
+  if (wavePtr->trimstart == 1 && wavePtr->width > 0) {
+    int len = wavePtr->esmp - wavePtr->ssmp;
+    double fraq = (double) len / wavePtr->width;
+    
+    if (fraq > 0.0) {
+      wavePtr->ssmp = (int) (fraq * floor(wavePtr->ssmp/fraq));
+      wavePtr->esmp = wavePtr->ssmp + len;
+    }
+    if (wavePtr->esmp > wavePtr->bufPos - 1)
+      wavePtr->esmp = wavePtr->bufPos - 1;
+  }
+
+
   if (wavePtr->fg == NULL) {
     newGC = None;
   } else {
@@ -1102,12 +1134,14 @@ ConfigureWave(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   
   ComputeWaveBbox(canvas, wavePtr);
 
-  if (ComputeWaveCoords(itemPtr) != TCL_OK) {
-    return TCL_ERROR;
+  if (doCompute) {
+    if (ComputeWaveCoords(itemPtr) != TCL_OK) {
+      return TCL_ERROR;
+    }
   }
 
-  if (wavePtr->debug == 1)
-    Snack_WriteLogInt("Exit ConfigureWave", wavePtr->nPoints);
+  if (wavePtr->debug > 1)
+    Snack_WriteLogInt("  Exit ConfigureWave", wavePtr->width);
 
   return TCL_OK;
 }
@@ -1121,10 +1155,13 @@ DeleteWave(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display)
       (Snack_GetSound(wavePtr->interp, wavePtr->soundName) != NULL)) {
     Snack_RemoveCallback(wavePtr->sound, wavePtr->id);
   }
-  
-  ckfree(wavePtr->soundName);
 
-  if (wavePtr->coords != NULL) ckfree((char *) wavePtr->coords);
+  if (wavePtr->soundName != NULL) ckfree(wavePtr->soundName);
+
+  if (wavePtr->x0 != NULL) ckfree((char *) wavePtr->x0);
+  if (wavePtr->y0 != NULL) ckfree((char *) wavePtr->y0);
+  if (wavePtr->x1 != NULL) ckfree((char *) wavePtr->x1);
+  if (wavePtr->y1 != NULL) ckfree((char *) wavePtr->y1);
 
   if (wavePtr->fg != NULL) Tk_FreeColor(wavePtr->fg);
 
@@ -1136,8 +1173,10 @@ DeleteWave(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display)
 
   if (wavePtr->preSound != NULL) Snack_DeleteSound(wavePtr->preSound);
 
-  if (wavePtr->sound->storeType == SOUND_IN_FILE) {
-    wavePtr->sound->itemRefCnt--;
+  if (wavePtr->sound != NULL) {
+    if (wavePtr->sound->storeType == SOUND_IN_FILE) {
+      wavePtr->sound->itemRefCnt--;
+    }
   }
 
   if (wavePtr->cmdPtr != NULL) Tcl_DecrRefCount(wavePtr->cmdPtr);
@@ -1195,15 +1234,16 @@ DisplayWave(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display,
 	    Drawable drawable, int x, int y, int width, int height)
 {
   WaveItem *wavePtr = (WaveItem *) itemPtr;
-  double *coords;
-  int i, nPoints = width * 2;
-  XPoint *wpts = (XPoint *) ckalloc((unsigned)((nPoints+2) * sizeof(XPoint)));
+  int i;
+  XPoint *wpts = (XPoint *) ckalloc((unsigned)((width*2+4) * sizeof(XPoint)));
   XPoint *p = wpts;
   int xo = wavePtr->header.x1;
   int yo = wavePtr->header.y1;
+  int ym = wavePtr->height / 2;
   int dx = max(x - xo, 0);
+  float scale = 1000000.0f;
 
-  if (wavePtr->debug == 1) Snack_WriteLogInt("Enter DisplayWave", nPoints);
+  if (wavePtr->debug > 1) Snack_WriteLogInt("  Enter DisplayWave", width);
 
   if (wavePtr->height == 0) return;
 
@@ -1211,25 +1251,36 @@ DisplayWave(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display,
 
   if (wavePtr->fillStipple != None)
     Tk_CanvasSetStippleOrigin(canvas, wavePtr->gc);
-  
-  if (dx + width > wavePtr->nPoints / 2) {
-    nPoints = wavePtr->nPoints - dx * 2;
+
+  if (wavePtr->height > 2) {
+    scale = 2 * ((wavePtr->maxv > -wavePtr->minv)
+		 ? wavePtr->maxv :
+		 -wavePtr->minv) / (float)(wavePtr->height - 2);
+  }
+  if (scale < 0.00001f) {
+    scale = 0.00001f;
+  }
+
+  if (dx + width > wavePtr->width) {
+    width = wavePtr->width - dx;
   }
   if (dx > 0) {
-    coords = &wavePtr->coords[dx * 4 - 2];
-    if (nPoints < wavePtr->nPoints - dx * 2) nPoints++;
-    nPoints++;
-  } else {
-    coords = &wavePtr->coords[dx * 4];
+    dx--;
+    if (width < wavePtr->width - dx) width++;
+    if (width < wavePtr->width - dx) width++;
   }
-  for (i = 0; i < nPoints; i++) {
-    Tk_CanvasDrawableCoords(canvas, xo + coords[0], yo + coords[1],
+  for (i = dx; i < dx + width; i++) {
+    Tk_CanvasDrawableCoords(canvas, xo + wavePtr->x0[i],
+			    yo + ym - wavePtr->y0[i] / scale,
 			    &p->x, &p->y);
-    coords += 2;
+    p++;
+    Tk_CanvasDrawableCoords(canvas, xo + wavePtr->x1[i],
+			    yo + ym - wavePtr->y1[i] / scale,
+			    &p->x, &p->y);
     p++;
   }
 
-  XDrawLines(display, drawable, wavePtr->gc, wpts, nPoints, CoordModeOrigin);
+  XDrawLines(display, drawable, wavePtr->gc, wpts, width*2, CoordModeOrigin);
 
   if (wavePtr->zeroLevel) {
     Tk_CanvasDrawableCoords(canvas, (double) xo, 
@@ -1260,7 +1311,7 @@ DisplayWave(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display,
 
   ckfree((char *) wpts);
 
-  if (wavePtr->debug == 1) Snack_WriteLog("Exit DisplayWave\n");
+  if (wavePtr->debug > 1) Snack_WriteLog("  Exit DisplayWave\n");
 }
 
 static double
@@ -1315,18 +1366,22 @@ ScaleWave(Tk_Canvas canvas, Tk_Item *itemPtr, double ox, double oy,
 	  double sx, double sy)
 {
   WaveItem *wavePtr = (WaveItem *) itemPtr;
-  double *coords = wavePtr->coords;
+  double *x0 = wavePtr->x0;
+  double *y0 = wavePtr->y0;
+  double *x1 = wavePtr->x1;
+  double *y1 = wavePtr->y1;
   int i;
   
-  for (i = 0; i < wavePtr->nPoints; i++) {
-    coords[0] = ox + sx * (coords[0] - ox);
-    coords[1] = oy + sy * (coords[1] - oy);
-    coords += 2;
+  for (i = 0; i < wavePtr->width; i++) {
+    x0[i] = ox + sx * (x0[i] - ox);
+    y0[i] = oy + sy * (y0[i] - oy);
+    x1[i] = ox + sx * (x1[i] - ox);
+    y1[i] = oy + sy * (y1[i] - oy);
   }
   wavePtr->width  = (int) (sx * wavePtr->width) + 1;
   wavePtr->height = (int) (sy * wavePtr->height);
   if (wavePtr->bufPos > 0)
-    wavePtr->pixpsec = (float) wavePtr->width * wavePtr->sampfreq /
+    wavePtr->pixpsec = (float) wavePtr->width * wavePtr->samprate /
       wavePtr->bufPos;
 
   ComputeWaveBbox(canvas, wavePtr);
@@ -1346,27 +1401,43 @@ static int
 WaveToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr, int prepass)
 {
   WaveItem *wavePtr = (WaveItem *) itemPtr;
-  double  *coords = wavePtr->coords;
-  int     nPoints = wavePtr->nPoints;
+  double  *x0 = wavePtr->x0;
+  double  *y0 = wavePtr->y0;
+  double  *x1 = wavePtr->x1;
+  double  *y1 = wavePtr->y1;
+  int i;
   char buffer[100];
   int xo = wavePtr->header.x1;
   int yo = wavePtr->header.y1;
+  float scale = 1000000.0f;
 
   if (wavePtr->fg == NULL) {
     return TCL_OK;
   }
+  if (wavePtr->height > 2) {
+    scale = 2 * ((wavePtr->maxv > -wavePtr->minv)
+		 ? wavePtr->maxv :
+		 -wavePtr->minv) / (float)(wavePtr->height - 2);
+  }
+  if (scale < 0.00001f) {
+    scale = 0.00001f;
+  }
 
   Tcl_AppendResult(interp, "%% WAVE BEGIN\n", (char *) NULL);
 
-  sprintf(buffer, "%.15g %.15g moveto\n", coords[0] + xo,
-	  Tk_CanvasPsY(canvas, (double) (coords[1] + yo)));
+  sprintf(buffer, "%.15g %.15g moveto\n%.15g %.15g lineto\n",
+	  x0[0] + xo, Tk_CanvasPsY(canvas, (double) 
+				   (-y0[0]/scale + yo+ wavePtr->height / 2)),
+	  x1[0] + xo, Tk_CanvasPsY(canvas, (double) 
+				   (-y1[0]/scale + yo+ wavePtr->height / 2)));
   Tcl_AppendResult(interp, buffer, (char *) NULL);
-  coords += 2;
-  for (nPoints--; nPoints > 0; nPoints--) {
-    sprintf(buffer, "%.15g %.15g lineto\n", coords[0] + xo,
-	    Tk_CanvasPsY(canvas, (double) (coords[1] + yo)));
+  for (i = 1; i < wavePtr->width; i++) {
+    sprintf(buffer, "%.15g %.15g lineto\n%.15g %.15g lineto\n",
+	    x0[i] + xo, Tk_CanvasPsY(canvas, (double) 
+				     (-y0[i]/scale + yo+ wavePtr->height / 2)),
+	    x1[i] + xo, Tk_CanvasPsY(canvas, (double) 
+				    (-y1[i]/scale + yo+ wavePtr->height / 2)));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
-    coords += 2;
   }
 
   if (wavePtr->zeroLevel) {

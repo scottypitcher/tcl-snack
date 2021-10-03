@@ -4,7 +4,7 @@ dnl	generate the file "configure", which is run during Snack installation
 dnl	to configure the system for the local environment.
 AC_INIT(../generic/snack.h)
 
-SNACK_VERSION=1.7
+SNACK_VERSION=2.0
 
 #--------------------------------------------------------------------
 #       See if there was a command-line option for where Tcl is;  if
@@ -41,6 +41,7 @@ if test "$TCL_SHARED_BUILD" = 0; then
     AC_MSG_ERROR(Tcl and Tk must be configured with the --enable-shared flag)
 fi
 CFLAGS=$TCL_SHLIB_CFLAGS
+LD_SEARCH_FLAGS=$TCL_LD_SEARCH_FLAGS
 SHLIB_LD=$TCL_SHLIB_LD
 SHLIB_SUFFIX=$TCL_SHLIB_SUFFIX
 CC=$TCL_CC
@@ -69,6 +70,11 @@ AINC=""
 ALIB=""
 
 case $system in
+    BSD/OS-4.*)
+	AFLAG="-DOSS"
+	ALIB="-lossaudio"
+	AOBJ="jkAudIO_oss.o"
+        ;;
     HP-UX-*.10.*)
 	if test "$CC" = "gcc" -o `$CC -v 2>&1 | grep -c gcc` != "0" ; then
 	    CFLAGS=$CFLAGS
@@ -79,40 +85,38 @@ case $system in
 	AFLAG="-DHPUX"
 	ALIB="-L/opt/audio/lib -lAlib"
 	AOBJ="jkAudIO_hp.o"
-	LD_SEARCH_FLAGS='+s +b ${LIB_RUNTIME_DIR}:.'
 	;;
     IRIX*)
 	AFLAG="-DIRIX"
         ALIB="-laudio"
 	AOBJ="jkAudIO_sgi.o"
-	LD_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'
 	;;
     IRIX64-6.*)
 	AFLAG="-DIRIX"
         ALIB="-laudio"
 	AOBJ="jkAudIO_sgi.o"
-	LD_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'
 	;;
     Linux*)
-	AFLAG="-DLinux"
-	AOBJ="jkAudIO_linux.o"
-	LD_SEARCH_FLAGS=""
+	AFLAG="-DOSS"
+	AOBJ="jkAudIO_oss.o"
 	;;
-    NetBSD*)
-	AFLAG="-DLinux"
+    NetBSD*|OpenBSD-*)
+	AFLAG="-DOSS"
 	ALIB="-lossaudio"
-	AOBJ="jkAudIO_linux.o"
-	LD_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'
+	AOBJ="jkAudIO_oss.o"
+        ;;
+    FreeBSD-*)
+	AFLAG="-DOSS"
+	ALIB=""
+	AOBJ="jkAudIO_oss.o"
         ;;
     SunOS*)
 	AFLAG="-DSolaris"
 	AOBJ="jkAudIO_sun.o"
-	LD_SEARCH_FLAGS='-R ${LIB_RUNTIME_DIR}'
 	;;
     *)
 	AFLAG="-DOTHER"
 	AOBJ="jkAudIO_skel.o"
-	LD_SEARCH_FLAGS=""
 	;;
 esac
 
@@ -174,7 +178,11 @@ if test "$enableval2" = "no"; then
     fi
 else
     AC_MSG_RESULT(will not use stubs)
-    STUBINITOBJ=""
+    if test "$TCLVER" != "8.0"; then
+	STUBINITOBJ="snackStubInit.o"
+    else
+	STUBINITOBJ=""
+    fi
     DOSTUBLIB=""
     SNIST_LIB_SPEC="-lsnack"
 fi

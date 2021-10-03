@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -83,6 +83,7 @@ typedef struct SpectrogramItem  {
   char *progressCmd;
   char *windowTypeStr;
   Tcl_Interp *interp;
+  double preemph;
 
 } SpectrogramItem;
 
@@ -152,7 +153,7 @@ static Tk_ConfigSpec configSpecs[] = {
    "128", Tk_Offset(SpectrogramItem, si.winlen), 0},
   
   {TK_CONFIG_DOUBLE, "-preemphasisfactor", (char *) NULL, (char *) NULL,
-   "0.97", Tk_Offset(SpectrogramItem, si.preemph), 0},
+   "0.97", Tk_Offset(SpectrogramItem, preemph), 0},
   
   {TK_CONFIG_DOUBLE, "-pixelspersecond", "pps", (char *) NULL,
    "250.0", Tk_Offset(SpectrogramItem, si.pixpsec), 0},
@@ -308,7 +309,7 @@ CreateSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   spegPtr->si.fftlen = 256;
   spegPtr->si.winlen = 128;
   spegPtr->si.spacing = 64.0;
-  spegPtr->si.preemph = 0.97;
+  spegPtr->preemph = 0.97;
   spegPtr->si.frame[0] = (short *) ckalloc(2*FRAMESIZE);
   spegPtr->si.nfrms = 1;
   spegPtr->si.frlen = FRAMESIZE;
@@ -318,7 +319,7 @@ CreateSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   spegPtr->si.debug = 1;
   spegPtr->si.hamwin = (float *) ckalloc(NMAX * sizeof(float));
   spegPtr->si.BufPos = 0;
-  spegPtr->si.abmax = 0;
+  spegPtr->si.abmax = 0.0f;
   spegPtr->si.bright = 60.0;
   spegPtr->si.contrast = 2.3;
   spegPtr->si.pixpsec = 250.0;
@@ -409,9 +410,16 @@ UpdateSpeg(ClientData clientData, int flag)
   Sound *s = spegPtr->sound;
   int nfft = 0;
 
-  if (spegPtr->si.debug == 1) Snack_WriteLogInt("Enter UpdateSpeg", flag);
+  if (spegPtr->si.debug > 1) Snack_WriteLogInt("  Enter UpdateSpeg", flag);
 
   if (spegPtr->canvas == NULL) return;
+
+  if (flag == SNACK_DESTROY_SOUND) {
+    spegPtr->sound = NULL;
+    if (spegPtr->id) Snack_RemoveCallback(s, spegPtr->id);
+    spegPtr->id = 0;
+    return;
+  }
 
   Tk_CanvasEventuallyRedraw(spegPtr->canvas,
 			    spegPtr->header.x1, spegPtr->header.y1,
@@ -448,8 +456,8 @@ UpdateSpeg(ClientData clientData, int flag)
   }
 
   if (flag == SNACK_NEW_SOUND) {
-    spegPtr->si.sampfreq = s->sampfreq;
-    spegPtr->si.sampformat = s->sampformat;
+    spegPtr->si.samprate = s->samprate;
+    spegPtr->si.encoding = s->encoding;
     spegPtr->si.nchannels = s->nchannels;
     spegPtr->si.abmax = s->abmax;
     spegPtr->si.fftmax = -10000;
@@ -460,9 +468,9 @@ UpdateSpeg(ClientData clientData, int flag)
   }
   
   if (spegPtr->topFrequency <= 0.0) {
-    spegPtr->si.topfrequency = spegPtr->si.sampfreq / 2.0;
-  } else if (spegPtr->topFrequency > spegPtr->si.sampfreq / 2.0) {
-    spegPtr->si.topfrequency = spegPtr->si.sampfreq / 2.0;
+    spegPtr->si.topfrequency = spegPtr->si.samprate / 2.0;
+  } else if (spegPtr->topFrequency > spegPtr->si.samprate / 2.0) {
+    spegPtr->si.topfrequency = spegPtr->si.samprate / 2.0;
   } else {
     spegPtr->si.topfrequency = spegPtr->topFrequency;
   }
@@ -477,7 +485,7 @@ UpdateSpeg(ClientData clientData, int flag)
 		  - spegPtr->si.fftlen / 2) / spegPtr->si.spacing);
   } else if (flag == SNACK_NEW_SOUND && spegPtr->mode == CONF_WIDTH_PPS) {
     spegPtr->ssmp = (int) (spegPtr->esmp - spegPtr->width *
-			   spegPtr->si.sampfreq / spegPtr->si.pixpsec);
+			   spegPtr->si.samprate / spegPtr->si.pixpsec);
     spegPtr->si.RestartPos = spegPtr->ssmp;
     spegPtr->infft = (int)((spegPtr->esmp - spegPtr->ssmp) / 
 			   spegPtr->si.spacing);
@@ -498,7 +506,7 @@ UpdateSpeg(ClientData clientData, int flag)
     
     if (spegPtr->mode == CONF_WIDTH) {
       if (spegPtr->esmp != spegPtr->ssmp) {
-	spegPtr->si.pixpsec = (float) spegPtr->width * spegPtr->si.sampfreq /
+	spegPtr->si.pixpsec = (float) spegPtr->width * spegPtr->si.samprate /
 	  (spegPtr->esmp - spegPtr->ssmp);
       }
       spegPtr->si.xUnderSamp = (float) spegPtr->infft / spegPtr->width;
@@ -507,7 +515,7 @@ UpdateSpeg(ClientData clientData, int flag)
     }
     else if (spegPtr->mode == CONF_PPS) {
       spegPtr->width = (int)((spegPtr->esmp - spegPtr->ssmp) * 
-			     spegPtr->si.pixpsec / spegPtr->si.sampfreq);
+			     spegPtr->si.pixpsec / spegPtr->si.samprate);
       if (spegPtr->width > 32767) {
 	spegPtr->width = 32767;
       }
@@ -533,7 +541,7 @@ UpdateSpeg(ClientData clientData, int flag)
       int virtx = (int) (spegPtr->si.nfft / spegPtr->si.xUnderSamp);
       int dx = virtx - (int)((spegPtr->si.nfft - n) / spegPtr->si.xUnderSamp);
       spegPtr->ssmp = (int) (spegPtr->esmp - spegPtr->width *
-			     spegPtr->si.sampfreq / spegPtr->si.pixpsec);
+			     spegPtr->si.samprate / spegPtr->si.pixpsec);
       
       XCopyArea(spegPtr->si.display, spegPtr->si.pixmap, spegPtr->si.pixmap,
 		spegPtr->copyGC, dx, 0, spegPtr->width - dx, spegPtr->height,
@@ -550,7 +558,9 @@ UpdateSpeg(ClientData clientData, int flag)
 			    spegPtr->header.x1, spegPtr->header.y1,
 			    spegPtr->header.x2, spegPtr->header.y2);
 
-  if (spegPtr->si.debug == 1) Snack_WriteLogInt("Exit UpdateSpeg", spegPtr->width);
+  if (spegPtr->si.debug > 1) {
+    Snack_WriteLogInt("  Exit UpdateSpeg", spegPtr->width);
+  }
 }
 
 static int
@@ -561,17 +571,19 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   Sound *s = spegPtr->sound;
   Tk_Window tkwin = Tk_CanvasTkwin(canvas);
   XGCValues gcValues;
-  int DoCompute = 0;
+  int doCompute = 0;
 #if defined(MAC)
   int i;
 #endif
+
+  if (argc == 0) return TCL_OK;
 
   /*  if (spegPtr->si.computing) return TCL_OK;*/
 
   if (Tk_ConfigureWidget(interp, tkwin, configSpecs, argc, argv, 
 			 (char *) spegPtr, flags) != TCL_OK) return TCL_ERROR;
 
-  if (spegPtr->si.debug == 1) Snack_WriteLog("Enter ConfigureSpeg\n");
+  if (spegPtr->si.debug > 1) Snack_WriteLog("  Enter ConfigureSpeg\n");
 
 #if defined(MAC)
   for (i = 0; i < argc; i++) {
@@ -611,7 +623,7 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
       if (spegPtr->id) Snack_RemoveCallback(s, spegPtr->id);
       spegPtr->id = 0;
       spegPtr->si.BufPos = 0;
-      DoCompute = 1;
+      doCompute = 1;
     } else {
       if ((s = Snack_GetSound(interp, spegPtr->newSoundName)) == NULL) {
 	return TCL_ERROR;
@@ -643,13 +655,13 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 	spegPtr->id = Snack_AddCallback(s, UpdateSpeg, (int *)spegPtr);
       spegPtr->si.blocks = s->blocks;
       spegPtr->si.BufPos = s->length;
-      spegPtr->si.sampfreq = s->sampfreq;
-      spegPtr->si.sampformat = s->sampformat;
+      spegPtr->si.samprate = s->samprate;
+      spegPtr->si.encoding = s->encoding;
       spegPtr->si.nchannels = s->nchannels;
       spegPtr->si.abmax = s->abmax;
       spegPtr->si.storeType = s->storeType;
       spegPtr->si.sound = spegPtr->sound;
-      DoCompute = 1;
+      doCompute = 1;
     }
   }
 
@@ -674,20 +686,22 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   if (spegPtr->ssmp > spegPtr->esmp)
     spegPtr->ssmp = spegPtr->esmp;
 
+  spegPtr->si.preemph = (float) spegPtr->preemph;
+
   if (OptSpecified(OPTION_START)) {
-    DoCompute = 1;
+    doCompute = 1;
   }
 
   if (OptSpecified(OPTION_END)) {
-    DoCompute = 1;
+    doCompute = 1;
   }
 
   if (OptSpecified(OPTION_WINLEN)) {
-    DoCompute = 1;
+    doCompute = 1;
   }
 
   if (OptSpecified(OPTION_FFTLEN)) {
-    DoCompute = 1;
+    doCompute = 1;
   }
   
   if (OptSpecified(OPTION_PIXPSEC) && OptSpecified(OPTION_WIDTH)) {
@@ -703,23 +717,23 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   if (spegPtr->mode == CONF_WIDTH_PPS) {
     if (OptSpecified(OPTION_END) && !OptSpecified(OPTION_START)) {
       spegPtr->ssmp = (int) (spegPtr->esmp - spegPtr->width *
-			     spegPtr->si.sampfreq / spegPtr->si.pixpsec);
+			     spegPtr->si.samprate / spegPtr->si.pixpsec);
     } else {
       spegPtr->esmp = (int) (spegPtr->ssmp + spegPtr->width *
-			     spegPtr->si.sampfreq / spegPtr->si.pixpsec);
+			     spegPtr->si.samprate / spegPtr->si.pixpsec);
       if (spegPtr->esmp > spegPtr->si.BufPos - 1) {
 	spegPtr->esmp = spegPtr->si.BufPos - 1;
       }
     }
-    DoCompute = 1;
+    doCompute = 1;
   }
   else if (spegPtr->mode == CONF_PPS) {
     spegPtr->width = (int)((spegPtr->esmp - spegPtr->ssmp) * 
-			   spegPtr->si.pixpsec / spegPtr->si.sampfreq);
+			   spegPtr->si.pixpsec / spegPtr->si.samprate);
   }
   else if (spegPtr->mode == CONF_WIDTH) {
     if (spegPtr->esmp != spegPtr->ssmp) {
-      spegPtr->si.pixpsec = (float) spegPtr->width * spegPtr->si.sampfreq /
+      spegPtr->si.pixpsec = (float) spegPtr->width * spegPtr->si.samprate /
 	(spegPtr->esmp - spegPtr->ssmp);
     }
   }
@@ -727,7 +741,7 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   if (spegPtr->width > 32767) {
     spegPtr->width = 32767;
     spegPtr->esmp = (int) (spegPtr->ssmp + spegPtr->width *
-			   spegPtr->si.sampfreq / spegPtr->si.pixpsec);
+			   spegPtr->si.samprate / spegPtr->si.pixpsec);
   }
 
   if (OptSpecified(OPTION_HEIGHT)) {
@@ -756,9 +770,9 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   }
 
   if (spegPtr->topFrequency <= 0.0) {
-    spegPtr->si.topfrequency = spegPtr->si.sampfreq / 2.0;
-  } else if (spegPtr->topFrequency > spegPtr->si.sampfreq / 2.0) {
-    spegPtr->si.topfrequency = spegPtr->si.sampfreq / 2.0;
+    spegPtr->si.topfrequency = spegPtr->si.samprate / 2.0;
+  } else if (spegPtr->topFrequency > spegPtr->si.samprate / 2.0) {
+    spegPtr->si.topfrequency = spegPtr->si.samprate / 2.0;
   } else {
     spegPtr->si.topfrequency = spegPtr->topFrequency;
   }
@@ -768,7 +782,7 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 		   &spegPtr->si.channelSet) != TCL_OK) {
       return TCL_ERROR;
     }
-    DoCompute = 1;
+    doCompute = 1;
   }
   spegPtr->si.channel = spegPtr->si.channelSet;
   if (spegPtr->si.nchannels == 1) {
@@ -786,15 +800,15 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 	!= TCL_OK) {
       return TCL_ERROR;
     }
-    DoCompute = 1;
+    doCompute = 1;
   }
   spegPtr->si.windowType = spegPtr->si.windowTypeSet;
 
-  if (DoCompute) {
+  if (doCompute) {
     int nfft, n;
 
     spegPtr->si.nfft = 0;
-    spegPtr->si.spacing = (float)(spegPtr->si.sampfreq / spegPtr->si.pixpsec);
+    spegPtr->si.spacing = (float)(spegPtr->si.samprate / spegPtr->si.pixpsec);
     nfft = (int)((spegPtr->esmp - spegPtr->ssmp) / spegPtr->si.spacing);
     spegPtr->si.xUnderSamp = 1.0;
     spegPtr->si.RestartPos = spegPtr->ssmp;
@@ -803,14 +817,16 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
     spegPtr->si.ssmp = spegPtr->ssmp;
     Snack_InitWindow(spegPtr->si.hamwin, spegPtr->si.winlen,
 		     spegPtr->si.fftlen, spegPtr->si.windowType);
+
     n = ComputeSpeg(&spegPtr->si, nfft);
+
     if (n < 0) return TCL_OK;
     spegPtr->infft = nfft;
   }
 
   if (spegPtr->si.pixmap != None && 
-      (spegPtr->width != spegPtr->oldwidth || spegPtr->height !=spegPtr->oldheight)) {
-    
+      (spegPtr->width != spegPtr->oldwidth ||
+       spegPtr->height != spegPtr->oldheight)) {
     Tk_FreePixmap(spegPtr->si.display, spegPtr->si.pixmap);
     spegPtr->si.pixmap = None;
   }
@@ -828,7 +844,7 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
     if (spegPtr->esmp != spegPtr->ssmp) {
       spegPtr->si.xUnderSamp = spegPtr->infft /
 	               ((spegPtr->esmp - spegPtr->ssmp)
-		       * (float) spegPtr->si.pixpsec / spegPtr->si.sampfreq);
+		       * (float) spegPtr->si.pixpsec / spegPtr->si.samprate);
     }
   }
   else if (spegPtr->mode == CONF_PPS) {
@@ -847,7 +863,7 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 	   spegPtr->width, spegPtr->height, 0, spegPtr->width, 0);
   ComputeSpectrogramBbox(canvas, spegPtr);
 
-  if (spegPtr->si.debug == 1) Snack_WriteLog("Exit ConfigureSpeg\n");
+  if (spegPtr->si.debug > 1) Snack_WriteLog("  Exit ConfigureSpeg\n");
 
   return TCL_OK;
 }
@@ -863,9 +879,9 @@ DeleteSpectrogram(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display)
     Snack_RemoveCallback(spegPtr->sound, spegPtr->id);
   }
 
-  ckfree(spegPtr->soundName);
+  if (spegPtr->soundName != NULL) ckfree(spegPtr->soundName);
 
-  ckfree((char *)spegPtr->si.hamwin);
+  if (spegPtr->si.hamwin != NULL) ckfree((char *) spegPtr->si.hamwin);
 
   for (i = 0; i < spegPtr->si.nfrms; i++) {
     ckfree((char *)spegPtr->si.frame[i]);
@@ -881,8 +897,10 @@ DeleteSpectrogram(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display)
     Tk_FreePixmap(spegPtr->si.display, spegPtr->si.pixmap);
   }
 
-  if (spegPtr->sound->storeType == SOUND_IN_FILE) {
-    spegPtr->sound->itemRefCnt--;
+  if (spegPtr->sound != NULL) {
+    if (spegPtr->sound->storeType == SOUND_IN_FILE) {
+      spegPtr->sound->itemRefCnt--;
+    }
   }
 }
 
@@ -941,7 +959,7 @@ DisplaySpectrogram(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display,
   short drawableX, drawableY;
   int xcoord = 0;
 
-  if (spegPtr->si.debug == 1) Snack_WriteLogInt("Enter DisplaySpeg", width);
+  if (spegPtr->si.debug > 1) Snack_WriteLogInt("  Enter DisplaySpeg", width);
 
   if (spegPtr->width == 0 || spegPtr->height == 0) return;
   /*  if (spegPtr->si.computing) return;*/
@@ -961,7 +979,7 @@ DisplaySpectrogram(Tk_Canvas canvas, Tk_Item *itemPtr, Display *display,
   XCopyArea(display, spegPtr->si.pixmap, drawable, spegPtr->copyGC, xcoord, 0,
 	    width, spegPtr->height, drawableX+xcoord, drawableY);
 
-  if (spegPtr->si.debug == 1) Snack_WriteLog("Exit DisplaySpeg\n");
+  if (spegPtr->si.debug > 1) Snack_WriteLog("  Exit DisplaySpeg\n");
 }
 
 static double
@@ -1020,7 +1038,7 @@ ScaleSpectrogram(Tk_Canvas canvas, Tk_Item *itemPtr, double ox, double oy,
   spegPtr->height = (int) (sy * spegPtr->height);
 
   if (spegPtr->si.BufPos > 0)
-    spegPtr->si.pixpsec = spegPtr->width * spegPtr->si.sampfreq /
+    spegPtr->si.pixpsec = spegPtr->width * spegPtr->si.samprate /
                        (spegPtr->esmp - spegPtr->ssmp);
 
   ComputeSpectrogramBbox(canvas, spegPtr);
@@ -1072,7 +1090,7 @@ SpectrogramToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 
   for (i = 0; i < width; i++) {
     int top = (int) ((1.0 - (spegPtr->si.topfrequency / 
-			     (spegPtr->si.sampfreq/2))) * nbins);
+			     (spegPtr->si.samprate/2))) * nbins);
     float yscale = (float) (nbins - top)/ height;
     float xscale = (float) (nfft - 1) / width;
     float k = (float) (spegPtr->si.contrast * spegPtr->si.ncolors /
@@ -1179,7 +1197,8 @@ SpectrogramToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   Tcl_AppendResult(interp, buffer, (char *) NULL);
 
   if (noColor) {
-    Tcl_AppendResult(interp, "{currentfile pix readhexstring pop}\nimage\n", (char *) NULL);
+    Tcl_AppendResult(interp, "{currentfile pix readhexstring pop}\nimage\n",
+		     (char *) NULL);
     
     for (y = 0; y < height; y++) {
       for (x = 0; x < width; x++) {
@@ -1189,7 +1208,8 @@ SpectrogramToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
       Tcl_AppendResult(interp, "\n", (char *) NULL);
     }
   } else {
-    Tcl_AppendResult(interp, "{currentfile pix readhexstring pop}\nfalse 3 colorimage\n", (char *) NULL);
+    Tcl_AppendResult(interp, "{currentfile pix readhexstring pop}\n",
+		     "false 3 colorimage\n", (char *) NULL);
   
     for (y = 0; y < height; y++) {
       for (x = 0; x < width; x++) {
@@ -1211,27 +1231,27 @@ SpectrogramToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 }
 
 #define FFTBUF(i) *(siPtr->frame[(i)>>18] + ((i)&(FRAMESIZE-1)))
-#define LAGOM 16384
+#define LAGOM 16384.0f
 
 static int
 ComputeSpeg(SnackItemInfo *siPtr, int nfft)
 {
   int i = 0, j;
-  float spacing = siPtr->spacing;
-  int   fftlen  = siPtr->fftlen;
-  int   winlen  = siPtr->winlen;
-  int   fftmax  = siPtr->fftmax;
-  int   fftmin  = siPtr->fftmin;
-  double preemph = siPtr->preemph;
+  float spacing  = siPtr->spacing;
+  int   fftlen   = siPtr->fftlen;
+  int   winlen   = siPtr->winlen;
+  int   fftmax   = siPtr->fftmax;
+  int   fftmin   = siPtr->fftmin;
+  float preemph  = siPtr->preemph;
   int RestartPos = siPtr->RestartPos - siPtr->validStart;
-  int sampformat = siPtr->sampformat;
+  int encoding   = siPtr->encoding;
   int storeType  = siPtr->storeType;
   int        ret = nfft;
   int       flag = 0;
   float g = 1.0;
   SnackLinkedFileInfo info;
 
-  if (siPtr->debug == 1) Snack_WriteLogInt("Enter ComputeSpeg", nfft);
+  if (siPtr->debug > 2) Snack_WriteLogInt("    Enter ComputeSpeg", nfft);
 
   Snack_InitFFT(fftlen);
 
@@ -1251,14 +1271,16 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
     if ((siPtr->frame[siPtr->nfrms] = (short *) ckalloc(2*FRAMESIZE)) == NULL)
       return 0;
     siPtr->frlen += FRAMESIZE;
-    if (siPtr->debug == 1) Snack_WriteLogInt("Alloced frame", siPtr->nfrms);
+    if (siPtr->debug > 3) {
+      Snack_WriteLogInt("      Alloced frame", siPtr->nfrms);
+    }
     siPtr->nfrms++;
   }
 
-  if (siPtr->abmax > 0 && siPtr->abmax < LAGOM) {
-    g = ((float) LAGOM / siPtr->abmax);
+  if (siPtr->abmax > 0.0 && siPtr->abmax < LAGOM) {
+    g = LAGOM / siPtr->abmax;
   }
-  if (sampformat == LIN8OFFSET || sampformat == LIN8) {
+  if (encoding == LIN8OFFSET || encoding == LIN8) {
     if (g == 1.0 && storeType != SOUND_IN_MEMORY) {
       g = 256.0;
     }
@@ -1271,38 +1293,19 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
 
   for (j = 0; j < nfft; j++) {
     if ((RestartPos + (int)(j * spacing) - fftlen / 2) >= 0 &&
-	(RestartPos + (int)(j * spacing) + fftlen / 2 + 1) < siPtr->BufPos) {
+	(RestartPos + (int)(j * spacing) + fftlen - winlen / 2 +
+	 siPtr->nchannels) < siPtr->BufPos) {
+
       if (storeType == SOUND_IN_MEMORY) {
 	if (siPtr->nchannels == 1 || siPtr->channel != -1) {
 	  int p = (RestartPos + (int)(j * spacing) - winlen / 2) * 
 	    siPtr->nchannels + siPtr->channel;
 	  
-	  if (sampformat == LIN16) {
-	    for (i = 0; i < fftlen; i++) {
-	      xfft[i] = (float) ((SSAMPLE(siPtr, p + siPtr->nchannels)
-				  - preemph * SSAMPLE(siPtr, p)) *
-				 siPtr->hamwin[i]) * g;
-	      p += siPtr->nchannels;
-	    }
-	  } else {
-	    for (i = 0; i < fftlen; i++) {
-	      if (sampformat == MULAW) {
-		xfft[i] = (float) ((Snack_Mulaw2Lin(UCSAMPLE(siPtr, p + siPtr->nchannels))
-				    - preemph * Snack_Mulaw2Lin(UCSAMPLE(siPtr, p))) *
-				   siPtr->hamwin[i]) * g;
-	      } else if (sampformat == ALAW) {
-		xfft[i] = (float) ((Snack_Alaw2Lin(UCSAMPLE(siPtr, p + siPtr->nchannels))
-				    - preemph * Snack_Alaw2Lin(UCSAMPLE(siPtr, p))) *
-				   siPtr->hamwin[i]) * g;
-	      } else if (sampformat == LIN8OFFSET) {
-		xfft[i] = (float) ((UCSAMPLE(siPtr, p + siPtr->nchannels) - preemph *
-				    UCSAMPLE(siPtr, p)) * siPtr->hamwin[i]) * g;
-	      } else if (sampformat == LIN8) {
-		xfft[i] = (float) ((CSAMPLE(siPtr, p + siPtr->nchannels) - preemph *
-				    CSAMPLE(siPtr, p)) * siPtr->hamwin[i]) * g;
-	      }
-	      p += siPtr->nchannels;
-	    }
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = (float) ((FSAMPLE(siPtr, p + siPtr->nchannels)
+				- preemph * FSAMPLE(siPtr, p)) *
+			       siPtr->hamwin[i]) * g;
+	    p += siPtr->nchannels;
 	  }
 	  flag = 1;
 	} else {
@@ -1315,26 +1318,11 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
 	    int p = (RestartPos + (int)(j * spacing) - winlen / 2) * 
 	      siPtr->nchannels + c;
 	    
-	    if (sampformat == LIN16) {
-	      for (i = 0; i < fftlen; i++) {
-		xfft[i] += (float) ((SSAMPLE(siPtr, p + siPtr->nchannels)
-				     - preemph * SSAMPLE(siPtr, p))
-				    * siPtr->hamwin[i]) * g;
-		p += siPtr->nchannels;
-	      }
-	    } else {
-	      for (i = 0; i < fftlen; i++) {
-		if (sampformat == MULAW) {
-		  xfft[i] += (float) ((Snack_Mulaw2Lin(UCSAMPLE(siPtr, p + siPtr->nchannels)) - preemph * Snack_Mulaw2Lin(UCSAMPLE(siPtr, p))) * siPtr->hamwin[i]) * g;
-		} else if (sampformat == ALAW) {
-		  xfft[i] += (float) ((Snack_Alaw2Lin(UCSAMPLE(siPtr, p + siPtr->nchannels)) - preemph * Snack_Alaw2Lin(UCSAMPLE(siPtr, p))) * siPtr->hamwin[i]) * g;
-		} else if (sampformat == LIN8OFFSET) {
-		  xfft[i] += (float) ((UCSAMPLE(siPtr, p + siPtr->nchannels) - preemph * UCSAMPLE(siPtr, p)) * siPtr->hamwin[i]) * g;
-		} else if (sampformat == LIN8) {
-		  xfft[i] += (float) ((CSAMPLE(siPtr, p + siPtr->nchannels) - preemph * CSAMPLE(siPtr, p)) * siPtr->hamwin[i]) * g;
-		}
-		p += siPtr->nchannels;
-	      }
+	    for (i = 0; i < fftlen; i++) {
+	      xfft[i] += (float) ((FSAMPLE(siPtr, p + siPtr->nchannels)
+				   - preemph * FSAMPLE(siPtr, p))
+				  * siPtr->hamwin[i]) * g;
+	      p += siPtr->nchannels;
 	    }
 	    flag = 1;
 	  }
@@ -1347,32 +1335,11 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
 	  int p = (RestartPos + (int)(j * spacing) - winlen / 2) * 
 	    siPtr->nchannels + siPtr->channel;
 	  
-	  if (sampformat == LIN16) {
-	    for (i = 0; i < fftlen; i++) {
-	      xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels)
-				  - preemph * GetSample(&info, p)) *
-				 siPtr->hamwin[i]) * g;
-	      p += siPtr->nchannels;
-	    }
-	  } else {
-	    for (i = 0; i < fftlen; i++) {
-	      if (sampformat == MULAW) {
-		xfft[i] = (float) ((Snack_Mulaw2Lin((unsigned char)GetSample(&info, p + siPtr->nchannels))
-				    - preemph * Snack_Mulaw2Lin((unsigned char)GetSample(&info, p))) *
-				   siPtr->hamwin[i]) * g;
-	      } else if (sampformat == ALAW) {
-		xfft[i] = (float) ((Snack_Alaw2Lin((unsigned char)GetSample(&info, p + siPtr->nchannels))
-				    - preemph * Snack_Alaw2Lin((unsigned char)GetSample(&info, p))) *
-				   siPtr->hamwin[i]) * g;
-	      } else if (sampformat == LIN8OFFSET) {
-		xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels) - preemph *
-				    GetSample(&info, p)) * siPtr->hamwin[i]) * g;
-	      } else if (sampformat == LIN8) {
-		xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels) - preemph *
-				    GetSample(&info, p)) * siPtr->hamwin[i]) * g;
-	      }
-	      p += siPtr->nchannels;
-	    }
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels)
+				- preemph * GetSample(&info, p)) *
+			       siPtr->hamwin[i]) * g;
+	    p += siPtr->nchannels;
 	  }
 	  flag = 1;
 	} else {
@@ -1385,24 +1352,11 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
 	    int p = (RestartPos + (int)(j * spacing) - winlen / 2) * 
 	      siPtr->nchannels + c;
 	    
-	    if (sampformat == LIN16) {
-	      for (i = 0; i < fftlen; i++) {
-		xfft[i] += (float) ((GetSample(&info, p + siPtr->nchannels)
-				     - preemph * GetSample(&info, p))
-				    * siPtr->hamwin[i]) * g;
-		p += siPtr->nchannels;
-	      }
-	    } else {
-	      for (i = 0; i < fftlen; i++) {
-		if (sampformat == MULAW) {
-		  xfft[i] += (float) ((Snack_Mulaw2Lin((unsigned char)GetSample(&info, p + siPtr->nchannels)) - preemph * Snack_Mulaw2Lin((unsigned char)GetSample(&info, p))) * siPtr->hamwin[i]) * g;
-		} else if (sampformat == ALAW) {
-		  xfft[i] += (float) ((Snack_Alaw2Lin((unsigned char)GetSample(&info, p + siPtr->nchannels)) - preemph * Snack_Alaw2Lin((unsigned char)GetSample(&info, p))) * siPtr->hamwin[i]) * g;
-		} else {
-		  xfft[i] += (float) ((GetSample(&info, p + siPtr->nchannels) - preemph * GetSample(&info, p)) * siPtr->hamwin[i]) * g;
-		}
-		p += siPtr->nchannels;
-	      }
+	    for (i = 0; i < fftlen; i++) {
+	      xfft[i] += (float) ((GetSample(&info, p + siPtr->nchannels)
+				   - preemph * GetSample(&info, p))
+				  * siPtr->hamwin[i]) * g;
+	      p += siPtr->nchannels;
 	    }
 	    flag = 1;
 	  }
@@ -1421,7 +1375,15 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
     for (i = 0; i < fftlen / 2; i++) {
       short tmp = (short) (xfft[i] +.5);
       int ind = (j + siPtr->nfft) * fftlen / 2 + i;
-      
+      /*
+      if (siPtr->debug > 2 && i==0) Snack_WriteLogInt("  in", tmp);
+      if (siPtr->debug > 2 && i==0) Snack_WriteLogInt("  hm", (int)xfft[i]);
+      */
+#if !defined(WIN)
+      if (tmp == 0 && (int)xfft[i] < -200) {
+	tmp = fftmin;
+      }
+#endif
       FFTBUF(ind) = tmp;
       if (tmp < fftmin) fftmin = tmp;
       if (tmp > fftmax) fftmax = tmp;
@@ -1448,7 +1410,9 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
   }
   siPtr->computing = 0;*/
 
-  if (siPtr->debug == 1) Snack_WriteLogInt("Exit ComputeSpeg", siPtr->fftmin);
+  if (siPtr->debug > 2) {
+    Snack_WriteLogInt("    Exit ComputeSpeg", siPtr->fftmin);
+  }
 
   return ret;
 }
@@ -1493,7 +1457,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
   int ncolors = siPtr->ncolors;
   int depth = siPtr->depth;
 
-  if (siPtr->debug == 1) Snack_WriteLogInt("Enter DrawSpeg", drawW);
+  if (siPtr->debug > 2) Snack_WriteLogInt("    Enter DrawSpeg", drawW);
 
   if (height == 0) return;
 
@@ -1518,34 +1482,35 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 #if defined(MAC)
     ximage->f.put_pixel = MacPutPixel;
 #endif
-    
+
     if (depth >= 24) {
       len = (nCols + 3) * height * depth / 6;
     } else {
       len = (nCols + 3) * height * depth / 8;
     }
+
     ximage->data = ckalloc(len);
+
     if (ximage->data == NULL) {
       XFree((char *) ximage);
       return;
     }
     bytesPerLine = ((ximage->bits_per_pixel * nCols + 31) >> 3) & ~3;
     doWidth = drawW;
+
     for (; doWidth > 0; doWidth -= nCols) {
       float xscale = siPtr->xUnderSamp;
       int fftmin = siPtr->fftmin;
       double offset = siPtr->bright + fftmin;
       float k = (float) (siPtr->contrast * siPtr->ncolors /
 			 (siPtr->fftmax - fftmin));
-
       if (nCols > doWidth) {
 	nCols = doWidth;
       }
       xEnd = xStart + nCols;
       for (i = xStart; i < xEnd; i++) {
 	float yscale = ((float)siPtr->topfrequency * nbins /
-			(siPtr->sampfreq / 2)) / height; 
-
+			(siPtr->samprate / 2)) / height; 
 	float fx = xscale * i;
 	int ix  = (int) fx;
 	float deltax = fx - ix;
@@ -1622,7 +1587,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
 	  bytePtr -= bytesPerLine;
 	}
       }
-      
+
       if ((siPtr->gridFspacing > 0) && (siPtr->gridTspacing > 0.0)) {
 	float i, j;
 	float di = (float) siPtr->pixpsec * (float) siPtr->gridTspacing;
@@ -1721,7 +1686,7 @@ DrawSpeg(SnackItemInfo *siPtr, Display* disp, GC gc, int width, int height,
     siPtr->xTot += drawW;
   }
 
-  if (siPtr->debug == 1) Snack_WriteLog("Exit Drawspeg\n");
+  if (siPtr->debug > 2) Snack_WriteLog("    Exit Drawspeg\n");
 }
 
 static int

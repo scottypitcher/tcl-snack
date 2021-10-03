@@ -1,0 +1,61 @@
+Included Tcl demos
+--------------------------------------------------------------------------
+
+widget.tcl
+The basic Snack demonstrator also used to launch several other demos.
+
+record.tcl
+Recording program. Good starting point for custom recording tools.
+
+wrap.tcl
+Utility that creates stand alone executables from Snack Tcl scripts.
+
+tomAmp.tcl
+MP3 player with play-lists.
+
+dbrec.tcl
+Script for recording prompted sentences.
+
+mixer.tcl
+A multi-platform mixer application.
+
+play.tcl
+The simplest file player.
+
+aserver.tcl
+A minimal audio server.
+
+rplay.tcl
+A play program which sends a sound file to one or several servers.
+
+recrplay.tcl
+A simple recording program which sends data to an audio server.
+
+snamp.tcl
+A very simple play list program.
+
+cool.tcl
+A simple sound viewer which demonstrates how to link to disk files.
+
+spectrum.tcl
+16-channel spectrum analyzer.
+
+levelmeter.tcl
+Two channel level meter.
+
+mapChan.tcl
+Demo which shows how to map input channels to output channels.
+
+fourChan.tcl
+Demo of four channel sound output with channel selection.
+
+echo.tcl
+Demo of echo filter with interactive parameter modification.
+
+compose.tcl
+Demo of a composed filter, i.e. one map filter pipe-lined with an echo filter.
+
+formant.tcl
+Demo of a simple formant speech synthesizer built using Snack filters.
+
+

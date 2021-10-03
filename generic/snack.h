@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,8 +19,15 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include "tcl.h"
+
+#ifdef BUILD_snack
+# undef TCL_STORAGE_CLASS
+# define TCL_STORAGE_CLASS DLLEXPORT
+#endif
+
 #include "jkSound.h"
 #include "jkAudIO.h"
 
-#define SNACK_VERSION     "1.7"
-#define SNACK_PATCH_LEVEL "1.7.0"
+#define SNACK_VERSION     "2.0"
+#define SNACK_PATCH_LEVEL "2.0.7"

@@ -30,7 +30,7 @@
  * u-law, A-law and linear PCM conversions.
  */
 
-#include "jkSound.h"
+#include "snack.h"
 
 /*
  * Functions Snack_Lin2Alaw, Snack_Lin2Mulaw have been updated to correctly

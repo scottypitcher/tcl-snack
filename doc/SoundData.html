@@ -1,37 +1,40 @@
-<HTML>
-<HEAD>
-   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
-   <META NAME="GENERATOR" CONTENT="Mozilla/4.03 [en] (X11; I; HP-UX B.10.20 9000/778) [Netscape]">
-   <TITLE>SoundData</TITLE>
-</HEAD>
-<BODY>
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.72 [en] (X11; U; Linux 2.2.14-5.0 i686) [Netscape]">
+   <title>SoundData</title>
+</head>
+<body>
 
-<H3>
-NAME</H3>
+<h3>
+NAME</h3>
 Snack_PutSoundData, Snack_GetSoundData - transfer sound data between a
 buffer and a Snack sound
-<H3>
-SYNOPSIS</H3>
+<h3>
+SYNOPSIS</h3>
 #include &lt;snack.h>
-<BR><B>Snack_PutSoundData</B>(sound, position, buffer, nBytes)
-<BR><B>Snack_GetSoundData</B>(sound, position, buffer, nBytes)
-<H3>
-ARGUMENTS</H3>
+<br><b>Snack_PutSoundData</b>(sound, position, buffer, nSamples)
+<br><b>Snack_GetSoundData</b>(sound, position, buffer, nSamples)
+<h3>
+ARGUMENTS</h3>
 Sound *sound (in)
-<BR>int position (in)
-<BR>void *buffer (in)
-<BR>int nBytes (in)
-<H3>
-DESCRIPTION</H3>
-<B>Snack_PutSoundData</B> transfers <I>nBytes</I> bytes of sound data from
-<I>buffer</I> into a Snack <I>sound</I> at specified <I>position</I>.
-<BR>The number of bytes is equal to the length of the created sound times
-the number of channels times the number of bytes per sample (2 for LIN16
-otherwise 1) Also, the sound must be of the storage type SOUND_IN_MEMORY,
-i.e. the sound sample data must reside in memory. <B>Snack_GetSoundData</B>
-transfers data from the Snack sound to the buffer. This functions works
-both with memory resident sounds and sound linked to disk files (SOUND_IN_MEMORY
-and SOUND_IN_FILE).
-<BR>&nbsp;
-</BODY>
-</HTML>
+<br>int position (in)
+<br>void *buffer (in)
+<br>int nSamples (in)
+<h3>
+DESCRIPTION</h3>
+<b>Snack_PutSoundData</b> transfers <i>nSamples</i> samples of sound data
+from
+<i>buffer</i> into a Snack <i>sound</i> at specified <i>position</i>.
+The buffer data is expected to be in float or double format depending on
+the precision of the Snack sound.
+<br>The sound must be of storage type SOUND_IN_MEMORY, i.e. the sound sample
+data must reside in memory. <b>Snack_GetSoundData</b> transfers data from
+the Snack sound to the buffer. These functions work both with memory resident
+sounds and sounds linked to disk files (SOUND_IN_MEMORY and SOUND_IN_FILE).
+The buffer data is returned in float or double format depending on the
+precision of the Snack sound.
+<br>&nbsp;
+</body>
+</html>

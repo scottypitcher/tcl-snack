@@ -58,6 +58,10 @@ SnackStubs snackStubs = {
     Snack_DBPowerSpectrum, /* 27 */
     Snack_StopSound, /* 28 */
     Snack_ProgressCallback, /* 29 */
+    Snack_CreateFileFormat, /* 30 */
+    Snack_SwapLong, /* 31 */
+    Snack_PlatformIsLittleEndian, /* 32 */
+    Snack_CreateFilterType, /* 33 */
 };
 
 /* !END!: Do not edit above this line. */

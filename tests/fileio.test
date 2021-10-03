@@ -1,7 +1,7 @@
 # Commands covered: sound read/write
 #
 
-package require -exact snack 1.7
+package require -exact snack 2.0
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -66,20 +66,78 @@ test fileio-1.6 {write/read commands for RAW file format} {
 test fileio-1.7 {write/read commands for RAW file format} {
   set s [snack::sound snd -load ex1.wav]
   $s write snackTest.raw -fileformat raw -byteorder bigEndian
-  $s read snackTest.raw -frequency 16000 -format Lin16 -channels 1 \
+  $s read snackTest.raw -rate 16000 -encoding Lin16 -channels 1 \
 	-byteorder bigEndian -guessproperties 0
   set res [$s info]
   $s destroy
   set res
 } {15820 16000 14264 -8288 Lin16 1 RAW 0}
 
-test fileio-1.8 {read command, -start/-end options} {
+test fileio-2.1 {read command, -start/-end options} {
   set s [snack::sound snd]
   $s read ex1.wav -start 5000 -end 10000
   set res [list [$s sample 0] [$s sample 5000] [$s length]]
   $s destroy
   set res
 } {7443 779 5001}
+
+test fileio-2.2 {read command, missing argument for -end option} {
+  set s [snack::sound snd]
+  catch {$s read ex1.wav -start 5000 -end} msg
+  $s destroy
+  set msg
+} {No argument given for -end option}
+
+test fileio-3.1 {read command, empty -progress option} {
+  set s [snack::sound snd]
+  catch {$s read ex1.wav -progress ""} msg
+  $s destroy
+  set msg
+} WAV
+
+test fileio-3.2 {write command, empty -progress option} {
+  set s [snack::sound snd]
+  catch {$s write snackTest.wav -progress ""} msg
+  $s destroy
+  set msg
+} {}
+
+test fileio-3.3 {read command, -progress option} {
+  set res ""
+  proc prog {msg frac} {
+    lappend ::res $frac
+  }
+  set s [snack::sound snd]
+  $s read ex1.wav -progress prog
+  $s destroy
+  set res
+} {0.0 1.0}
+
+test fileio-3.4 {write command, -progress option} {
+  set res ""
+  proc prog {msg frac} {
+    lappend ::res $frac
+  }
+  set s [snack::sound snd]
+  $s write snackTest.wav -progress prog
+  $s destroy
+  set res
+} {0.0 1.0}
+
+test fileio-4.1 {read command, read error should leave current untouched} {
+  set s [snack::sound snd -load ex1.wav]
+  catch {$s read nonexisting.wav}
+  set res [$s info]
+  $s destroy
+  set res
+} {15820 16000 14264 -8288 Lin16 1 WAV 44}
+
+test fileio-4.2 {read command, No file name given} {
+  set s [snack::sound snd]
+  catch {$s read} res
+  $s destroy
+  set res
+} {No file name given}
 
 # cleanup
 catch {::tcltest::removeFile snackTest.wav}

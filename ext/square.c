@@ -56,9 +56,9 @@ Square(ClientData cdata, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 
   for (i = 0; i < Snack_GetLength(sound); i++) {
     if ((i/10)%2) {
-      Snack_SetSample(sound, 0, i, 10000);
+      Snack_SetSample(sound, 0, i, 10000.0f);
     } else {
-      Snack_SetSample(sound, 0, i, -10000);
+      Snack_SetSample(sound, 0, i, -10000.0f);
     }
   }
 
@@ -93,7 +93,7 @@ EXPORT(int, Square_Init)(Tcl_Interp *interp)
 #endif
 
 #ifdef USE_SNACK_STUBS
-  if (Snack_InitStubs(interp, "1", 0) == NULL) {
+  if (Snack_InitStubs(interp, "2", 0) == NULL) {
     return TCL_ERROR;
   }
 #endif

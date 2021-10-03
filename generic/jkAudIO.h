@@ -1,7 +1,7 @@
 /* 
- * Copyright (C) 1997-2000 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
  *
- * This file is part of the Snack sound extension for Tcl/Tk.
+ * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -58,11 +58,11 @@ extern "C" {
 /* We need to temporarily redefine several symbols used by an obsolete
  *  MacOS interface as they are also used by Snack */
 
-#  define convertCmd	convertCmd_MacOS
-#  define soundCmd	soundCmd_MacOS
-#  define flushCmd	flushCmd_MacOS
-#  define volumeCmd	volumeCmd_MacOS
-#  define pauseCmd	pauseCmd_MacOS
+#  define convertCmd convertCmd_MacOS
+#  define soundCmd   soundCmd_MacOS
+#  define flushCmd   flushCmd_MacOS
+#  define volumeCmd  volumeCmd_MacOS
+#  define pauseCmd   pauseCmd_MacOS
 
 #  include <Sound.h>
 
@@ -97,14 +97,15 @@ typedef struct ADesc {
   int       freq;
 #endif
 
-#ifdef Linux
+#ifdef OSS
   int    afd;
-  int    count;
-  /*  int frag_size;*/
+  /*int    count;*/
+  int    frag_size;
   double time;
   double timep;
   int    freq;
   int    convert;
+  int    warm;
 #endif
 
 #ifdef Solaris
@@ -195,8 +196,9 @@ extern int  SnackAudioReadable(ADesc *A);
 extern int  SnackAudioPlayed(ADesc *A);
 extern int  SnackAudioWriteable(ADesc *A);
 
-extern void SnackAudioGetFormats(char *device, char *buf, int n);
-extern void SnackAudioGetFrequencies(char *device, char *buf, int n);
+extern int SnackAudioGetEncodings(char *device);
+extern void SnackAudioGetRates(char *device, char *buf, int n);
+extern int SnackAudioMaxNumberChannels(char *device);
 
 extern void ASetRecGain(int gain);
 extern void ASetPlayGain(int gain);
@@ -227,15 +229,19 @@ extern int  SnackGetOutDevices(char **arr, int n);
 #define SNACK_STEREO 2
 #define SNACK_QUAD   4
 
-#define LIN16      1
-#define ALAW       2
-#define MULAW      3
-#define LIN8OFFSET 4
-#define LIN8       5
+#define LIN16        1
+#define ALAW         2
+#define MULAW        3
+#define LIN8OFFSET   4
+#define LIN8         5
+#define LIN24        6
+#define LIN32        7
+#define SNACK_FLOAT  8
+#define SNACK_DOUBLE 9
 
 #define CAPABLEN 100
 
-/*#ifdef Linux
+/*#ifdef OSS
 extern short Snack_Alaw2Lin(unsigned char a_val);
 extern short Snack_Mulaw2Lin(unsigned char u_val);
 extern unsigned char Snack_Lin2Alaw(short pcm_val);
@@ -258,7 +264,7 @@ extern char *SnackStrDup(const char *str);
 
 #define QUERYBUFSIZE 1000
 #define MAX_DEVICE_NAME_LENGTH 100
-#define MAX_NUM_DEVICES 10
+#define MAX_NUM_DEVICES 20
 
 extern int strncasecmp(const char *s1, const char *s2, size_t n);
 

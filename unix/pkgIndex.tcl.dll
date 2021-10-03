@@ -4,8 +4,8 @@
 # http://www.cogent.net/~duquette/tcl/namespaces.html
 #
 
-package ifneeded snack 1.7 "[list load [file join $dir libsnack.dll]];[list source [file join $dir snack.tcl]]"
+package ifneeded snack 2.0 "[list load [file join $dir libsnack.dll]];[list source [file join $dir snack.tcl]]"
 
-package ifneeded sound 1.7 [list load [file join $dir libsound.dll]]
+package ifneeded sound 2.0 [list load [file join $dir libsound.dll]]
 
 package ifneeded snacksphere 1.0 [list load [file join $dir libsnacksphere.dll]]

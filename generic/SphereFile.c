@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1999 Claude Barras and Kare Sjolander
+ * Copyright (C) 1999-2001 Claude Barras and Kare Sjolander
  */
 
 #include <tcl.h>
@@ -44,6 +44,20 @@ GuessSphereFile(char *buf, int len)
   return(NULL);
 }
 
+char *
+ExtSphereFile(char *s)
+{
+  int l1 = strlen(".sph");
+  int l2 = strlen(s);
+
+  if (strncasecmp(".sph", &s[l2 - l1], l1) == 0) {
+    return(SPHERE_STRING);
+  }
+  return(NULL);
+}
+
+#define SPHERE_BUFFER_SIZE 100000
+
 static int
 OpenSphereFile(Sound *s, Tcl_Interp *interp, Tcl_Channel *ch, char *mode)
 {
@@ -60,6 +74,10 @@ OpenSphereFile(Sound *s, Tcl_Interp *interp, Tcl_Channel *ch, char *mode)
     */
   GetSphereHeader(s, interp, *ch, NULL, NULL);
 
+  if (s->extHead == NULL) {
+    s->extHead = ckalloc(sizeof(short) * SPHERE_BUFFER_SIZE);
+  }
+
   return TCL_OK;
 }
 
@@ -75,26 +93,101 @@ CloseSphereFile(Sound *s, Tcl_Interp *interp, Tcl_Channel *ch)
 }
 
 static int
-ReadSphereSamples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf, char *obuf, int len)
+ReadSphereSamples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf,
+		  float *obuf, int len)
 {
-  int nSamples = len / (Snack_GetBytesPerSample(s) * Snack_GetNumChannels(s));
-  int n = sp_read_data(obuf, nSamples, (SP_FILE *)ch);
+  int tot = len / Snack_GetNumChannels(s);
+  int i = 0, le = Snack_PlatformIsLittleEndian();
+  unsigned char *q = (unsigned char *) s->extHead;
+  char *sc  = (char *)  s->extHead;
+  short *r  = (short *) s->extHead;
+  int   *is = (int *)   s->extHead;
+  float *fs = (float *) s->extHead;
+  float *f  = obuf;
+  int size = min(tot, SPHERE_BUFFER_SIZE / Snack_GetNumChannels(s));
+  int read = sp_read_data(s->extHead, size, (SP_FILE *)ch);
 
-  if (n <= 0 && sp_error((SP_FILE *)ch)) {
+  if (sp_error((SP_FILE *)ch)) {
     return -1;
   }
-  return(n * Snack_GetBytesPerSample(s) * Snack_GetNumChannels(s));
+  
+  for (i = 0; i < read * Snack_GetNumChannels(s); i++) {
+    switch (s->encoding) {
+    case LIN16:
+      if (s->swap) *r = Snack_SwapShort(*r);
+      *f++ = (float) *r++;
+      break;
+    case LIN32:
+      if (s->swap) *is = Snack_SwapLong(*is);
+      *f++ = (float) *is++;
+      break;
+    case SNACK_FLOAT:
+      if (s->swap) *fs = (float) Snack_SwapLong((int)*fs);
+      *f++  = (float) *fs++;
+      break;
+    case ALAW:
+      *f++ = (float) Snack_Alaw2Lin(*q++);
+      break;
+    case MULAW:
+      *f++ = (float) Snack_Mulaw2Lin(*q++);
+      break;
+    case LIN8:
+      *f++ = (float) *sc++;
+      break;
+    case LIN8OFFSET:
+      *f++ = (float) *q++;
+      break;
+    case LIN24:
+      {
+	int ee;
+	if (s->swap) {
+	  if (le) {
+	    ee = 0;
+	  } else {
+	    ee = 1;
+	  }
+	} else {
+	  if (le) {
+	    ee = 1;
+	  } else {
+	    ee = 0;
+	  }		
+	}
+	if (ee) {
+	  int t = *q++;
+	  t |= *q++ << 8;
+	  t |= *q++ << 16;
+	  if (t & 0x00800000) {
+	    t |= (unsigned int) 0xff000000;
+	  }
+	  *f++ = (float) t;
+	} else {
+	  int t = *q++ << 16;
+	  t |= *q++ << 8;
+	  t |= *q++;
+	  if (t & 0x00800000) {
+	    t |= (unsigned int) 0xff000000;
+	  }
+	  *f++ = (float) t;
+	}
+	break;
+      }
+    }
+  }
+
+  return(i);
 }
 
 static int
 SeekSphereFile(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, int pos)
 {
   /* seek to pos */
-  if (sp_seek((SP_FILE *)ch, (pos-SPHERE_HEADERSIZE)/
-	      (Snack_GetBytesPerSample(s) * Snack_GetNumChannels(s)), 0))
-    fail("SPHERE: seek error");
 
-  return TCL_OK;
+  if (sp_seek((SP_FILE *)ch, pos, 0)) {
+    return(-1);
+  } else {
+    return(pos);
+  }
 }
 
 static int
@@ -107,44 +200,50 @@ GetSphereHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
    long sample_n_bytes = 2;
    long sample_cnt = 0;
    char *sample_coding = "";
-   char *sample_byte_format = "";
 
    if (obj != NULL)
       fail("'data' subcommand forbidden for NIST/SPHERE format");
 
-   if (Snack_GetDebugFlag(s)) Snack_WriteLog("\tReading NIST/SPHERE header\n");
+   if (Snack_GetDebugFlag(s) > 2) {
+     Snack_WriteLog("    Reading NIST/SPHERE header\n");
+   }
 
    /* sample_rate */
    if (sp_h_get_field((SP_FILE *)ch, "sample_rate", T_INTEGER,
 		       (void *)&sample_rate) > 0)
       fail("SPHERE: unable to read sample_rate");
 
-   Snack_SetFrequency(s, sample_rate);
-   if (Snack_GetDebugFlag(s)) Snack_WriteLogInt("Setting freq", 
-						Snack_GetFrequency(s));
+   Snack_SetSampleRate(s, sample_rate);
+   if (Snack_GetDebugFlag(s) > 3) {
+     Snack_WriteLogInt("      Setting rate", Snack_GetSampleRate(s));
+   }
 
    /* sample_n_bytes */
    if (sp_h_get_field((SP_FILE *)ch, "sample_n_bytes", T_INTEGER,
 		       (void *)&sample_n_bytes) > 0)
       fail("SPHERE: unable to read sample_n_bytes");
    Snack_SetBytesPerSample(s, sample_n_bytes);
-   if (Snack_GetDebugFlag(s)) Snack_WriteLogInt("Setting sampsize",
-						Snack_GetBytesPerSample(s));
+   if (Snack_GetDebugFlag(s) > 3) {
+     Snack_WriteLogInt("      Setting sampsize", Snack_GetBytesPerSample(s));
+   }
    
    /* channel_count */
    if (sp_h_get_field((SP_FILE *)ch, "channel_count", T_INTEGER,
 		       (void *)&channel_count) > 0)
       fail("SPHERE: unable to read channel_count");
    Snack_SetNumChannels(s, channel_count);
-   if (Snack_GetDebugFlag(s)) Snack_WriteLogInt("Setting channels",
-						Snack_GetNumChannels(s));
+   if (Snack_GetDebugFlag(s) > 3) {
+     Snack_WriteLogInt("      Setting channels", Snack_GetNumChannels(s));
+   }
 
    /* sample_count */
    if (sp_h_get_field((SP_FILE *)ch, "sample_count", T_INTEGER,
 		       (void *)&sample_cnt) > 0) {
       sample_cnt = 0;
    }
-   if (Snack_GetDebugFlag(s)) Snack_WriteLogInt("Setting length", sample_cnt);
+   if (Snack_GetDebugFlag(s) > 3) {
+     Snack_WriteLogInt("      Setting length", sample_cnt);
+   }
 
    /* sample_coding */
    if (sp_h_get_field((SP_FILE *)ch, "sample_coding", T_STRING,
@@ -153,17 +252,17 @@ GetSphereHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
    }
    if (strncmp(sample_coding, "pculaw", 6) == 0) {
       sp_set_data_mode((SP_FILE *)ch, "SE-PCM-2");
-      Snack_SetSampleFormat(s, LIN16);
+      Snack_SetSampleEncoding(s, LIN16);
       Snack_SetBytesPerSample(s, 2);
    } else if (strncmp(sample_coding, "alaw", 4) == 0) {
-      Snack_SetSampleFormat(s, ALAW);
+      Snack_SetSampleEncoding(s, ALAW);
    } else if (strncmp(sample_coding, "ulaw", 4) == 0) {
-      Snack_SetSampleFormat(s, MULAW);
+      Snack_SetSampleEncoding(s, MULAW);
    } else if (strncmp(sample_coding, "pcm", 3) == 0 || sample_coding == "") {
       if (Snack_GetBytesPerSample(s) == 2) {
-         Snack_SetSampleFormat(s, LIN16);
+         Snack_SetSampleEncoding(s, LIN16);
       } else {
-         Snack_SetSampleFormat(s, LIN8);
+         Snack_SetSampleEncoding(s, LIN8);
       }
    }
    if (sample_coding != "") {
@@ -179,9 +278,33 @@ GetSphereHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
    return TCL_OK;
 }
 
+void
+FreeSphereHeader(Sound *s)
+{
+  if (s->extHead != NULL) {
+    ckfree((char *) s->extHead);
+    s->extHead = NULL;
+  }
+}
+
 #define SPHEREFILE_VERSION "1.1"
 
-/* Called by "load snackSphere" */
+Snack_FileFormat snackSphFormat = {
+  SPHERE_STRING,
+  GuessSphereFile,
+  GetSphereHeader,
+  ExtSphereFile,
+  NULL,
+  OpenSphereFile,
+  CloseSphereFile,
+  ReadSphereSamples,
+  NULL,
+  SeekSphereFile,
+  FreeSphereHeader,
+  (Snack_FileFormat *) NULL
+};
+
+/* Called by "load libsnacksphere" */
 EXPORT(int, Snacksphere_Init) _ANSI_ARGS_((Tcl_Interp *interp))
 {
   int res;
@@ -193,7 +316,7 @@ EXPORT(int, Snacksphere_Init) _ANSI_ARGS_((Tcl_Interp *interp))
 #endif
   
 #ifdef USE_SNACK_STUBS
-  if (Snack_InitStubs(interp, "1", 0) == NULL) {
+  if (Snack_InitStubs(interp, "2", 0) == NULL) {
     return TCL_ERROR;
   }
 #endif
@@ -204,10 +327,9 @@ EXPORT(int, Snacksphere_Init) _ANSI_ARGS_((Tcl_Interp *interp))
 
   Tcl_SetVar(interp, "snack::snacksphere", SPHEREFILE_VERSION,TCL_GLOBAL_ONLY);
 
-  return Snack_AddFileFormat(SPHERE_STRING, GuessSphereFile, GetSphereHeader,
-			     NULL, NULL,
-			     OpenSphereFile, CloseSphereFile,
-			     ReadSphereSamples, NULL, SeekSphereFile);
+  Snack_CreateFileFormat(&snackSphFormat);
+
+  return TCL_OK;
 }
 
 EXPORT(int, Snacksphere_SafeInit)(Tcl_Interp *interp)
