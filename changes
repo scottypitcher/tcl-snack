@@ -1,0 +1,288 @@
+Changes to Snack
+
+----------------- Released 1.3, 10/1/98 -----------------------
+
+10/1/98 (new feature) AIFF file support, although there seems to be lots of
+files out there that don't adhere to the specification.
+
+10/1/98 (new feature) Sound objects now can be linked to disk files and
+streams (Tcl channels) as well as having their audio data in memory.
+
+10/5/98 (new feature) Added -byteOrder option to the sound data command and to all commands taking the -byteswap option, which is deprecated.
+
+10/7/98 (bug fix) Fixed problem playing zero-length sounds on HP-UX.
+
+10/7/98 (bug fix) Fixed problem playing multi-channel disk files.
+
+10/12/98 (bug fix) The configure command now stops any active play/record operation before setting an option. Also, corrected -format and -channels options.
+
+10/12/98 (new feature) Added cget command to complement configure command.
+
+10/14/98 (bug fix) Fixed problem with insert command.
+
+10/21/98 (bug fix) Fixed problem with APause() on IRIX.
+
+----------------- Released 1.4b, 10/26/98 -----------------------
+
+10/26/98 (new feature) Makefile now also builds a Tcl only libsound.so
+
+10/28/98 (new feature) Split OSound.c into jkSound*.c and added Snack_AddSoundCmd() for Snack extensions. Added pause command.
+
+10/30/98 (bug fix) StopSound() now only called if the format of the sound samples change while a sound is playing, as a result of read or copy, e.g.
+
+11/3/98 (bug fix) Fixed bug in destroyCmd() and flushCmd() causing unwanted closing of audio device.
+
+11/6/98 (bug fix) Fixed bug in Snack_SoundCmd() for -load'ing raw files.
+
+11/11/98 (new feature) Better validation of options -fftlen/-winlen/-channel.
+
+11/18/98 (bug fix) Snack now more robust to audio device peculiarities, misc audio fixes for HP-UX, Solaris, Linux, and Windows.
+
+11/18/98 (new feature) Play commands now queue up and play in sequence.
+
+11/22/98 (bug fix) Fixed bugs in SmpMov() and lengthCmd() for byte sized sample data.
+
+12/19/98 (new feature) Added -colormap option to spectrograms.
+
+12/20/98 (new feature) Added on-the-fly sample conversion for playback, lin8 on HP-UX and u-/A-law on Linux (if not supported by the hardware).  
+
+12/22/98 (new feature) PS generation for color spectrograms.
+
+----------------- Released 1.4p2, 1/1/99 -----------------------
+
+1/1/99 (new feature) Added -subsample option to waveforms. Now large sounds can be sub-sampled when drawing the waveform envelope. This can be much faster. For some synthetic sounds this can be problematic, in this case setting -subsample to 1 gives the old behaviour, i.e. don't sub-sample. Fixed drawing of zoomed sounds which look nicer now.
+
+1/1/99 (new feature) Made some optimizations to spectrogram drawing. Added -gridcolor option. 256-color displays now supported under Windows.
+
+1/4/99 (new feature) Raw file input now tries to guess byte order and sample format if they weren't specified in the read/data commands.
+
+1/7/99 (new feature) Added -fileformat option to the sound write command which overrides the guess of format from the file name extension.
+
+1/15/99 (new feature) Added sound convert command. Rather simple resampling algorithm (to start with).
+
+1/26/99 (new feature) Modified spectrogram canvas item code with the goal of making it replace the spectrogram widget, which is now deprecated.
+
+1/27/99 (bug fix) Swapped Lin8 and Lin8offset everywhere, long overdue.
+
+1/29/99 (new feature) Split the file AudIO.c into one jkAudIO_*.c per platform. Renamed some other source and header files too.
+
+2/1/99 (bug fix) Waveforms redraw properly now.
+
+----------------- Released 1.5a1, 2/8/99 -----------------------
+
+2/8/99 (new feature) It is now possible to add new sound file formats using the Snack_AddFileFormat() function. Only reading supported to start with.
+
+2/8/99 (new feature) Added support for the NIST/Sphere file formats (SphereFile.c). This must be specified at configure time, see the README file.
+
+2/8/99 (new feature) Automatic detection of byte order and sample encoding format now also for -file/-channel sounds.
+
+2/8/99 (new feature) Snack now uses immediate loading. This eliminates the problems with, for example, finding the Snack item types in some cases.
+
+2/8/99 (feature change) Waveform -subsample option now has a default value of 1.
+
+2/9/99 (bug fix) Copy command now allocates sufficient memory when copying multi-channel sounds.
+
+2/10/99 (bug fix) Fixed canvas item bug when UpdateXXX() is called before an item has been drawn on screen.
+
+----------------- Released 1.5a2, 2/10/99 -----------------------
+
+2/12/99 (bug fix) Corrected error progagation when failing to read sounds and parsing headers.
+
+----------------- Released 1.5b1, 2/16/99 -----------------------
+
+2/21/99 (new feature) Convert command now does low-pass filtering when resampling sounds.
+
+2/21/99 (bug fix) Corrected the code for immediate loading, which would have caused problems in future versions.
+
+2/21/99 (new feature) Improved documentation and configuration of the snackSphere package.
+
+2/22/99 (bug fix) Corrected right edge padding of spectrograms.
+
+2/28/99 (new feature) Created commands getOGIwave and createOGIwave for interaction between Snack sounds and the wave objects of the OGI toolkit.
+
+3/1/99 (new feature) Added support for reading the MPEG layer 3 sound format.
+
+----------------- Released 1.5b2, 3/3/99 -----------------------
+
+3/17/99 (new feature) Added Snack_GetSound() function which returns a sound struct given a sound command name.
+
+3/18/99 (bug fix) Corrected bug for file based playback of MP3 sounds.
+
+----------------- Released 1.5b3, 3/18/99 -----------------------
+
+3/20/99 (feature change) A number of options to the play and record commands are now deprecated. The configure command provides this functionality. Also, sound command options should now be written in lower case only.
+
+3/23/99 (removed feature) The spectrogram widget was removed as all functionality is provided by the corresponding canvas item.
+
+----------------- Released 1.5b4, 3/27/99 -----------------------
+
+4/6/99 (bug fix) Changed the parsing of sound file headers to allow for example MP3 sounds to be played over a socket connection.
+
+4/6/99 (bug fix) Fixed stereo audio on SGI.
+
+----------------- Released 1.5, 4/6/99 -----------------------
+
+4/8/99 (bug fix) Updated g711.c with fix for Snack_Lin2*() functions.
+
+4/9/99 (feature change) The Snack Tcl library now uses a namespace.
+
+4/12/99 (feature change) The auto detection of encoding format (for raw files) now assumes that Mulaw/Alaw files are 8kHz and that lin8 files are 11.025 kHz.
+
+4/15/99 (enhancement) Added simple sound viewer cool.tcl. Fixed aserver.tcl doesn't hang during exit on Windows anymore.
+
+----------------- Released 1.5p1, 4/15/99 -----------------------
+
+5/3/99 (new feature) Added -fileformat option to the sound read/data/append commands that overrides the file format auto-detection function.
+
+5/3/99 (feature improvements) Improved sample file header detection/parsing.
+
+5/3/99 (API change) The amount of sound data to transfer using Snack_Get{Put}SoundData() should now be specified in bytes.
+
+5/9/99 (bug fix) Fixed bug in sound data command for stereo sounds. Caused too much data to be written to binary Tcl variables.
+
+----------------- Released 1.5p2, 5/10/99 -----------------------
+
+5/20/99 (bug fix) Proper clean-up if an error occurs during creation of a sound.
+
+5/26/99 (bug fix) Bug fix for the AIFF header parsing routine. (Barras)
+
+5/26/99 (new feature) User fields in the sound structure to be used with, e. g.,
+new file formats. (Zhou)
+
+5/26/99 (improved feature) Changed and improved the mixer code. Snack's mixer interface is now orthogonal to audio device functions such as play/record. It also reflects the underlying hardware capabilities better. Some minor changes to the API.
+*** POTENTIAL INCOMPATIBILITY ***
+
+----------------- Released 1.6a1, 5/27/99 -----------------------
+
+5/30/99 (bug fix) More robust seeking in MP3 files.
+
+5/30/99 (bug fix) The play command callback (-command) now gets executed when -start is at the very end of a sound.
+
+----------------- Released 1.6a2, 5/31/99 -----------------------
+
+5/31/99 (improved feature) Added format Lin8 (AFMT_S8) for Linux (if supported by hardware). (Barras)
+
+5/31/99 (improved feature) If the audio device supports a sampling frequency close to the requested one, it will be used without reporting an error. (Barras)
+
+6/7/99 (improved feature) The "audio frequencies" command on Linux now reports the actual audio device capabilities.
+
+6/7/99 (enhancement) More informative error messages for audio I/O.
+
+6/8/99 (new feature) Snack can now use the Tcl/Tk stub libraries (default behaviour). Also, eliminated use of private Tcl library functions.
+
+6/14/99 (feature change) The sound read/write commands now do nothing if filename is specified as "".
+
+6/15/99 (new feature) Extensions to Snack can now link with Snack's stub library (libsnackstub1.6.a) This is the preferred method.
+
+----------------- Released 1.6b1, 6/15/99 -----------------------
+
+7/21/99 (bug fix) Fixed several problems with the append command.
+
+7/21/99 (bug fix) Fixed file header parsing routines to work correctly with files contained in Tcl variables when running Tcl8.1 or later.
+
+7/21/99 (feature change) When loading raw sound data using the read/data/append commands you must specify '-guessproperties yes' if you want Snack to guess sample format, byte order, and/or frequency of the data. Default is to use the current properties of the sound object. It is also possible to specify these by hand as previously.
+*** POTENTIAL INCOMPATIBILITY ***
+
+7/22/99 (bug fix) Short raw files (< 1024 bytes) are now read correctly.
+
+7/26/99 (bug fix) Fixed display update bug for spectrogram canvas items configured solely with -pixelspersecond.
+
+7/26/99 (new feature) Added an experimental pitch command for extraction of the fundamental frequency from speech.
+
+7/28/99 (new feature) The visualization canvas items now work with sounds which are linked to sound files.
+
+----------------- Released 1.6b2, 7/28/99 -----------------------
+
+8/3/99 (new feature) Snack_GetSoundData() can now be used to access data in linked sound files.
+
+8/3/99 (bug fix) The -end option to read/data/append now works correctly.
+
+8/3/99 (bug fix) Frequency conversion corrected for Mulaw/Alaw sounds.
+
+----------------- Released 1.6, 8/6/99 -----------------------
+
+8/23/99 (enhancement) Updated the snackSphere package to use stub-libraries.
+
+8/30/99 (new feature) Playback of stereo Mulaw/Alaw sound on Solaris and Linux with on-the-fly conversion if needed.
+
+8/30/99 (bug fix) Fixed bug for canvas items linked to stereo sound files.
+
+9/1/99 (bug fix) Fixed clean-up bug for canvas items linked to a sound which has been destroyed.
+
+9/8/99 (bug fix) Fixed display bug for waveforms and Lin8offset sounds.
+
+9/9/99 (configuration improvement) Configuration defaults are now for Tcl/Tk8.2.0.
+
+----------------- Released 1.6.1, 9/9/99 -----------------------
+
+9/15/99 (bug fix) Memory was freed twice when deleting spectrum sections. (Barras)
+
+9/15/99 (bug fix) Canvas items now remember which channel(s) to show when the sounds they are linked to change.
+
+9/23/99 (bug fix) Sound length is now calculated correctly by the read command when skipping an unknown header. (Barras)
+
+9/23/99 (bug fix) Fixed some code inconsistencies for SGI (jkAudIO_sgi.c). (Mel)
+
+10/5/99 (bug fix) The read command now works correctly when reading multi-channel sounds with the option -start specified. (Kanwischer)
+
+10/13/99 (new feature) The max/min commands now takes options -start, -end, -channel.
+
+10/13/99 (bug fix) Canvas waveform items can now be created without actually specifying a sound.
+
+----------------- Released 1.6.2, 10/13/99 -----------------------
+
+10/28/99 (new feature) The commands max, min, sample, and fft now work for sounds linked to files.
+
+10/28/99 (bug fix) The stop command sometimes didn't close a file being played properly. (Barras)
+
+10/28/99 (bug fix) MP3 headers are now recognized more robustly.
+
+10/28/99 (API change) The putHeaderProc of Snack_AddFileFormat() no longer takes the parameter buf. (Ammicht)
+
+11/9/99 (enhancement) Spectrum sections now take the options -maxvalue/-minvalue which can be used to set the dB-range to be displayed.
+
+11/10/99 (new feature) Added reverse command (useful in the search for hidden messages ;-).
+
+11/18/99 (enhancement) The options to sound, configure, and cget are now in better agreement.
+
+11/18/99 (new feature) Canvas items can now be unlinked from a sound object by configuring -sound "".
+
+11/19/99 (bug fix) Fixed problem with the 'audio update' command on Linux.
+
+11/23/99 (bug fix) The -byteorder option to the append, read, data, and configure commands had the side effect to swap bytes in later operations.
+
+11/23/99 (removed feature) Removed several deprecated options to the record command, all of which are available through the configure command.
+
+11/23/99 (new feature) Waveform canvas items now take the option -shapefile which can be used to specify a file to store/retrieve precomputed waveform shape information. If the file doesn't exist it is created. If it exists it is accessed instead of the sound data itself, thus speeding up on-screen display.
+
+----------------- Released 1.6.3, 11/23/99 -----------------------
+
+12/14/99 (new feature) Canvas items for sounds linked to files now update correctly when recording is performed. Spectrograms not completely optizimed yet regarding memory usage.
+
+12/14/99 (bug fix) An exit handler was added, which gives better clean-up on exit for Windows 95/98.
+
+12/14/99 (new feature) The pitch command can now be guided as to which pitch range the analysis should use using the options -maxpitch and -minpitch.
+
+12/14/99 (API change) The C-macros Snack_SetSample() and Snack_GetSample() now take an additional channel parameter.
+
+12/15/99 (bug fix) Spectrograms for linked sounds with Lin8Offset/Lin8 sample encodings now display properly.
+
+12/16/99 (feature change) The play command doesn't read the file header for linked sounds an extra time prior to starting playback any more.
+
+12/16/99 (bug fix) The max/min commands fixed for the combination empty sound and -start/-end options with value 0.
+
+12/16/99 (bug fix) MP3 headers are now parsed a bit more robustly when they are read on-the-fly from a channel.
+
+12/16/99 (configuration improvement) Searches for Tcl/Tk at configuration time using TEA macros.
+
+----------------- Released 1.6.4, 12/16/99 -----------------------
+
+1/8/00 (bug fix) Fixed a pair of bugs concerning pre-computed waveforms, now ok for sounds longer than 10M samples and during playback.
+
+1/8/00 (bug fix) Yet another MP3 header parsing fix for channel input.
+
+1/10/00 (bug fix) Fixed bugs regarding max/min values and pre-computed waveforms.
+
+1/10/00 (enhancement) The sample command now caches values for sounds linked to files between invocations.
+
+----------------- Released 1.6.5, 1/10/00 -----------------------

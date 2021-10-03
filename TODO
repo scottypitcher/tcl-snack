@@ -1,0 +1,9 @@
+Full duplex. (for 1.7)
+
+Real time sound mixing and variable speed playback. (for 1.7)
+
+Complete TEA conformance as soon as TEA is stable.
+
+Improved mixer support. Currently, HP-UX, Linux, and Solaris, have the best support while Windows and IRIX only have minimal. Not currently prioritized.
+
+

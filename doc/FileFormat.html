@@ -1,0 +1,73 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.6 [en] (X11; I; HP-UX B.10.20 9000/778) [Netscape]">
+   <meta name="Author" content="Kåre Sjölander">
+   <title>FileFormat</title>
+</head>
+<body>
+
+<h3>
+NAME</h3>
+Snack_AddFileFormat - define new kind of sound file format
+<h3>
+SYNOPSIS</h3>
+#include &lt;snack.h>
+<br><b>Snack_AddFileFormat</b>(formatName, guessProc, getHeaderProc, extProc,
+putHeaderProc, openProc, closeProc, readSamplesProc, writeSamplesProc,
+seekProc)
+<h3>
+ARGUMENTS</h3>
+char *formatName
+<br>guessFileTypeProc *guessProc
+<br>getHeaderProc *getHeaderProc
+<br>extensionFileTypeProc *extProc
+<br>putHeaderProc *putHeaderProc
+<br>openProc *openProc
+<br>closeProc *closeProc
+<br>readSamplesProc *readSamplesProc
+<br>writeSamplesProc *writeSamplesProc
+<br>seekProc *seekProc
+<h3>
+DESCRIPTION</h3>
+<b>Snack_AddFileFormat</b> is used to define a new kind of sound file format.
+A number of procedures can be specified to handle sound data I/O, header
+parsing, etc. The file SphereFile.c can be used as an example of how these
+routines are to be used.
+<p><b>guessFileTypeProc</b> is invoked by Snack in order to find out if
+the current file is of a type which this handler recognizes. <b>guessFileTypeProc</b>
+will receive <i>buffer</i> filled with bytes from the header up to <i>length</i>
+and if it recognizes the format is should return <i>formatName.</i> If
+it can't make a decision after seeing only <i>length</i> bytes it should
+return the string QUE_STRING. It will subsequently be invoked again with
+some more bytes for a new try. If the file is clearly in another format
+<b>guessFileTypeProc</b>
+should return NULL.
+<p><b>extensionFileTypeProc</b> takes a filename string and returns <i>formatName</i>
+if its file name extension matches its format else it return NULL.<i>&nbsp;</i>
+This is used when saving a sound object using a <i>filename</i> to guess
+which format it should be saved with. If no save functionality is needed
+and <b>extensionFileTypeProc</b> is specified as NULL, a raw file will
+be saved using <i>filename</i>, which could be confusing. By providing
+an <b>extensionFileTypeProc</b> for the format Snack will be able to report
+"unsupported save format".
+<p>typedef char *(guessFileTypeProc) (char *buf, int len);
+<br>typedef int&nbsp; (getHeaderProc) (Sound *s, Tcl_Interp *interp, Tcl_Channel
+ch, Tcl_Obj *obj, char *buf);
+<br>typedef char *(extensionFileTypeProc) (char *buf);
+<br>typedef int&nbsp; (putHeaderProc) (Sound *s, Tcl_Channel ch, Tcl_Obj
+*obj, int len);
+<br>typedef int&nbsp; (openProc) (Sound *s, Tcl_Interp *interp,Tcl_Channel
+*ch, char *mode);
+<br>typedef int&nbsp; (closeProc) (Sound *s, Tcl_Interp *interp, Tcl_Channel
+*ch);
+<br>typedef int&nbsp; (readSamplesProc) (Sound *s, Tcl_Interp *interp,
+Tcl_Channel ch, char *ibuf, char *obuf, int len);
+<br>typedef int&nbsp; (writeSamplesProc) (Sound *s, Tcl_Channel ch, Tcl_Obj
+*obj, char *buf, int len);
+<br>typedef int&nbsp; (seekProc) (Sound *s, Tcl_Interp *interp, Tcl_Channel
+ch, int pos);
+<br>&nbsp;
+</body>
+</html>
