@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.3 "$0" "$@"
+exec wish8.4 "$0" "$@"
 
 # This file shows how to handle CSL/NSP files with both A and B data chunks
 

@@ -23,7 +23,7 @@ Tcl/Tk: http://tcl.activestate.com/
 Python: http://www.python.org/
 
 In order to use Snack you must have Tcl and Tk version 8.0 or later. Always 
-use the latest stable release, currently 8.3.4, which can be downloaded from 
+use the latest stable release, currently 8.4.1, which can be downloaded from 
 ftp.activestate.com/ActiveTcl/html/.
 
 Tcl/Tk is often included with Python distributions. Snack has been tested
@@ -50,9 +50,9 @@ Compilation instructions for Snack on Unix (see mac/README for OS X)
 
 You must have Tcl/Tk installed on your system. Both Tcl and Tk must have
 been configured with the "--enable-shared" flag at build time (this is 
-default for the 8.3 versions). Build them before Snack.
+default for the 8.4 versions). Build them before Snack.
 
-Unpack Snack and change directory to the snack2.2/unix directory.
+Unpack Snack and change directory to the snack2.2.1/unix directory.
 
 Type "./configure".
 
@@ -60,7 +60,7 @@ If you get this error message "Can't find Tcl configuration definitions",
 you have to specify their locations using the options "--with-tcl" and
 "--with-tk" when running configure. For example, use 
 "--with-tcl=/usr/lib --with-tk=/usr/lib" if Tcl/Tk was
-installed in "/usr/lib", or "--with-tcl=../tcl8.3.4/unix" if you use that
+installed in "/usr/lib", or "--with-tcl=../tcl8.4.1/unix" if you use that
 version.
 
 Linux users who have the ALSA sound driver installed should specify the configure flag --enable-alsa in order to enable native ALSA support.
@@ -79,11 +79,11 @@ If you use Tcl/Tk 8.0 to 8.0.5 you will have to use the flag
 Summary in case you download Tcl, Tk, and Snack and build from scratch:
 You should place the distributions in the same directory and unpack them.
 Build Snack using the following commands:
-cd tcl8.3.4/unix
+cd tcl8.4.1/unix
 ./configure --enable-shared
-cd ../../tk8.3.4/unix
+cd ../../tk8.4.1/unix
 ./configure --enable-shared
-cd ../../snack2.2/unix
+cd ../../snack2.2.1/unix
 ./configure
 make
 
@@ -95,9 +95,9 @@ When you have succesfully compiled Snack it's time to look at the demos.
 In order to run these you will have to set the environment variable 
 TCLLIBPATH to the directory containing the Snack library files (you don't 
 need this step if you install Snack as described below). If you have 
-compiled Snack in /u/kare/snack2.2/unix, this would be:
+compiled Snack in /u/kare/snack2.2.1/unix, this would be:
 
-setenv TCLLIBPATH /u/kare/snack2.2/unix
+setenv TCLLIBPATH /u/kare/snack2.2.1/unix
 
 Change to the demos/tcl/ directory and type ./widget.tcl:
 
@@ -141,7 +141,7 @@ Compilation instructions for Snack on Windows
 The MSVC++ 6.0 workspace and project files necessary to build Snack on Windows
 are located in the win directory of the source distribution.
 
-In order to use Snack you will have to install Tcl/Tk 8.3 first.
+In order to use Snack you will have to install Tcl/Tk 8.4 first.
 
 Snack's project files are set up for use with Tcl installed in C:\Tcl\, it
 might be easiest to change such paths by editing all *.dsp files in a text
@@ -238,8 +238,8 @@ The loader must be able to find the "libsnack.so" shared object. You may
 have to set the environment variable LD_LIBRARY_PATH to point the directory
 where it is located. This variable is a colon separated list of paths which
 can be modified using setenv. If you, for example, have compiled Snack in
-the directory /u/kare/snack/unix and have the shared objects libtcl8.3.so
-and libtk8.3.so in /usr/local/bin you would use the following command at the 
+the directory /u/kare/snack/unix and have the shared objects libtcl8.4.so
+and libtk8.4.so in /usr/local/bin you would use the following command at the 
 terminal prompt or in your .cshrc file:
 
 setenv LD_LIBRARY_PATH /u/kare/snack/unix:/usr/local/bin:$LD_LIBRARY_PATH
@@ -308,3 +308,4 @@ Scott McSpadden
 Albert Visagie
 Helmut Hissen
 Daniel A. Steffen
+Hans Werner Strube

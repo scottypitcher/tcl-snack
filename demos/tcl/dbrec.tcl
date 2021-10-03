@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.3 "$0" "$@"
+exec wish8.4 "$0" "$@"
 
 # Prompted sentence recording application
  
@@ -31,6 +31,7 @@ $m.audio add command -label "Mixer..." -command snack::mixerDialog
 
 set needsave 0
 set replay 1
+set feedback 1
 set fontsize 20
 set prompt "Please load a recording script and start a new session"
 set ::name ""
@@ -40,7 +41,7 @@ set ::imax 0
 # Draw waveform and prompt boxes
 
 pack [canvas .c -height 80 -width 1000 -relief sunken -bd 3]
-.c create waveform 0 0 -sound s -height 80 -width 1000 -limit 32768
+.c create waveform 0 0 -sound s -height 80 -width 1000 -limit 32768 -tags wave
 pack [frame .f2 -relief sunken -bd 3] -pady 15
 pack [label .f2.l1 -text Prompt: -anchor w] -fill x
 pack [label .f2.l2 -textvar prompt -font "Helvetica $fontsize bold"] \
@@ -57,7 +58,10 @@ button .f1.bp -bitmap snackPlay -width 40 -command Play -state disabled
 button .f1.br -bitmap snackRecord -width 40 -fg red -state disabled
 button .f1.pr -text Prev -command Prev -state disabled
 button .f1.ne -text Next -command Next -state disabled
-checkbutton .f1.be -text replay -variable replay
+frame .f1.cbf
+checkbutton .f1.cbf.be -text replay -variable replay -anchor w
+checkbutton .f1.cbf.bf -text feedback -variable feedback -command ToggleGraphics\
+ -anchor w
 label .f1.time -text "00:00.0" -width 10
 snack::levelMeter .f1.lm -width 20 -length 200
 label .f1.level -textvariable level
@@ -74,7 +78,8 @@ grid [label .f1.f.g.ld -text <Down>=Stop -relief raised -bd 3] -row 2 -column 3
 grid [label .f1.f.g.lr -text <Right>=Next -relief raised -bd 3] -row 2 \
   -column 4
 
-pack .f1.bp .f1.br .f1.pr .f1.ne .f1.be .f1.time .f1.lm .f1.level \
+pack .f1.cbf.be .f1.cbf.bf -fill x
+pack .f1.bp .f1.br .f1.pr .f1.ne .f1.cbf .f1.time .f1.lm .f1.level \
     .f1.f -side left
 bind .f1.br <ButtonPress-1>   Record
 bind .f1.br <ButtonRelease-1> Stop
@@ -302,9 +307,19 @@ proc Update {} {
     set t [s length -unit sec]
     SetTime $t
   }
-  .f1.lm configure -level $l
+  if {$::feedback} {
+   .f1.lm configure -level $l
+  }
   
   after 100 Update
+}
+
+proc ToggleGraphics {} {
+ if {$::feedback} {
+  .c create waveform 0 0 -sound s -height 80 -width 1000 -limit 32768 -tags wave
+ } else {
+  .c delete wave
+ }
 }
 
 proc Record {} {
@@ -318,7 +333,11 @@ proc Record {} {
   set ::needsave 1
   .f1.bp configure -relief raised
 #  .f1.br configure -relief groove
-  .c itemconfig 1 -fill darkgreen
+  .c itemconfig wave -fill darkgreen
+  if {$::feedback == 0} {
+   .c delete wave
+  }
+
 }
 
 proc Play {} {
@@ -365,14 +384,16 @@ proc Stop {} {
   if {$arg < 0.00001} { set arg 0.00001 }
   set ::level [format "%.1fdB" [expr {20.0 * log($arg)}]]
   if {[s max] < 10000} {
-    .c itemconfig 1 -fill red
+    .c itemconfig wave -fill red
     tk_messageBox -message "Low volume!" -icon warning
   }
   if {[s max] == 32767 || [s min] == -32768} {
-    .c itemconfig 1 -fill red
+    .c itemconfig wave -fill red
     tk_messageBox -message "Signal clipped!" -icon warning
   }
-  
+  if {$::feedback == 0} {
+   .c create waveform 0 0 -sound s -height 80 -width 1000 -limit 32768 -tags wave
+  }
   if {$::needsave && [info exists ::dir]} {
     s write [file join $::dir [format "sent%03d" $::sentence].wav]
     if {[catch {open [file join $::dir [format "sent%03d" $::sentence].txt] \

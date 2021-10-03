@@ -570,7 +570,7 @@ Sound *lpc_poles(sp,wdur,frame_int,lpc_ord,preemp,lpc_type,w_type)
 /**********************************************************************/
 double frand()
 {
-  return (((double)rand())/2147483648.0);
+  return (((double)rand())/(double)RAND_MAX);
 }
     
 /**********************************************************************/

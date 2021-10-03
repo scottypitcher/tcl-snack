@@ -895,8 +895,23 @@ build Snack on the Macintosh.
 
 1/16/03 (enhancement) Canvas items now work on Mac OS X, also added Makefile hardcoded for Tcl8.4.1.
 
-1/24/03 (new feature) Building using configure/make for Mac OS X.
+1/24/03 (new feature) Support for standard configure/make build systom on Mac OS X.
 
 1/24/03 (new feature) Core Audio support for Mac OS X.
 
 2/06/03 (new feature) Improved build support for Mac OS X. (Steffen)
+
+2/10/03 (new feature) New sample encoding format Lin24Packed.
+
+2/11/03 (bug fix) Fixed problem with the ESPS pitch tracker.
+
+2/10/03 (new feature) Snack libraries compiled for Tcl/Tk 8.4 now work with earlier stub versions as well.
+
+----------------- Released 2.2.1, 2/21/03 -----------------------
+
+2/28/03 (new feature) Included project files for MSVC++ 7.0.
+
+3/3/03 (new feature) 24-bit recording supported on 24-bit capable hardware.
+
+3/5/03 (change) Updated the release to use Tcl/Tk 8.4 as default
+

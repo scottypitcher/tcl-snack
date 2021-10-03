@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -166,6 +166,7 @@ Snack_GetExtremes(Sound *s, SnackLinkedFileInfo *info, int start, int end,
     mins = 127.0f;
     break;
   case LIN24:
+  case LIN24PACKED:
     maxs = -8388608.0f;
     mins = 8388607.0f;
     break;
@@ -505,7 +506,7 @@ Snack_ResizeSoundStorage(Sound *s, int len)
 }
 
 char *encs[] = { "", "Lin16", "Alaw", "Mulaw", "Lin8offset", "Lin8",
-		  "Lin24", "Lin32", "Float", "Double" };
+		  "Lin24", "Lin32", "Float", "Double", "Lin24packed" };
 
 int
 GetChannels(Tcl_Interp *interp, Tcl_Obj *obj, int *nchannels)
@@ -546,6 +547,9 @@ GetEncoding(Tcl_Interp *interp, Tcl_Obj *obj, int *encoding, int *sampsize)
   } else if (strncasecmp(str, "LIN24", length) == 0) {
     *encoding = LIN24;
     *sampsize = 4;
+  } else if (strncasecmp(str, "LIN24PACKED", length) == 0) {
+    *encoding = LIN24PACKED;
+    *sampsize = 3;
   } else if (strncasecmp(str, "LIN32", length) == 0) {
     *encoding = LIN32;
     *sampsize = 4;

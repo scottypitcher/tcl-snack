@@ -3066,7 +3066,7 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
       /* Attempt to read beyond the ID3 offset if it is too large */
       if (idOffset > NFIRSTSAMPLES) {
 
-         if (Tcl_Seek(ch, idOffset, SEEK_SET) > 0) {
+         if (TCL_SEEK(ch, idOffset, SEEK_SET) > 0) {
             if (Tcl_Read(ch, &buf[0], NFIRSTSAMPLES) > 0) {
                /* local buffer is now at end of ID3 tag */
                offset = 0;
@@ -3203,8 +3203,8 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
    Si->bytesPerFrame = xAvgFrameSize ? xAvgFrameSize : mean_frame_size;
    /* Compute length */
    if (ch != NULL) {
-      if (Tcl_Seek(ch, 0, SEEK_END) > 0) {
-         totalFrames = ((int)Tcl_Tell(ch) - (offset + ID3Extra)) / Si->bytesPerFrame;
+      if (TCL_SEEK(ch, 0, SEEK_END) > 0) {
+         totalFrames = ((int)TCL_TELL(ch) - (offset + ID3Extra)) / Si->bytesPerFrame;
       }
       S->length = (totalFrames * 18 * 32) * (Si->id ? 2:1);
    }
@@ -3291,7 +3291,7 @@ int
          if (S->debug > 0) Snack_WriteLogInt("    Failed to allocate seek buffer", seekSize);
          return -1;
       }
-      filepos = (int)Tcl_Seek(ch, filepos, SEEK_SET);
+      filepos = (int)TCL_SEEK(ch, filepos, SEEK_SET);
       if (filepos < 0) {
          if (S->debug > 0) Snack_WriteLogInt("    Failed to seek to", filepos);
          return(filepos);                                  /* Denote seek beyond eof */
@@ -3339,14 +3339,14 @@ int
              * Skip 32 bit header and position at start of data
              * (protection field handled elsewhere)
              */
-            Tcl_Seek(ch,filepos + index + 4, SEEK_SET);
+            TCL_SEEK(ch,filepos + index + 4, SEEK_SET);
             Tcl_Free(seekBuffer);
             return(pos);
          }
          index++;
       }
       /* If we got here, we went past the eof, seek to it */
-      Tcl_Seek(ch,0,SEEK_END);
+      TCL_SEEK(ch,0,SEEK_END);
       if (S->debug > 0) Snack_WriteLogInt("    Seek beyond EOF", filepos+index);
       pos = -1;
    }

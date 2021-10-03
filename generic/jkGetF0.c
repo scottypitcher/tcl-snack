@@ -1259,7 +1259,7 @@ num_active_frames);
   *vuvp_pt = vuvp;
   *acpkp_pt = acpkp;
   *rms_speech_pt = rms_speech;
-  *acpkp_pt = acpkp;
+  /*  *acpkp_pt = acpkp;*/
   
   if(first_time) first_time = 0;
   return(0);
@@ -1535,7 +1535,7 @@ get_stationarity(fdata, freq, buff_size, nframes, frame_step, first_time)
   }
 
   /* last frame, prepare for next call */
-  for(j=(memsize/2)-1, p=fdata + (nframes * frame_step)-1; j>=0; j-- )
+  for(j=(memsize/2)-1, p=fdata + (nframes * frame_step)-1; j>=0 && p>=fdata; j--)
     mem[j] = *p--;
   return(stat);
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -51,6 +51,8 @@ extern "C" {
 #  include <mmsystem.h>
 #  include <mmreg.h>
 #  include <dsound.h>
+#  include <ks.h>
+#  include <ksmedia.h>
 #endif
 
 #ifdef IRIX
@@ -275,6 +277,7 @@ extern int  SnackGetOutDevices(char **arr, int n);
 #define LIN32        7
 #define SNACK_FLOAT  8
 #define SNACK_DOUBLE 9
+#define LIN24PACKED 10
 
 #define CAPABLEN 100
 

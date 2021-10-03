@@ -169,111 +169,111 @@ stublib: ${OBJSNST}
 	ar cr libsnackstub${VERSION}.a ${OBJSNST}
 
 editversion: ${OBJSN}
-	if test "$(TCL_VERSION)" != "8.3"; then\
+	if test "$(TCL_VERSION)" != "8.4"; then\
 	    cd $(UNIX_DIR)/../demos/tcl/ ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ MinSect.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ MinSect.tcl > tmp ;\
 	    mv -f tmp MinSect.tcl ;\
 	    chmod 755 MinSect.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ MinSpeg.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ MinSpeg.tcl > tmp ;\
 	    mv -f tmp MinSpeg.tcl ;\
 	    chmod 755 MinSpeg.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ MinWave.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ MinWave.tcl > tmp ;\
 	    mv -f tmp MinWave.tcl ;\
 	    chmod 755 MinWave.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ Section.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ Section.tcl > tmp ;\
 	    mv -f tmp Section.tcl ;\
 	    chmod 755 Section.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ Spectrogram.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ Spectrogram.tcl > tmp ;\
 	    mv -f tmp Spectrogram.tcl ;\
 	    chmod 755 Spectrogram.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ SphereTest.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ SphereTest.tcl > tmp ;\
 	    mv -f tmp SphereTest.tcl ;\
 	    chmod 755 SphereTest.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ Waveform.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ Waveform.tcl > tmp ;\
 	    mv -f tmp Waveform.tcl ;\
 	    chmod 755 Waveform.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ aserver.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ aserver.tcl > tmp ;\
 	    mv -f tmp aserver.tcl ;\
 	    chmod 755 aserver.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ compose.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ compose.tcl > tmp ;\
 	    mv -f tmp compose.tcl ;\
 	    chmod 755 compose.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ cool.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ cool.tcl > tmp ;\
 	    mv -f tmp cool.tcl ;\
 	    chmod 755 cool.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ echo.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ echo.tcl > tmp ;\
 	    mv -f tmp echo.tcl ;\
 	    chmod 755 echo.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ formant.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ formant.tcl > tmp ;\
 	    mv -f tmp formant.tcl ;\
 	    chmod 755 formant.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ fourChan.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ fourChan.tcl > tmp ;\
 	    mv -f tmp fourChan.tcl ;\
 	    chmod 755 fourChan.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ levelmeter.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ levelmeter.tcl > tmp ;\
 	    mv -f tmp levelmeter.tcl ;\
 	    chmod 755 levelmeter.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ mapChan.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ mapChan.tcl > tmp ;\
 	    mv -f tmp mapChan.tcl ;\
 	    chmod 755 mapChan.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ mixer.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ mixer.tcl > tmp ;\
 	    mv -f tmp mixer.tcl ;\
 	    chmod 755 mixer.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ play.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ play.tcl > tmp ;\
 	    mv -f tmp play.tcl ;\
 	    chmod 755 play.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ record.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ record.tcl > tmp ;\
 	    mv -f tmp record.tcl ;\
 	    chmod 755 record.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ recrplay.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ recrplay.tcl > tmp ;\
 	    mv -f tmp recrplay.tcl ;\
 	    chmod 755 recrplay.tcl ;\
-	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ rplay.tcl > tmp ;\
+	    sed s/tclsh8.4/tclsh${TCL_VERSION}/ rplay.tcl > tmp ;\
 	    mv -f tmp rplay.tcl ;\
 	    chmod 755 rplay.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ snamp.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ snamp.tcl > tmp ;\
 	    mv -f tmp snamp.tcl ;\
 	    chmod 755 snamp.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ spectrum.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ spectrum.tcl > tmp ;\
 	    mv -f tmp spectrum.tcl ;\
 	    chmod 755 spectrum.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ tomAmp.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ tomAmp.tcl > tmp ;\
 	    mv -f tmp tomAmp.tcl ;\
 	    chmod 755 tomAmp.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ dbrec.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ dbrec.tcl > tmp ;\
 	    mv -f tmp dbrec.tcl ;\
 	    chmod 755 dbrec.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ widget.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ widget.tcl > tmp ;\
 	    mv -f tmp widget.tcl ;\
 	    chmod 755 widget.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ wrap.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ wrap.tcl > tmp ;\
 	    mv -f tmp wrap.tcl ;\
 	    chmod 755 wrap.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ generator.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ generator.tcl > tmp ;\
 	    mv -f tmp generator.tcl ;\
 	    chmod 755 generator.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ notescale.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ notescale.tcl > tmp ;\
 	    mv -f tmp notescale.tcl ;\
 	    chmod 755 notescale.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ oggstream.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ oggstream.tcl > tmp ;\
 	    mv -f tmp oggstream.tcl ;\
 	    chmod 755 oggstream.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ polarspec.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ polarspec.tcl > tmp ;\
 	    mv -f tmp polarspec.tcl ;\
 	    chmod 755 polarspec.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ pitch.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ pitch.tcl > tmp ;\
 	    mv -f tmp pitch.tcl ;\
 	    chmod 755 pitch.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ phonetogram.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ phonetogram.tcl > tmp ;\
 	    mv -f tmp phonetogram.tcl ;\
 	    chmod 755 phonetogram.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ vowelspace.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ vowelspace.tcl > tmp ;\
 	    mv -f tmp vowelspace.tcl ;\
 	    chmod 755 vowelspace.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ CSLwithAB.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ CSLwithAB.tcl > tmp ;\
 	    mv -f tmp CSLwithAB.tcl ;\
 	    chmod 755 CSLwithAB.tcl ;\
-	    sed s/wish8.3/wish${TCL_VERSION}/ xs.tcl > tmp ;\
+	    sed s/wish8.4/wish${TCL_VERSION}/ xs.tcl > tmp ;\
 	    mv -f tmp xs.tcl ;\
 	    chmod 755 xs.tcl ;\
 	    cd ../../unix ;\
@@ -299,7 +299,7 @@ libsnackogg${SHLIB_SUFFIX}: ${OBJOGG}
 install:
 	@if [ ! -d ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION} ] ; then \
 	    echo "Making directory ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}"; \
-	    mkdir ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}; \
+	    mkdir -p ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}; \
 	    chmod 755 ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}; \
         else true; \
         fi;
@@ -307,8 +307,8 @@ install:
 	cp -f libsnack${SHLIB_SUFFIX} ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}/
 	if test -f libsnackstub${VERSION}.a; then cp -f libsnackstub${VERSION}.a ${DESTDIR}${SNACK_INSTALL_PATH}/; fi
 	if test -f libsnacksphere${SHLIB_SUFFIX}; then cp -f libsnacksphere${SHLIB_SUFFIX} ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}/; fi
-	if test -f libsnackogg${SHLIB_SUFFIX}; then cp -f libsnackogg${SHLIB_SUFFIX} ${SNACK_INSTALL_PATH}/snack${VERSION}/; fi
-	cp -f snack.tcl ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}/
+	if test -f libsnackogg${SHLIB_SUFFIX}; then cp -f libsnackogg${SHLIB_SUFFIX} ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}/; fi
+	cp -f $(UNIX_DIR)/snack.tcl ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}/
 	cp -f pkgIndex.tcl ${DESTDIR}${SNACK_INSTALL_PATH}/snack${VERSION}/
 
 clean:

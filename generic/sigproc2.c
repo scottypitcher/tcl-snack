@@ -1655,8 +1655,8 @@ int lbpoly(a, order, rootr, rooti) /* return FALSE on error */
 	    if (found)		/* we finally found the root! */
 		break;
 	    else { /* try some new starting values */
-		p = ((double)rand() - (1<<30))/(1<<31);
-		q = ((double)rand() - (1<<30))/(1<<31);
+		p = ((double)rand() - 0.5*RAND_MAX)/(double)RAND_MAX;
+		q = ((double)rand() - 0.5*RAND_MAX)/(double)RAND_MAX;
 		/* fprintf(stderr, "\nTried new values: p=%f  q=%f\n",p,q); */
 	    }
 

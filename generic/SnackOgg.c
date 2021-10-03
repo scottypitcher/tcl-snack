@@ -402,7 +402,7 @@ static long _get_data(OggVorbis_File *vf){
 /* save a tiny smidge of verbosity to make the code more readable */
 static void _seek_helper(OggVorbis_File *vf,ogg_int64_t offset){
   if(vf->datasource){
-    Tcl_Seek(vf->datasource, offset, SEEK_SET);  
+    TCL_SEEK(vf->datasource, offset, SEEK_SET);  
     /*(vf->callbacks.seek_func)(vf->datasource, offset, SEEK_SET);*/
     vf->offset=offset;
     ogg_sync_reset(&vf->oy);
@@ -736,9 +736,9 @@ static int _open_seekable2(OggVorbis_File *vf){
      storage in vf */
   /* we can seek, so set out learning all about this file */
   /*(vf->callbacks.seek_func)(vf->datasource,0,SEEK_END);*/
-  Tcl_Seek(vf->datasource, 0, SEEK_END);
+  TCL_SEEK(vf->datasource, 0, SEEK_END);
   /*  vf->offset=vf->end=(vf->callbacks.tell_func)(vf->datasource);*/
-  vf->offset=vf->end=Tcl_Tell(vf->datasource);
+  vf->offset=vf->end=TCL_TELL(vf->datasource);
 
   /* We get the offset for the last page of the physical bitstream.
      Most OggVorbis files will contain a single logical bitstream */
@@ -950,7 +950,7 @@ static int _fseek64_wrap(FILE *f,ogg_int64_t off,int whence){
 static int _ov_open1(Tcl_Interp *interp,Tcl_Channel *f,OggVorbis_File *vf,char *initial,
 		     long ibytes, ov_callbacks callbacks){
   /*int offsettest=(f?callbacks.seek_func(f,0,SEEK_CUR):-1);*/
-  int offsettest=(f?Tcl_Seek(*f,0,SEEK_CUR):-1); 
+  int offsettest=(f?TCL_SEEK(*f,0,SEEK_CUR):-1); 
   int ret;
 
   memset(vf,0,sizeof(*vf)-28);

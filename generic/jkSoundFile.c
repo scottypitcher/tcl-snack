@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -1078,7 +1078,9 @@ typedef enum {
   GUESS_ALAW,
   GUESS_MULAW,
   GUESS_LIN8OFFSET,
-  GUESS_LIN8
+  GUESS_LIN8,
+  GUESS_LIN24,
+  GUESS_LIN24S
 } sampleEncoding;
 
 #define GUESS_FFT_LENGTH 512
@@ -1090,6 +1092,7 @@ GuessEncoding(Sound *s, unsigned char *buf, int len) {
   float energyLIN16 = 0.0, energyLIN16S = 0.0;
   float energyMULAW = 0.0, energyALAW = 0.0;
   float energyLIN8  = 0.0, energyLIN8O = 0.0, minEnergy;
+  float energyLIN24 = 0.0, energyLIN24S = 0.0;
   float fft[GUESS_FFT_LENGTH];
   float totfft[GUESS_FFT_LENGTH];
   float hamwin[GUESS_FFT_LENGTH];
@@ -1116,6 +1119,25 @@ GuessEncoding(Sound *s, unsigned char *buf, int len) {
     energyLIN8O  += (float) sampleLIN8O  * (float) sampleLIN8O;
     energyLIN8   += (float) sampleLIN8   * (float) sampleLIN8;
   }
+
+  for (i = 0; i < len / 2; i+=3) {
+    union {
+      char c[sizeof(int)];
+      int s;
+    } sampleLIN24, sampleLIN24S;
+
+    sampleLIN24.c[0] = (char)buf[i];
+    sampleLIN24.c[1] = (char)buf[i+1];
+    sampleLIN24.c[2] = (char)buf[i+2];
+    sampleLIN24S.c[2] = (char)buf[i];
+    sampleLIN24S.c[1] = (char)buf[i+1];
+    sampleLIN24S.c[0] = (char)buf[i+2];
+
+    sampleLIN24.s /= 65536;
+    sampleLIN24S.s /= 65536;
+    energyLIN24  += (float) sampleLIN24.s * (float) sampleLIN24.s;
+    energyLIN24S += (float) sampleLIN24S.s * (float) sampleLIN24S.s;
+  }
   
   format = GUESS_LIN16;
   minEnergy = energyLIN16;
@@ -1140,7 +1162,15 @@ GuessEncoding(Sound *s, unsigned char *buf, int len) {
     format = GUESS_LIN8;
     minEnergy = energyLIN8;
   }
-  
+  /*if (energyLIN24 < minEnergy) {
+    format = GUESS_LIN24;
+    minEnergy = energyLIN24;
+  }
+  if (energyLIN24S < minEnergy) {
+    format = GUESS_LIN24S;
+    minEnergy = energyLIN24S;
+  }
+  printf("AA %f %f %f %f\n", energyLIN16, energyLIN16S, energyLIN24, energyLIN24S);*/
   switch (format) {
   case GUESS_LIN16:
     s->swap = 0;
@@ -1197,6 +1227,16 @@ GuessEncoding(Sound *s, unsigned char *buf, int len) {
     if (s->guessRate) {
       s->samprate = DEFAULT_LIN8_RATE;
     }
+    break;
+  case GUESS_LIN24:
+    s->swap = 0;
+    s->encoding = LIN24;
+    s->sampsize = 4;
+    break;
+  case GUESS_LIN24S:
+    s->swap = 1;
+    s->encoding = LIN24;
+    s->sampsize = 4;
     break;
   }
 
@@ -1260,8 +1300,8 @@ GetRawHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   if (s->debug > 2) Snack_WriteLog("    Reading RAW header\n");
 
   if (ch != NULL) {
-    Tcl_Seek(ch, 0, SEEK_END);
-    s->length = (Tcl_Tell(ch) - s->skipBytes) / (s->sampsize * s->nchannels);
+    TCL_SEEK(ch, 0, SEEK_END);
+    s->length = (TCL_TELL(ch) - s->skipBytes) / (s->sampsize * s->nchannels);
   }
   if (obj != NULL) {
     if (useOldObjAPI) {
@@ -1338,8 +1378,8 @@ GetSmpHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   s->swap = 0;
 
   if (ch != NULL) {
-    Tcl_Seek(ch, 0, SEEK_END);
-    s->length = (Tcl_Tell(ch) - NIST_HEADERSIZE) / (s->sampsize * s->nchannels);
+    TCL_SEEK(ch, 0, SEEK_END);
+    s->length = (TCL_TELL(ch) - NIST_HEADERSIZE) / (s->sampsize * s->nchannels);
   }
   if (obj != NULL) {
     if (useOldObjAPI) {
@@ -1481,8 +1521,8 @@ GetSdHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   s->loadOffset = 0; /*(int) (start * s->samprate + 0.5);*/
 
   if (ch != NULL) {
-    Tcl_Seek(ch, 0, SEEK_END);
-    len = Tcl_Tell(ch);
+    TCL_SEEK(ch, 0, SEEK_END);
+    len = TCL_TELL(ch);
     if (len == 0 || len < datastart) {
       Tcl_AppendResult(interp, "Failed reading SD header", NULL);
       return TCL_ERROR;
@@ -1630,8 +1670,8 @@ GetAuHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   nsamp = GetBELong(buf, 8) / (s->sampsize * s->nchannels);
 
   if (ch != NULL) {
-    Tcl_Seek(ch, 0, SEEK_END);
-    nsampfile = (Tcl_Tell(ch) - hlen) / (s->sampsize * s->nchannels);
+    TCL_SEEK(ch, 0, SEEK_END);
+    nsampfile = (TCL_TELL(ch) - hlen) / (s->sampsize * s->nchannels);
     if (nsampfile < nsamp || nsamp <= 0) {
       nsamp = nsampfile;
     }
@@ -1851,8 +1891,8 @@ GetWavHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   
   s->headSize = i + 8;
   if (ch != NULL) {
-    Tcl_Seek(ch, 0, SEEK_END);
-    nsampfile = (Tcl_Tell(ch) - s->headSize) / (s->sampsize * s->nchannels);
+    TCL_SEEK(ch, 0, SEEK_END);
+    nsampfile = (TCL_TELL(ch) - s->headSize) / (s->sampsize * s->nchannels);
     if (nsampfile < nsamp || nsamp == 0) {
       nsamp = nsampfile;
     }
@@ -2257,8 +2297,8 @@ GetCslHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   
   s->headSize = i + 8;
   if (ch != NULL) {
-    Tcl_Seek(ch, 0, SEEK_END);
-    nsampfile = (Tcl_Tell(ch) - s->headSize) / (s->sampsize * s->nchannels);
+    TCL_SEEK(ch, 0, SEEK_END);
+    nsampfile = (TCL_TELL(ch) - s->headSize) / (s->sampsize * s->nchannels);
     if (nsampfile < nsamp || nsamp == 0) {
       nsamp = nsampfile;
     }
@@ -2400,7 +2440,7 @@ SnackSeekFile(seekProc *seekProc, Sound *s, Tcl_Interp *interp,
 	      Tcl_Channel ch, int pos)
 {
   if (seekProc == NULL) {
-    return(Tcl_Seek(ch, s->headSize + pos * s->sampsize * s->nchannels,
+    return(TCL_SEEK(ch, s->headSize + pos * s->sampsize * s->nchannels,
 		    SEEK_SET));
   } else {
     return((seekProc)(s, interp, ch, pos));

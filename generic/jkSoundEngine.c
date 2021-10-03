@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -77,7 +77,11 @@ RecCallback(ClientData clientData)
   size = globalRate / 16;
 #endif
 
-  nRead = SnackAudioRead(&adi, shortBuffer, size);
+  if (adi.bytesPerSample == 4) {
+    nRead = SnackAudioRead(&adi, floatBuffer, size);
+  } else {
+    nRead = SnackAudioRead(&adi, shortBuffer, size);
+  }
 
   for (p = rsoundQueue; p != NULL; p = p->next) {
     Sound *s = p->sound;
@@ -93,9 +97,16 @@ RecCallback(ClientData clientData)
 		(FBLKSIZE-BUFSCROLLSIZE) * sizeof(float));
       }
 
-      for (i = 0; i < nRead * s->nchannels; i++) {
-	FSAMPLE(s, (s->length - s->validStart) * s->nchannels + i) =
-	  (float) shortBuffer[i];
+      if (adi.bytesPerSample == 4) {
+	for (i = 0; i < nRead * s->nchannels; i++) {
+	  FSAMPLE(s, (s->length - s->validStart) * s->nchannels + i) =
+	    (float) (((int*)floatBuffer)[i]/256);
+	}
+      } else {
+	for (i = 0; i < nRead * s->nchannels; i++) {
+	  FSAMPLE(s, (s->length - s->validStart) * s->nchannels + i) =
+	    (float) shortBuffer[i];
+	}
       }
 
       for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
@@ -108,15 +119,21 @@ RecCallback(ClientData clientData)
       Tcl_Flush(s->rwchan);
       
     } else { /* sound in memory */
-      if (s->length > s->maxlength - max(sampsleft, 2 * nRead)) {
-	if (Snack_ResizeSoundStorage(s, s->length + max(sampsleft, 2 * nRead)) != TCL_OK) {
+      if (s->length > s->maxlength - max(sampsleft, adi.bytesPerSample * nRead)) {
+	if (Snack_ResizeSoundStorage(s, s->length + max(sampsleft, adi.bytesPerSample * nRead)) != TCL_OK) {
 	  return;
 	}
       }
 
       if (s->debug > 2) Snack_WriteLogInt("    adding frames", nRead);
-      for (i = 0; i < nRead * s->nchannels; i++) {
-	FSAMPLE(s, s->length * s->nchannels + i) = (float) shortBuffer[i];
+      if (adi.bytesPerSample == 4) {
+	for (i = 0; i < nRead * s->nchannels; i++) {
+	  FSAMPLE(s, s->length * s->nchannels + i) = (float) (((int*)floatBuffer)[i]/256);
+	}
+      } else {
+	for (i = 0; i < nRead * s->nchannels; i++) {
+	  FSAMPLE(s, s->length * s->nchannels + i) = (float) shortBuffer[i];
+	}
       }
     }
     if (nRead > 0) {
@@ -264,7 +281,7 @@ AssembleSoundChunk(int inSize)
       if (nWritten < totLen && (startPos + nWritten < s->length)) {
 	writeSize = size;
 	if (writeSize > (totLen - nWritten) / frac) {
-	  writeSize = (totLen - nWritten) / frac;
+	  writeSize = (int) ((totLen - nWritten) / frac);
 	}
 	if (p->nWritten == 0 && p->startTime > 0) {
 	  first = max(p->startTime - globalNWritten, 0);
@@ -314,12 +331,12 @@ AssembleSoundChunk(int inSize)
 	writeSize = size;
 	if (s->length > 0) {
 	  if (writeSize > (s->length - startPos - nWritten) / frac) {
-	    writeSize = (s->length - startPos - nWritten) / frac;
+	    writeSize = (int) ((s->length - startPos - nWritten) / frac);
 	  }
 	}
 	if (endPos != -1) {
 	  if (totLen != 0 && writeSize > (totLen - nWritten) / frac) {
-	    writeSize = (totLen - nWritten) / frac;
+	    writeSize = (int) ((totLen - nWritten) / frac);
 	  }
 	}
 	if (nWritten == 0 && p->startTime > 0) {
@@ -819,9 +836,9 @@ Snack_StopSound(Sound *s, Tcl_Interp *interp)
 	rop = IDLE;
 	CleanRecordQueue();
       }
-      if (Tcl_Seek(s->rwchan, 0, SEEK_SET) != -1) {
+      if (TCL_SEEK(s->rwchan, 0, SEEK_SET) != -1) {
 	PutHeader(s, interp, 0, NULL, s->length);
-	Tcl_Seek(s->rwchan, 0, SEEK_END);
+	TCL_SEEK(s->rwchan, 0, SEEK_END);
       }
       if (s->storeType == SOUND_IN_FILE) {
 	for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
@@ -1267,7 +1284,7 @@ int
 recordCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   jkQueuedSound *qs, *p;
-  int arg, append = 0, mode;
+  int arg, append = 0, mode, encoding = LIN16;
   static CONST84 char *subOptionStrings[] = {
     "-input", "-append", "-device", "-fileformat", NULL
   };
@@ -1277,11 +1294,14 @@ recordCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   
   if (s->debug > 0) { Snack_WriteLog("Enter recordCmd\n"); }
 
+  if (s->encoding == LIN24 || s->encoding == LIN24PACKED || s->encoding == SNACK_FLOAT
+      || s->encoding == LIN32) encoding = LIN24;
+
   if (s->readStatus == READ && rop == PAUSED) {
     startDevTime = SnackCurrentTime() - startDevTime;
     rop = READ;
     if (SnackAudioOpen(&adi, interp, s->devStr, RECORD, s->samprate,
-		       s->nchannels, LIN16) != TCL_OK) {
+		       s->nchannels, encoding) != TCL_OK) {
       rop = IDLE;
       s->readStatus = IDLE;
       return TCL_ERROR;
@@ -1449,7 +1469,7 @@ recordCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   if (rop == IDLE || rop == PAUSED) {
     adi.debug = s->debug;
     if (SnackAudioOpen(&adi, interp, s->devStr, RECORD, s->samprate,
-		       s->nchannels, LIN16) != TCL_OK) {
+		       s->nchannels, encoding) != TCL_OK) {
       rop = IDLE;
       s->readStatus = IDLE;
       return TCL_ERROR;

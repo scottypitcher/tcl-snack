@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.3 "$0" "$@"
+exec wish8.4 "$0" "$@"
 
 # A cross-platform mixer application that adapts to the capabilities
 # of Snack on the machine it is run on.

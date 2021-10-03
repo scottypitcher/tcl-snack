@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.3 "$0" "$@"
+exec wish8.4 "$0" "$@"
 
 # An example of how to build a sound application using Snack.
 # Can also be used as a base for specialized applications.

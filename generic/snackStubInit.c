@@ -62,6 +62,7 @@ SnackStubs snackStubs = {
     Snack_SwapLong, /* 31 */
     Snack_PlatformIsLittleEndian, /* 32 */
     Snack_CreateFilterType, /* 33 */
+    SaveSound, /* 34 */
 };
 
 /* !END!: Do not edit above this line. */

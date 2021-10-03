@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -219,10 +219,6 @@ typedef void *Snack_DelCmdProc;
 
 extern char *LoadSound(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj,
 		       int startpos, int endpos);
-
-extern int SaveSound(Sound *s, Tcl_Interp *interp, char *filename,
-		     Tcl_Obj *obj, int objc, Tcl_Obj *CONST objv[],
-		     int startpos, int len, char *type);
 
 extern int GetChannels(Tcl_Interp *interp, Tcl_Obj *obj, int *nchannels);
 
@@ -575,14 +571,54 @@ extern void Snack_RemoveOptions(int objc, Tcl_Obj *CONST objv[],
 
 extern void SnackPauseAudio();
 
+#if TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION < 4
+#define TCL_SEEK Tcl_Seek
+#define TCL_TELL Tcl_Tell
+#else
+#define TCL_SEEK Tcl_SeekOld
+#define TCL_TELL Tcl_TellOld
+#endif
+
 /*
  * Include the public function declarations that are accessible via
  * the stubs table.
  */
 
 #include "snackDecls.h"
-
-
+  /*
+extern void Snack_StopSound(Sound *s, Tcl_Interp *interp);
+extern Sound *Snack_GetSound(Tcl_Interp *interp, char *name);
+extern int Snack_AddCallback(Sound *s, updateProc *proc, ClientData cd);
+extern void Snack_WriteLog(char *str);
+extern void Snack_WriteLogInt(char *str, int num);
+extern void Snack_RemoveCallback(Sound *s, int id);
+extern int Snack_ResizeSoundStorage(Sound *s, int len);
+extern void Snack_UpdateExtremes(Sound *s, int start, int end, int flag);
+extern int SnackOpenFile(openProc *openProc, Sound *s, Tcl_Interp *interp,
+			 Tcl_Channel *ch, char *mode);
+extern int SnackCloseFile(closeProc *closeProc, Sound *s, Tcl_Interp *interp,
+			  Tcl_Channel *ch);
+extern void Snack_ExecCallbacks(Sound *s, int flag);
+extern short Snack_SwapShort(short s);
+extern long Snack_SwapLong(long l);
+extern int Snack_ProgressCallback(Tcl_Obj *cmdPtr, Tcl_Interp *interp,
+				  char *type, double fraction);
+extern void Snack_DeleteSound(Sound *s);
+extern Sound *Snack_NewSound(int rate, int encoding, int nchannels);
+extern short Snack_Mulaw2Lin(unsigned char u_val);
+extern unsigned char Snack_Lin2Mulaw(short pcm_val);
+extern short Snack_Alaw2Lin(unsigned char a_val);
+extern unsigned char Snack_Lin2Alaw(short pcm_val);
+extern void Snack_PutSoundData(Sound *s, int pos, void *buf, int nSamples);
+extern void Snack_GetSoundData(Sound *s, int pos, void *buf, int nSamples);
+extern void Snack_InitWindow(float *win, int winlen, int fftlen, int type);
+extern int  Snack_InitFFT(int n);
+extern void Snack_DBPowerSpectrum(float *x);
+extern void Snack_CreateFilterType(Snack_FilterType *typePtr);
+extern int SaveSound(Sound *s, Tcl_Interp *interp, char *filename,
+		     Tcl_Obj *obj, int objc, Tcl_Obj *CONST objv[],
+		     int startpos, int len, char *type);
+  */
 #ifdef __cplusplus
 }
 #endif

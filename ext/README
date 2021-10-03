@@ -77,6 +77,6 @@ On Unix it might be necessary to set the environment variable TCLLIBPATH
 in order for this to work.
 If you just built Snack and the sample extension you use this command
 
-setenv TCLLIBPATH "~/snack2.2/unix ~/snack2.2/ext $TCLLIBPATH"
+setenv TCLLIBPATH "~/snack2.2.1/unix ~/snack2.2.1/ext $TCLLIBPATH"
 
 Note that the list of directories is space separated.

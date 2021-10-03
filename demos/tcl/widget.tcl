@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.3 "$0" "$@"
+exec wish8.4 "$0" "$@"
 
 package require -exact snack 2.2
 package require http
@@ -30,7 +30,7 @@ snack::menuCommand File Mixer... snack::mixerDialog
 snack::menuCommand File Quit exit
 
 proc CheckV token {
-  set ::version "Your version of Snack was released February 6, 2003. \
+  set ::version "Your version of Snack was released March 5, 2003. \
       Latest version released [::http::data $token]."
 }
 

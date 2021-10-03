@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -159,7 +159,7 @@ selectInCmd(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 static int
 encodingsCmd(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  char *str = "Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin32 Float";
+  char *str = "Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float";
 
   Tcl_SetObjResult(interp, Tcl_NewStringObj(str, -1));
 

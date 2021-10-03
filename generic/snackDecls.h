@@ -102,7 +102,7 @@ EXTERN void		Snack_InitWindow _ANSI_ARGS_((float * hamwin,
 /* 26 */
 EXTERN int		Snack_InitFFT _ANSI_ARGS_((int n));
 /* 27 */
-EXTERN int		Snack_DBPowerSpectrum _ANSI_ARGS_((float * x));
+EXTERN void		Snack_DBPowerSpectrum _ANSI_ARGS_((float * x));
 /* 28 */
 EXTERN void		Snack_StopSound _ANSI_ARGS_((Sound * s, 
 				Tcl_Interp * interp));
@@ -120,6 +120,12 @@ EXTERN int		Snack_PlatformIsLittleEndian _ANSI_ARGS_((void));
 /* 33 */
 EXTERN void		Snack_CreateFilterType _ANSI_ARGS_((
 				Snack_FilterType * typePtr));
+/* 34 */
+EXTERN int		SaveSound _ANSI_ARGS_((Sound * s, 
+				Tcl_Interp * interp, char * filename, 
+				Tcl_Obj * obj, int objc, 
+				Tcl_Obj *CONST objv[], int startpos, int len, 
+				char * type));
 
 typedef struct SnackStubs {
     int magic;
@@ -152,13 +158,14 @@ typedef struct SnackStubs {
     Snack_FileFormat * (*snack_GetFileFormats) _ANSI_ARGS_((void)); /* 24 */
     void (*snack_InitWindow) _ANSI_ARGS_((float * hamwin, int winlen, int fftlen, int type)); /* 25 */
     int (*snack_InitFFT) _ANSI_ARGS_((int n)); /* 26 */
-    int (*snack_DBPowerSpectrum) _ANSI_ARGS_((float * x)); /* 27 */
+    void (*snack_DBPowerSpectrum) _ANSI_ARGS_((float * x)); /* 27 */
     void (*snack_StopSound) _ANSI_ARGS_((Sound * s, Tcl_Interp * interp)); /* 28 */
     int (*snack_ProgressCallback) _ANSI_ARGS_((Tcl_Obj * cmd, Tcl_Interp * interp, char * type, double fraction)); /* 29 */
     void (*snack_CreateFileFormat) _ANSI_ARGS_((Snack_FileFormat * typePtr)); /* 30 */
     long (*snack_SwapLong) _ANSI_ARGS_((long s)); /* 31 */
     int (*snack_PlatformIsLittleEndian) _ANSI_ARGS_((void)); /* 32 */
     void (*snack_CreateFilterType) _ANSI_ARGS_((Snack_FilterType * typePtr)); /* 33 */
+    int (*saveSound) _ANSI_ARGS_((Sound * s, Tcl_Interp * interp, char * filename, Tcl_Obj * obj, int objc, Tcl_Obj *CONST objv[], int startpos, int len, char * type)); /* 34 */
 } SnackStubs;
 
 #ifdef __cplusplus
@@ -304,6 +311,10 @@ extern SnackStubs *snackStubsPtr;
 #ifndef Snack_CreateFilterType
 #define Snack_CreateFilterType \
 	(snackStubsPtr->snack_CreateFilterType) /* 33 */
+#endif
+#ifndef SaveSound
+#define SaveSound \
+	(snackStubsPtr->saveSound) /* 34 */
 #endif
 
 #endif /* defined(USE_SNACK_STUBS) && !defined(USE_SNACK_STUB_PROCS) */

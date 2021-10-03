@@ -67,6 +67,7 @@ Snack_DebugCmd(ClientData cdata, Tcl_Interp *interp, int objc,
 {
   int len;
   char *str;
+  CONST84 char *patchLevelStr;
 
   if (objc > 1) {
     if (Tcl_GetIntFromObj(interp, objv[1], &debugLevel) != TCL_OK)
@@ -97,9 +98,9 @@ Snack_DebugCmd(ClientData cdata, Tcl_Interp *interp, int objc,
     strcpy(snackDumpFile, str);
   }
   if (debugLevel > 0) {
-    str = Tcl_GetVar(interp, "sound::patchLevel", TCL_GLOBAL_ONLY);
+    patchLevelStr = Tcl_GetVar(interp, "sound::patchLevel", TCL_GLOBAL_ONLY);
     Tcl_Write(snackDebugChannel, "Sound patch level: ", 19);
-    Tcl_Write(snackDebugChannel, str, strlen(str));
+    Tcl_Write(snackDebugChannel, patchLevelStr, strlen(patchLevelStr));
     Tcl_Write(snackDebugChannel, "\n", 1);
     Tcl_Flush(snackDebugChannel);
   }
@@ -137,7 +138,7 @@ int defaultSampleRate = 16000;
 int
 Sound_Init(Tcl_Interp *interp)
 {
-  char *version;
+  CONST84 char *version;
   Tcl_HashTable *soundHashTable;
   union {
     char c[sizeof(short)];

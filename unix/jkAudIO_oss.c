@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -114,6 +114,16 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
     }
     A->bytesPerSample = sizeof(short);
     break;
+#ifdef AFMT_S32_LE
+  case LIN24:
+    if (littleEndian) {
+      format = AFMT_S32_LE;
+    } else {
+      format = AFMT_S32_BE;
+    }
+    A->bytesPerSample = sizeof(int);
+    break;
+#endif
   case ALAW:
     if (mask & AFMT_A_LAW) {
       format = AFMT_A_LAW;

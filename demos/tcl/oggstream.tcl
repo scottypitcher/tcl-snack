@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using tclsh \
-exec wish8.3 "$0" "$@"
+exec wish8.4 "$0" "$@"
 
 # Demonstration that sends a live recorded Ogg/Vorbis stream
 # to the Snack sound server, aserver.tcl

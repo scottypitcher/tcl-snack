@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -815,8 +815,8 @@ concatenateCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   Sound *app;
   char *string;
-  int i, j, arg, offset = 0, smoothjoin = 0;
-  float min = 1.0e20f;
+  int i, /*j,*/ arg, offset = 0, smoothjoin = 0;
+  /*  float min = 1.0e20f;*/
   static CONST84 char *subOptionStrings[] = {
     "-smoothjoin", NULL
   };
@@ -903,8 +903,8 @@ concatenateCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       float win = (float) exp(-3.0 * z * z);
       /*printf("A %f\n",win);*/
       
-      FSAMPLE(s, s->length-offset+i) = (1.0-win) *
-	FSAMPLE(s, s->length-offset+i) + win * FSAMPLE(app, i);
+      FSAMPLE(s, s->length-offset+i) = (float) ((1.0-win) *
+	FSAMPLE(s, s->length-offset+i) + win * FSAMPLE(app, i));
     }
     /*printf(" %d\n",s->length-1);*/
   } else {

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -39,6 +39,7 @@ static HWAVEOUT      hWaveOut;
 static HWAVEIN       hWaveIn;
 static HMIXER        hMixer;
 static WAVEFORMATEX  wFormatIn;
+static WAVEFORMATEXTENSIBLE  wFormatIn2;
 static WAVEHDR       waveHdrIn[NBUFS];
 static char          *blockIn[NBUFS];
 static WAVEFORMATEX  wFormatOut;
@@ -51,6 +52,15 @@ static MIXERCAPS     wMixCaps;
 /*static ADesc  winad;*/
 static int    correction = 1;
 
+const static GUID  KSDATAFORMAT_SUBTYPE_PCM = {0x00000001,0x0000,0x0010,
+                                                {0x80,
+                                                0x00,
+                                                0x00,
+                                                0xaa,
+                                                0x00,
+                                                0x38,
+                                                0x9b,
+                                                0x71}};
 #define SNACK_NUMBER_MIXERS 1
 
 struct MixerLink mixerLinks[SNACK_NUMBER_MIXERS][2];
@@ -330,6 +340,11 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 	A->bytesPerSample = sizeof(short);
 	wFormatIn.wFormatTag = WAVE_FORMAT_PCM;
 	break;
+      case LIN24:
+	A->bytesPerSample = sizeof(int);
+	memset(&wFormatIn2, 0, sizeof(WAVEFORMATEXTENSIBLE));
+	wFormatIn2.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+	break;
       case ALAW:
 	A->bytesPerSample = sizeof(char);
 	wFormatIn.wFormatTag = WAVE_FORMAT_ALAW;
@@ -343,21 +358,37 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device,
 	wFormatIn.wFormatTag = WAVE_FORMAT_PCM;
 	break;
       }
-      wFormatIn.nChannels       = nchannels;
-      wFormatIn.nSamplesPerSec  = freq;
-      wFormatIn.nAvgBytesPerSec = freq * A->bytesPerSample * nchannels;
-      wFormatIn.nBlockAlign     = A->bytesPerSample * nchannels;
-      wFormatIn.wBitsPerSample  = A->bytesPerSample * 8;
-      wFormatIn.cbSize          = 0;
+      if (mode == LIN24) {
+	wFormatIn2.Format.nChannels       = nchannels;
+	wFormatIn2.Format.nSamplesPerSec  = freq;
+	wFormatIn2.Format.nAvgBytesPerSec = freq * A->bytesPerSample * nchannels;
+	wFormatIn2.Format.nBlockAlign     = A->bytesPerSample * nchannels;
+	wFormatIn2.Format.wBitsPerSample  = A->bytesPerSample * 8;
+	wFormatIn2.Format.cbSize          = sizeof(WAVEFORMATEXTENSIBLE);
+	wFormatIn2.Samples.wValidBitsPerSample   = 3 * 8;
+	wFormatIn2.Samples.wValidBitsPerSample   = A->bytesPerSample * 8;
+	wFormatIn2.SubFormat              = KSDATAFORMAT_SUBTYPE_PCM;
+	wFormatIn2.dwChannelMask = 0;
+
+	res = waveInOpen(&hWaveIn, devIndex, 
+			 (WAVEFORMATEX *)&wFormatIn2, 0, 0L, CALLBACK_NULL);
+      } else {
+	wFormatIn.nChannels       = nchannels;
+	wFormatIn.nSamplesPerSec  = freq;
+	wFormatIn.nAvgBytesPerSec = freq * A->bytesPerSample * nchannels;
+	wFormatIn.nBlockAlign     = A->bytesPerSample * nchannels;
+	wFormatIn.wBitsPerSample  = A->bytesPerSample * 8;
+	wFormatIn.cbSize          = 0;
+
+	res = waveInOpen(&hWaveIn, devIndex, 
+			 (WAVEFORMATEX *)&wFormatIn, 0, 0L, CALLBACK_NULL);
+      }
       
-      size = A->bytesPerSample * freq / 16;
-      
-      res = waveInOpen(&hWaveIn, devIndex, 
-		       (WAVEFORMATEX *)&wFormatIn, 0, 0L, CALLBACK_NULL);
       if (res) {
 	Tcl_AppendResult(interp, "waveInOpen failed!", NULL);
 	return TCL_ERROR;
       }
+      size = A->bytesPerSample * freq / 16;
       for (i = 0; i < NBUFS; i++) {
 	blockIn[i] = ckalloc(size);
 	if (!blockIn[i]) {
