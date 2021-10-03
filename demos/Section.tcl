@@ -1,8 +1,8 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 
 set width 300
 set height 200
@@ -15,6 +15,8 @@ set filename section.ps
 set topfr 8000
 set maxval 0.0
 set minval -80.0
+set skip 500
+set type Hamming
 option add *font {Helvetica 10 bold}
 
 pack [ canvas .c -width 400 -height 250]
@@ -28,11 +30,20 @@ pack [ scale .f1.s2 -variable height -label Height -from 10 -to 250 \
 pack [ scale .f1.s3 -variable topfr -label "Top frequency" -from 1000 -to 8000 -orient hori -length 100 -command {.c itemconf sect -topfr }] -side left
 pack [ scale .f1.s4 -variable maxval -label "Max value" -from 40 -to -40 -orient hori -length 100 -command {.c itemconf sect -maxvalue }] -side left
 pack [ scale .f1.s5 -variable minval -label "Min value" -from -20 -to -100 -orient hori -length 100 -command {.c itemconf sect -minvalue }] -side left
+pack [ scale .f1.s6 -variable skip -label "Skip" -from 50 -to 500 -orient hori -length 100 -command {.c itemconf sect -skip }] -side left
 
 pack [ frame .f2i] -pady 2
-pack [ label .f2i.lw -text "Hamming window:"] -side left
+tk_optionMenu .f2i.cm type Hamming Hanning Bartlett Blackman Rectangle
+.f2i.cm.menu entryconfigure 0 -command {.c itemconf sect -windowtype $type}
+.f2i.cm.menu entryconfigure 1 -command {.c itemconf sect -windowtype $type}
+.f2i.cm.menu entryconfigure 2 -command {.c itemconf sect -windowtype $type}
+.f2i.cm.menu entryconfigure 3 -command {.c itemconf sect -windowtype $type}
+.f2i.cm.menu entryconfigure 4 -command {.c itemconf sect -windowtype $type}
+pack .f2i.cm -side left
+
+pack [ label .f2i.lw -text "window:"] -side left
 foreach n {32 64 128 256 512} {
-    pack [ radiobutton .f2i.w$n -text $n -variable winlen -value $n -command {.c itemconf sect -win $winlen}] -side left
+    pack [ radiobutton .f2i.w$n -text $n -variable winlen -value $n -command {.c itemconf sect -winlength $winlen}] -side left
 }
 
 pack [ frame .f3i] -pady 2
@@ -60,8 +71,8 @@ pack [ radiobutton .f2.s25 -text 25% -variable stipple -value gray25 \
 	-command {.c itemconf sect -stipple $stipple}] -side left
 
 pack [ frame .f3] -pady 2
-pack [ button .f3.br -bitmap record -command Record -fg red] -side left
-pack [ button .f3.bs -bitmap stop -command {s stop}] -side left
+pack [ button .f3.br -bitmap snackRecord -command Record -fg red] -side left
+pack [ button .f3.bs -bitmap snackStop -command {s stop}] -side left
 pack [ label .f3.l -text "Load sound file:"] -side left
 pack [ button .f3.b1 -text ex1.wav -command {s read ex1.wav}] -side left
 pack [ button .f3.b2 -text ex2.wav -command {s read ex2.wav}] -side left
@@ -78,7 +89,7 @@ pack [ button .f4.b -text Save -command {.c postscript -file $filename}] -side l
 
 pack [ button .bExit -text Exit -command exit]
 
-sound s -load ex1.wav
+snack::sound s -load ex1.wav
 
 .c create section 200 125 -anchor c -sound s -height $height -width $width -tags sect -frame $frame -debug 0 -start 9002 -end 12000
 

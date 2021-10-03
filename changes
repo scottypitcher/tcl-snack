@@ -44,7 +44,7 @@ streams (Tcl channels) as well as having their audio data in memory.
 
 12/19/98 (new feature) Added -colormap option to spectrograms.
 
-12/20/98 (new feature) Added on-the-fly sample conversion for playback, lin8 on HP-UX and u-/A-law on Linux (if not supported by the hardware).  
+12/20/98 (new feature) Added on-the-fly sample conversion for playback, Lin8 on HP-UX and u-/A-law on Linux (if not supported by the hardware).  
 
 12/22/98 (new feature) PS generation for color spectrograms.
 
@@ -62,7 +62,7 @@ streams (Tcl channels) as well as having their audio data in memory.
 
 1/26/99 (new feature) Modified spectrogram canvas item code with the goal of making it replace the spectrogram widget, which is now deprecated.
 
-1/27/99 (bug fix) Swapped Lin8 and Lin8offset everywhere, long overdue.
+1/27/99 (bug fix) Swapped Lin8 and Lin8Offset everywhere, long overdue.
 
 1/29/99 (new feature) Split the file AudIO.c into one jkAudIO_*.c per platform. Renamed some other source and header files too.
 
@@ -126,7 +126,7 @@ streams (Tcl channels) as well as having their audio data in memory.
 
 4/9/99 (feature change) The Snack Tcl library now uses a namespace.
 
-4/12/99 (feature change) The auto detection of encoding format (for raw files) now assumes that Mulaw/Alaw files are 8kHz and that lin8 files are 11.025 kHz.
+4/12/99 (feature change) The auto detection of encoding format (for raw files) now assumes that Mulaw/Alaw files are 8kHz and that Lin8Offset files are 11.025 kHz.
 
 4/15/99 (enhancement) Added simple sound viewer cool.tcl. Fixed aserver.tcl doesn't hang during exit on Windows anymore.
 
@@ -209,7 +209,7 @@ new file formats. (Zhou)
 
 9/1/99 (bug fix) Fixed clean-up bug for canvas items linked to a sound which has been destroyed.
 
-9/8/99 (bug fix) Fixed display bug for waveforms and Lin8offset sounds.
+9/8/99 (bug fix) Fixed display bug for waveforms and Lin8Offset sounds.
 
 9/9/99 (configuration improvement) Configuration defaults are now for Tcl/Tk8.2.0.
 
@@ -286,3 +286,116 @@ new file formats. (Zhou)
 1/10/00 (enhancement) The sample command now caches values for sounds linked to files between invocations.
 
 ----------------- Released 1.6.5, 1/10/00 -----------------------
+
+1/14/00 (bug fix) The audio volume command on HP-UX is now safe to use during play/record operations.
+
+1/17/00 (enhancement) The Windows audio code now supports full duplex audio, i.e., simultaneous record/playback.
+
+1/18/00 (bug fix) Corrected the macro Snack_GetSample().
+
+1/18/00 (new feature) The commands read/write/convert/pitch and the canvas waveform item now take the option -progress which is used to specify a procedure to be called with in argument telling how much of the current operation is completed. An additional argument specifies the type of operation in progress. This features makes it possible to create progress bar functionality. The Snack library now contains the function Snack_ProgressCallback() which implements this at the C-level.
+
+1/19/00 (bug fix) The write command now correctly reports, format unsupported, when trying to write in MP3 format, (for the time being).
+
+2/7/00 (removed feature) Removed undocumented/unused commands grab/release.
+
+2/7/00 (new feature) New command flipBits which bit reverses the bytes of Mulaw sounds. (Zhou)
+
+2/7/00 (enhancement) Source code modifications for easier C++ integration, plus some clean-ups. (Ammicht,Zhou)
+
+----------------- Released 1.7a1, 2/8/00 -----------------------
+
+2/10/00 (bug fix) Frequency conversion corrected for multi-channel sounds.
+
+2/16/00 (new feature) Added -byteorder option to the sound write command which makes it possible to specify the byte order to be used when writing raw files.
+
+2/16/00 (new feature) Added test suite for the sound command.
+
+2/16/00 (bug fix) Frequency conversion corrected for Lin8Offset and Lin8 formats.
+
+2/18/00 (enhancement) Lin8 format now supported in dBPowerSpectrum command and in spectrogram and spectrum section canvas items.
+
+2/22/00 (bug fix) Corrected bug in Snack_GetSoundData(), position parameter now indexes correctly for sound objects linked to disk files.
+
+2/22/00 (enhancement) The pitch command no longer makes a copy of the sound data internally.
+
+----------------- Released 1.7a2, 2/28/00 -----------------------
+
+3/2/00 (enhancement) The pitch command now inserts leading zeroes in the output list in order to make the pitch values centered on frames.
+
+3/2/00 (bug fix) Fixed some memory leaks in the pitch command.
+
+3/2/00 (bug fix) The sample command now returns correct values for Lin8offset and Lin8 in-memory sounds.
+
+3/2/00 (bug fix) The waveform and spectrogram canvas items should now display with the same scaling for all options given identical values.
+
+----------------- Released 1.7a3, 3/2/00 -----------------------
+
+3/17/00 (bug fix) Fix in snack.tcl relating to the WaveSurfer package.
+
+----------------- Released 1.7a4, 3/17/00 -----------------------
+
+3/29/00 (new feature) Snack now supports DirectSound on Windows.
+
+3/29/00 (new feature) Snack now supports the Macintosh.
+
+3/29/00 (API change) Snack now uses the namespace snack for all its commands.
+
+3/29/00 (API change) The audio command was split into two commands snack::audio and snack::mixer.
+*** POTENTIAL INCOMPATIBILITY ***
+
+3/29/00 (API change) The snack::audio command has new sub-commands outputDevices/inputDevices/select.
+
+3/29/00 (API change) The snack::mixer command has new sub-commands devices/select.
+
+3/29/00 (configuration improvement) The distribution has been reorganized to better match the Tcl/Tk standard layout.
+
+3/29/00 (new feature) The dBPowerSpectrum has new options -end and -skip.
+
+3/29/00 (new feature) The spectrum section canvas item has new option -skip.
+
+3/29/00 (new feature) The example on how to extend Snack was included in the distribution.
+
+3/29/00 (new feature) The play/record commands has new option -device to specify which audio device to use if several are installed.
+
+----------------- Released 1.7b1, 3/29/00 -----------------------
+
+4/6/00 (bug fix) Fixed bug which caused Snack to crash on loading on some Windows machines.
+
+4/6/00 (bug fix) Snack sound objects with identical names can now coexist in different interpreters.
+
+4/6/00 (new feature) A new sound object now replaces any existing sound there may have been with that name. This is to match the standard behaviour of Tcl and Tk regarding procedures and images.
+
+4/6/00 (bug fix) Fixed bug which was caused by very wide spectrograms.
+
+4/6/00 (new feature) Snack now incorporates the source code necessary for the Transcriber project. (Barras)
+
+4/6/00 (bug fix) Updated configurations regarding the snacksphere package, which adds the NIST/Sphere file formats.
+
+4/6/00 (feature change) The demos were revised to work on the Macintosh.
+
+----------------- Released 1.7b2, 4/6/00 -----------------------
+
+4/11/00 (bug fix) Fixed bugs on the Macintosh regarding the -anchor option to canvas items, spectrogram drawing, and memory management in the pitch command.
+
+4/11/00 (feature change) Windows audio code now opens the WAVE_MAPPER device as default if nothing else is specified, as in Snack1.7a3 and earlier.
+
+4/12/00 (new feature) All commands related to spectral analysis now take the option -windowtype, which can be used to specify any of the window functions Hamming, Hanning, Bartlett, Blackman, and Rectangle. (Rank)
+
+4/14/00 (new feature) Added support for CSL files (.nsp) with SDA_, SD_B, and SDAB blocks.
+
+4/15/00 (new feature) Added on-the-fly sample conversion for Mulaw/Alaw on Windows (if not supported by the hardware).  
+
+4/17/00 (configuration improvement) Project files for MS Visual C++ was included in the win directory of the distribution.
+
+4/17/00 (new feature) Added sub-commands selectOutput and selectInput to the snack::audio command.
+
+4/18/00 (bug fix) Fixed bug on the Macintosh regarding stereo playback.
+
+4/18/00 (enhancement) The Macintosh shared library now also contains Snack's Tcl files in a TEXT resource.
+
+4/19/00 (configuration improvement) The MPW makefile for Macintosh can now be used to build Snack from the source distribution with only one modification.
+
+4/19/00 (bug fix) Fixed bug during interpreter close down.
+
+----------------- Released 1.7.0, 4/19/00 -----------------------

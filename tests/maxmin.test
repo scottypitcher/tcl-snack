@@ -1,0 +1,27 @@
+# Commands covered: sound max/min
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test maxmin-1.1 {max/min commands} {
+  set s [snack::sound snd -load ex1.wav]
+  set res [list [$s max] [$s min]]
+  $s destroy
+  set res
+} {14264 -8288}
+
+test maxmin-1.2 {max/min commands with a specified range} {
+  set s [snack::sound snd -load ex1.wav]
+  set res [list [$s max -start 0 -end 4] [$s min -start 0 -end 4]]
+  $s destroy
+  set res
+} {1201 1169}
+
+# cleanup
+::tcltest::cleanupTests
+return

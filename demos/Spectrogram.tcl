@@ -1,8 +1,8 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 
 set width 300
 set height 200
@@ -17,6 +17,7 @@ set filename spectrogram.ps
 set colors {#000 #006 #00B #00F #03F #07F #0BF #0FF #0FB #0F7 \
 	    #0F0 #3F0 #7F0 #BF0 #FF0 #FB0 #F70 #F30 #F00}
 set color Red
+set type Hamming
 option add *font {Helvetica 10 bold}
 
 pack [ canvas .c -width 600 -height 300]
@@ -36,10 +37,17 @@ set topfr 8000
 pack [ scale .f1.s7 -variable topfr -label Top -from 1000 -to 8000 -orient hori -length 100 -command {.c itemconf speg -topfr }] -side left
 
 pack [ frame .f2] -pady 2
-pack [ label .f2.lw -text "Hamming window:"] -side left
+tk_optionMenu .f2.cm type Hamming Hanning Bartlett Blackman Rectangle
+.f2.cm.menu entryconfigure 0 -command {.c itemconf speg -windowtype $type}
+.f2.cm.menu entryconfigure 1 -command {.c itemconf speg -windowtype $type}
+.f2.cm.menu entryconfigure 2 -command {.c itemconf speg -windowtype $type}
+.f2.cm.menu entryconfigure 3 -command {.c itemconf speg -windowtype $type}
+.f2.cm.menu entryconfigure 4 -command {.c itemconf speg -windowtype $type}
+pack .f2.cm -side left
+pack [ label .f2.lw -text "window:"] -side left
 foreach n {32 64 128 256 512 1024 2048} {
     pack [ radiobutton .f2.w$n -text $n -variable winlen -value $n\
-	    -command {.c itemconf speg -win $winlen}] -side left
+	    -command {.c itemconf speg -winlength $winlen}] -side left
 }
 
 pack [ frame .f3] -pady 2
@@ -69,8 +77,8 @@ foreach f {Black Red Blue White Cyan} {
 }
 
 pack [ frame .f5] -pady 2
-pack [ button .f5.br -bitmap record -command Record -fg red] -side left
-pack [ button .f5.bs -bitmap stop -command {s stop}] -side left
+pack [ button .f5.br -bitmap snackRecord -command Record -fg red] -side left
+pack [ button .f5.bs -bitmap snackStop -command {s stop}] -side left
 pack [ label .f5.l -text "Load sound file:"] -side left
 pack [ button .f5.b1 -text ex1.wav -command {s read ex1.wav}] -side left
 pack [ button .f5.b2 -text ex2.wav -command {s read ex2.wav}] -side left
@@ -95,7 +103,7 @@ pack [ button .f6.b -text Save -command {.c postscript -file $filename}] -side l
 
 pack [ button .bExit -text Exit -command exit]
 
-sound s -load ex1.wav
+snack::sound s -load ex1.wav
 
 update
 

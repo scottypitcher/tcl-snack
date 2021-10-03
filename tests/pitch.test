@@ -1,0 +1,27 @@
+# Commands covered: sound pitch
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test pitch-1.1 {pitch command} {
+  set s [snack::sound snd -load ex1.wav]
+  set res [$s pitch]
+  $s destroy
+  set res
+} {0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 163.0 163.0 161.0 158.0 153.0 148.0 141.0 133.0 126.0 119.0 111.0 109.0 108.0 106.0 105.0 105.0 107.0 109.0 111.0 115.0 112.0 121.0 139.0 139.0 141.0 145.0 148.0 149.0 148.0 145.0 140.0 132.0 125.0 118.0 111.0 106.0 112.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0}
+
+test pitch-1.2 {pitch command} {
+  set s [snack::sound snd -load ex1.wav]
+  set res [$s pitch -start 4800 -end 4960]
+  $s destroy
+  set res
+} {141.0 133.0}
+
+# cleanup
+::tcltest::cleanupTests
+return

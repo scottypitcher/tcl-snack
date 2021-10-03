@@ -1,0 +1,24 @@
+# Commands covered: sound concatenate
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test concatenate-1.1 {concatenate command} {
+  set s1 [snack::sound snd1 -load ex1.wav]
+  set s2 [snack::sound snd2]
+  $s2 length 1000
+  $s2 concatenate $s1
+  set res [list [$s2 sample 999] [$s2 sample 6000] [$s2 sample 11000]]
+  $s1 destroy
+  $s2 destroy
+  set res
+} {0 7443 779}
+
+# cleanup
+::tcltest::cleanupTests
+return

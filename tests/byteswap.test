@@ -1,0 +1,21 @@
+# Commands covered: sound byteswap
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test byteswap-1.1 {byteswap command} {
+  set s [snack::sound snd -load ex1.wav]
+  $s byteswap
+  set res [$s sample 0]
+  $s destroy
+  set res
+} -26364
+
+# cleanup
+::tcltest::cleanupTests
+return

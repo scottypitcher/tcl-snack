@@ -1,0 +1,37 @@
+# Commands covered: sound convert
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test convert-1.1 {convert command, mono->stereo} {
+  set s [snack::sound snd -load ex1.wav]
+  $s convert -channels 2
+  set res [$s sample 0]
+  $s destroy
+  set res
+} {1177 1177}
+
+test convert-1.2 {convert command, Lin16->Mulaw} {
+  set s [snack::sound snd -load ex1.wav]
+  $s convert -format Mulaw
+  set res [$s sample 0]
+  $s destroy
+  set res
+} {1180}
+
+test convert-1.3 {convert command, 16kH->32kHz} {
+  set s [snack::sound snd -load ex1.wav]
+  $s convert -frequency 32000
+  set res [$s sample 5000]
+  $s destroy
+  set res
+} {1688}
+
+# cleanup
+::tcltest::cleanupTests
+return

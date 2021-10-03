@@ -1,8 +1,8 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 package require http
 
 option add *font {Helvetica 10 bold}
@@ -12,8 +12,8 @@ set version ""
 set colors {#000 #006 #00B #00F #03F #07F #0BF #0FF #0FB #0F7 \
 	    #0F0 #3F0 #7F0 #BF0 #FF0 #FB0 #F70 #F30 #F00}
 
-sound s1 -load ex1.wav
-sound s2
+snack::sound s1 -load ex1.wav
+snack::sound s2
 
 snack::menuInit
 snack::menuPane File
@@ -32,7 +32,7 @@ snack::menuCommand File Quit exit
 
 proc CheckV token {
     global version
-    set version "Your version of Snack was released January 10, 2000. \
+    set version "Your version of Snack was released April 19, 2000. \
 	    Latest version released [::http::data $token]."
 }
 
@@ -48,13 +48,13 @@ snack::createIcons
 pack [frame .f0] -pady 5
 pack [label .f0.l -text "Basic sound handling:"] -anchor w
 label  .f0.time -text "0.00 sec" -width 10
-button .f0.br -bitmap record -command {s2 record ; Timer} -fg red
-button .f0.bs -bitmap stop -command {s2 stop ; after cancel Timer}
-button .f0.bp -bitmap play -command {s2 play}
-button .f0.bu -bitmap pause -command {s2 pause}
+button .f0.bp -bitmap snackPlay -command {s2 play}
+button .f0.bu -bitmap snackPause -command {s2 pause}
+button .f0.bs -bitmap snackStop -command {s2 stop ; after cancel Timer}
+button .f0.br -bitmap snackRecord -command {s2 record ; Timer} -fg red
 button .f0.bl -image snackOpen -command OpenSound
 button .f0.ba -image snackSave -command SaveSound
-pack .f0.br .f0.bs .f0.bp .f0.bu .f0.bl	.f0.ba .f0.time -side left
+pack .f0.bp .f0.bu .f0.bs .f0.br .f0.bl	.f0.ba .f0.time -side left
 
 proc OpenSound {} {
     set filename [snack::getOpenFile]
@@ -82,34 +82,34 @@ pack [canvas .c -width 720 -height 240 -highlightthickness 0] -pady 15
 .c create text 0 120 -text "Spectrogram canvas item type:" -anchor nw
 .c create spectrogram 0 140 -sound s1 -hei 100 -wid $width -colormap $colors
 .c create text 500 0 -text "Section canvas item type:" -anchor nw
-.c create section 500 20 -sound s1 -height 220 -width 220 -frame yes -start 9002 -end 12000
+.c create section 500 20 -sound s1 -height 220 -width 220 -frame yes -start 8002 -end 10000 -minval -100
 
 pack [frame  .f1] -pady 5
 pack [label  .f1.l  -text "Waveform examples:" -wi 22 -anchor w] -side left
-pack [button .f1.b1 -text "Simple" -com {Exec MinWave.tcl}] -side left
+pack [button .f1.b1 -text "Simple" -com {Run MinWave.tcl}] -side left
 pack [button .f1.b2 -text "See Code" -com {Browse MinWave.tcl}] -side left
-pack [button .f1.b3 -text "Fancy" -com {Exec Waveform.tcl}] -side left
+pack [button .f1.b3 -text "Fancy" -com {Run Waveform.tcl}] -side left
 pack [button .f1.b4 -text "See Code" -com {Browse Waveform.tcl}] -side left
 pack [frame  .f2] -pady 5
 pack [label  .f2.l  -text "Spectrogram examples:" -wi 22 -anchor w] -side left
-pack [button .f2.b1 -text "Simple" -com {Exec MinSpeg.tcl}] -side left
+pack [button .f2.b1 -text "Simple" -com {Run MinSpeg.tcl}] -side left
 pack [button .f2.b2 -text "See Code" -com {Browse MinSpeg.tcl}] -side left
-pack [button .f2.b3 -text "Fancy" -com {Exec Spectrogram.tcl}] -side left
+pack [button .f2.b3 -text "Fancy" -com {Run Spectrogram.tcl}] -side left
 pack [button .f2.b4 -text "See Code" -com {Browse Spectrogram.tcl}] -side left
 pack [frame  .f3] -pady 5
 pack [label  .f3.l -text "Section examples:" -wi 22 -anchor w] -side left
-pack [button .f3.b1 -text "Simple" -com {Exec MinSect.tcl}] -side left
+pack [button .f3.b1 -text "Simple" -com {Run MinSect.tcl}] -side left
 pack [button .f3.b2 -text "See Code" -com {Browse MinSect.tcl}] -side left
-pack [button .f3.b3 -text "Fancy" -com {Exec Section.tcl}] -side left
+pack [button .f3.b3 -text "Fancy" -com {Run Section.tcl}] -side left
 pack [button .f3.b4 -text "See Code" -com {Browse Section.tcl}] -side left
 pack [frame  .f4] -pady 5
 pack [label  .f4.l -text "Sound viewers:"] -side left
-pack [button .f4.b1 -text "Simple" -com {Exec cool.tcl}] -side left
-pack [button .f4.b2 -text "xs" -com {Exec xs.tcl ex2.wav ex2.phn}] -side left
+pack [button .f4.b1 -text "Simple" -com {Run cool.tcl}] -side left
+pack [button .f4.b2 -text "xs" -com {Run xs.tcl demo}] -side left
 pack [label  .f4.l2 -text "MP3 player:"] -side left
-pack [button .f4.b3 -text "snamp" -com {Exec snamp.tcl}] -side left
+pack [button .f4.b3 -text "snamp" -com {Run snamp.tcl}] -side left
 pack [label  .f4.l3 -text "Mixer:"] -side left
-pack [button .f4.b4 -text "mixer" -com {Exec mixer.tcl}] -side left
+pack [button .f4.b4 -text "mixer" -com {Run mixer.tcl}] -side left
 pack [label .v -textvar version]
 
 source widutil.tcl

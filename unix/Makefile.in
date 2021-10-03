@@ -1,0 +1,231 @@
+# The path to the tcl.h header file
+
+TCL_INCPATH = @TCL_SRC_DIR@/generic
+
+# The path to the tk.h header file
+
+TK_INCPATH  = @TK_SRC_DIR@/generic
+
+# The path to the X11 include files
+
+XINCLUDES   = @XINCLUDES@
+
+# Install SNACK package here
+
+SNACK_INSTALL_PATH = @SNACK_INSTALL_PATH@
+
+# Install SNACK plug-in add-on here
+
+MOZILLA_DIR = @MOZILLA_DIR@
+
+#
+
+GENERIC_DIR = ../generic
+UNIX_DIR    = ../unix
+
+VERSION = 1.7
+
+TCL_VERSION = @TCLVER@
+
+CC        = @CC@
+
+INCLUDES  = ${XINCLUDES} -I${TCL_INCPATH} -I${TK_INCPATH} @AINC@ @NISTINC@
+
+CFLAGS    = -O @CFLAGS@ @AFLAG@ ${INCLUDES} @TCLAPI@ -I${GENERIC_DIR}
+
+LIBSO     = -lc @ALIB@ @TCL_LIB_SPEC@
+
+LIBSN     = -lc @TK_LIBS@ @ALIB@ @TCL_LIB_SPEC@ @TK_LIB_SPEC@
+
+SHLIB_LD     = @SHLIB_LD@
+SHLIB_SUFFIX = @SHLIB_SUFFIX@
+
+all: libsound${SHLIB_SUFFIX} libsnack${SHLIB_SUFFIX} @DOSTUBLIB@ @LIBNIST@ editversion
+
+OBJSO = sound.o jkSound.o jkSoundEdit.o jkSoundFile.o g711.o @AOBJ@ SnackMP3amp.o jkSoundProc.o ffa.o jkPitchCmd.o @STUBINITOBJ@ jkAudio.o jkMixer.o shape.o
+
+OBJSN = snack.o jkSound.o jkSoundEdit.o jkSoundFile.o jkCanvSpeg.o jkCanvWave.o jkCanvSect.o ffa.o g711.o @AOBJ@ SnackMP3amp.o jkSoundProc.o jkPitchCmd.o @STUBINITOBJ@ jkAudio.o jkMixer.o shape.o
+
+OBJSNST = snackStubLib.o
+
+sound.o: $(GENERIC_DIR)/sound.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/sound.c
+
+jkSound.o: $(GENERIC_DIR)/jkSound.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSound.c
+
+jkSoundEdit.o: $(GENERIC_DIR)/jkSoundEdit.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSoundEdit.c
+
+jkSoundFile.o: $(GENERIC_DIR)/jkSoundFile.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSoundFile.c
+
+g711.o: $(GENERIC_DIR)/g711.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/g711.c
+
+SnackMP3amp.o: $(GENERIC_DIR)/SnackMP3amp.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/SnackMP3amp.c
+
+jkSoundProc.o: $(GENERIC_DIR)/jkSoundProc.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSoundProc.c
+
+ffa.o: $(GENERIC_DIR)/ffa.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/ffa.c
+
+jkPitchCmd.o: $(GENERIC_DIR)/jkPitchCmd.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkPitchCmd.c
+
+snack.o: $(GENERIC_DIR)/snack.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/snack.c
+
+jkCanvSpeg.o: $(GENERIC_DIR)/jkCanvSpeg.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkCanvSpeg.c
+
+jkCanvWave.o: $(GENERIC_DIR)/jkCanvWave.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkCanvWave.c
+
+jkCanvSect.o: $(GENERIC_DIR)/jkCanvSect.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkCanvSect.c
+
+jkAudio.o: $(GENERIC_DIR)/jkAudio.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkAudio.c
+
+jkMixer.o: $(GENERIC_DIR)/jkMixer.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkMixer.c
+
+shape.o: $(GENERIC_DIR)/shape.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/shape.c
+
+snackStubInit.o: $(GENERIC_DIR)/snackStubInit.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/snackStubInit.c
+
+jkAudIO_hp.o: $(UNIX_DIR)/jkAudIO_hp.c
+	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_hp.c
+
+jkAudIO_sun.o: $(UNIX_DIR)/jkAudIO_sun.c
+	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_sun.c
+
+jkAudIO_sgi.o: $(UNIX_DIR)/jkAudIO_sgi.c
+	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_sgi.c
+
+jkAudIO_linux.o: $(UNIX_DIR)/jkAudIO_hp.c
+	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_linux.c
+
+jkAudIO_skel.o: $(UNIX_DIR)/jkAudIO_skel.c
+	$(CC) -c $(CFLAGS) $(UNIX_DIR)/jkAudIO_skel.c
+
+snackStubLib.o: $(GENERIC_DIR)/snackStubLib.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/snackStubLib.c
+
+libsound${SHLIB_SUFFIX}: ${OBJSO}
+	${SHLIB_LD} ${OBJSO} ${LIBSO} -o libsound${SHLIB_SUFFIX} 
+	sed s/.dll/${SHLIB_SUFFIX}/ < pkgIndex.tcl.dll > pkgIndex.tcl
+
+libsnack${SHLIB_SUFFIX}: ${OBJSN}
+	${SHLIB_LD} ${OBJSN} ${LIBSN} -o libsnack${SHLIB_SUFFIX} 
+	sed s/.dll/${SHLIB_SUFFIX}/ < pkgIndex.tcl.dll > pkgIndex.tcl
+
+stublib: ${OBJSNST}
+	ar cr libsnackstub${VERSION}.a ${OBJSNST}
+
+editversion: ${OBJSN}
+	if test "$(TCL_VERSION)" != "8.3"; then\
+	    cd ../demos/ ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ MinSect.tcl > tmp ;\
+	    mv -f tmp MinSect.tcl ;\
+	    chmod 755 MinSect.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ MinSpeg.tcl > tmp ;\
+	    mv -f tmp MinSpeg.tcl ;\
+	    chmod 755 MinSpeg.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ MinWave.tcl > tmp ;\
+	    mv -f tmp MinWave.tcl ;\
+	    chmod 755 MinWave.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ Section.tcl > tmp ;\
+	    mv -f tmp Section.tcl ;\
+	    chmod 755 Section.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ Spectrogram.tcl > tmp ;\
+	    mv -f tmp Spectrogram.tcl ;\
+	    chmod 755 Spectrogram.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ Waveform.tcl > tmp ;\
+	    mv -f tmp Waveform.tcl ;\
+	    chmod 755 Waveform.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ aserver.tcl > tmp ;\
+	    mv -f tmp aserver.tcl ;\
+	    chmod 755 aserver.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ mixer.tcl > tmp ;\
+	    mv -f tmp mixer.tcl ;\
+	    chmod 755 mixer.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ record.tcl > tmp ;\
+	    mv -f tmp record.tcl ;\
+	    chmod 755 record.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ snamp.tcl > tmp ;\
+	    mv -f tmp snamp.tcl ;\
+	    chmod 755 snamp.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ widget.tcl > tmp ;\
+	    mv -f tmp widget.tcl ;\
+	    chmod 755 widget.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ xs.tcl > tmp ;\
+	    mv -f tmp xs.tcl ;\
+	    chmod 755 xs.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ cool.tcl > tmp ;\
+	    mv -f tmp cool.tcl ;\
+	    chmod 755 cool.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ vu.tcl > tmp ;\
+	    mv -f tmp vu.tcl ;\
+	    chmod 755 vu.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ recrplay.tcl > tmp ;\
+	    mv -f tmp recrplay.tcl ;\
+	    chmod 755 recrplay.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ spectrum.tcl > tmp ;\
+	    mv -f tmp spectrum.tcl ;\
+	    chmod 755 spectrum.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ rplay.tcl > tmp ;\
+	    mv -f tmp rplay.tcl ;\
+	    chmod 755 rplay.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ play.tcl > tmp ;\
+	    mv -f tmp play.tcl ;\
+	    chmod 755 play.tcl ;\
+	    sed s/tclsh8.3/tclsh${TCL_VERSION}/ SphereTest.tcl > tmp ;\
+	    mv -f tmp SphereTest.tcl ;\
+	    chmod 755 SphereTest.tcl ;\
+	    cd ../unix ;\
+	fi
+LIBNIST = @NISTLIBS@ -lc @TCL_LIB_SPEC@ -L. @SNACK_STUB_LIB_FLAG@
+OBJNIST = SphereFile.o
+
+SphereFile.o: $(UNIX_DIR)/SphereFile.c
+	$(CC) -c $(CFLAGS) -DUSE_SNACK_STUBS $(UNIX_DIR)/SphereFile.c
+
+libsnacksphere${SHLIB_SUFFIX}: ${OBJNIST}
+	${SHLIB_LD} ${OBJNIST} ${LIBNIST} -o libsnacksphere${SHLIB_SUFFIX}
+
+install:
+	@if [ ! -d ${SNACK_INSTALL_PATH}/snack${VERSION} ] ; then \
+	    echo "Making directory ${SNACK_INSTALL_PATH}/snack${VERSION}"; \
+	    mkdir ${SNACK_INSTALL_PATH}/snack${VERSION}; \
+	    chmod 755 ${SNACK_INSTALL_PATH}/snack${VERSION}; \
+        else true; \
+        fi;
+	cp -f libsound${SHLIB_SUFFIX} ${SNACK_INSTALL_PATH}/snack${VERSION}/
+	cp -f libsnack${SHLIB_SUFFIX} ${SNACK_INSTALL_PATH}/snack${VERSION}/
+	if test -f libsnackstub${VERSION}.a; then cp -f libsnackstub${VERSION}.a ${SNACK_INSTALL_PATH}/; fi
+	if test -f libsnacksphere${SHLIB_SUFFIX}; then cp -f libsnacksphere${SHLIB_SUFFIX} ${SNACK_INSTALL_PATH}/snack${VERSION}/; fi
+	cp -f snack.tcl ${SNACK_INSTALL_PATH}/snack${VERSION}/
+	cp -f pkgIndex.tcl ${SNACK_INSTALL_PATH}/snack${VERSION}/
+	@if [ -d "@MOZILLA_DIR@" ] ; then \
+	    cp -rf ${SNACK_INSTALL_PATH}/snack${VERSION} ${MOZILLA_DIR}/tclplug/2.0/; \
+	fi;
+
+clean:
+	rm -f *.o libsound${SHLIB_SUFFIX} libsnack${SHLIB_SUFFIX} libsnacksphere${SHLIB_SUFFIX}
+
+distclean: clean
+	rm -f Makefile config.status config.cache config.log
+
+test:
+	LD_LIBRARY_PATH=`pwd`:${LD_LIBRARY_PATH}; export LD_LIBRARY_PATH; \
+	LIBPATH=`pwd`:${LIBPATH}; export LIBPATH; \
+	SHLIB_PATH=`pwd`:${SHLIB_PATH}; export SHLIB_PATH; \
+	TCL_LIBRARY="${TCL_BUILDTIME_LIBRARY}"; export TCL_LIBRARY; \
+	cp -f ../demos/ex1.wav ex1.wav; \
+	tclsh${TCL_VERSION} ../tests/all.tcl

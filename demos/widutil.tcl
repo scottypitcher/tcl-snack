@@ -1,9 +1,13 @@
-proc Exec { scr {arg1 ""} {arg2 ""} } {
-    if {$::tcl_platform(platform) == "windows"} {
-	exec [info nameofexecutable] $scr $arg1 $arg2 &
-    } else {
-	exec ./$scr $arg1 $arg2 &
+proc Run {script {demoFlag 0}} {
+    set i [interp create]
+    load {} Tk $i
+    $i eval rename exit dontexit
+    interp alias $i exit {} interp delete $i
+    if {$demoFlag != 0} {
+	$i eval set demoFlag $demoFlag
     }
+    $i eval wm title . $script
+    $i eval source $script
 }
 
 proc Browse file {

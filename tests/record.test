@@ -1,0 +1,69 @@
+# Commands covered: sound record/stop
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test record-1.1 {record command} {
+  set s [snack::sound snd]
+  $s record
+  set flag 0
+  after 2000 {set flag 1}
+  while {$flag == 0} update
+  $s stop
+  set len [$s length]
+  $s destroy
+  expr $len > 0
+} 1
+
+test record-1.2 {record command, with -append} {
+  set s [snack::sound snd]
+  $s record
+  set flag 0
+  after 2000 {set flag 1}
+  while {$flag == 0} update
+  $s stop
+  set len1 [$s length]
+
+  $s record -append 1
+  set flag 0
+  after 2000 {set flag 1}
+  while {$flag == 0} update
+  $s stop
+  set len2 [$s length]
+  $s destroy
+  expr $len2 > $len1
+} 1
+
+test record-1.3 {record command, using default sound device} {
+  set s [snack::sound snd]
+  $s record -device ""
+  set flag 0
+  after 2000 {set flag 1}
+  while {$flag == 0} update
+  $s stop
+  set len [$s length]
+  $s destroy
+  expr $len > 0
+} 1
+
+test record-1.4 {record command, using first sound device} {
+  set s [snack::sound snd]
+  set dev [lindex [snack::audio inputDevices] 0]
+  $s record -device $dev
+  set flag 0
+  after 2000 {set flag 1}
+  while {$flag == 0} update
+  $s stop
+  set len [$s length]
+  $s destroy
+  expr $len > 0
+} 1
+
+# cleanup
+::tcltest::cleanupTests
+return

@@ -1,17 +1,16 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 catch {
-    package require snackSphere
-    set package_sphere 1
+    package require snacksphere
 }
 package require http
 
 set debug 0
-sound snd -debug $debug
-sound cbs -debug $debug
+snack::sound snd -debug $debug
+snack::sound cbs -debug $debug
 
 set tcl_precision 7
 set f(prog) [info script]
@@ -24,17 +23,13 @@ catch {source $mexhome/ipa_tmh.tcl}
 set f(ipapath) $mexhome/ipa_xbm
 set local 0
 if $local {
-    set v(labfmt) MIX
-    set v(smpfmt) SMP
-    set v(remote) 0
+    set v(labfmt) HTK
+    set v(smpfmt) WAV
     set v(ashost) datan.speech.kth.se
-    set v(asport) 23654
 } else {
     set v(labfmt) HTK
     set v(smpfmt) WAV
-    set v(remote) 0
-    set v(ashost) host.domain.xxx.yyy
-    set v(asport) 23654
+    set v(ashost) localhost
 }
 set labels {}
 set undo {}
@@ -53,8 +48,8 @@ set v(vchan)   -1
 #set v(zerolabs) 0
 set v(startsmp) 0
 set v(lastmoved) -1
-set v(p_version) 1.6
-set v(s_version) 1.6
+set v(p_version) 1.7
+set v(s_version) 1.7
 set v(plugins) {}
 set v(scroll) 1
 set v(freq) 16000
@@ -81,6 +76,8 @@ set v(contrast) 0
 set v(brightness) 0
 set v(showspeg) 0
 set v(remspegh) 200
+set v(remote) 0
+set v(asport) 23654
 
 set z(zoomwinh) 200
 set z(zoomwinw) 600
@@ -147,7 +144,11 @@ proc SetDefaultVars {} {
     set v(labalign) w
     set v(fg) black
     set v(bg) [. cget -bg]
-    set v(fillmark) 1
+    if [string match macintosh $::tcl_platform(platform)] {
+	set v(fillmark) 0
+    } else {
+	set v(fillmark) 1
+    }
     set v(font)  {Courier 10}
     set v(sfont) {Helvetica 8 bold}
     set v(gridfspacing) 0
@@ -167,7 +168,7 @@ proc SetDefaultVars {} {
 }
 
 SetDefaultVars
-catch { source ~/.xsrc }
+catch { source [file join ~ .xsrc] }
 
 snd config -frequency $v(freq)
 snd config -format $v(sfmt)
@@ -217,30 +218,30 @@ snack::menuCommand Edit {Mark All} MarkAll
 snack::menuCommand Edit {Zero Cross Adjust} ZeroXAdjust
 
 set n [snack::menuPane Audio]
-bind $n <<MenuSelect>> { audio update }
+bind $n <<MenuSelect>> { snack::mixer update }
 snack::menuCommand Audio {Play range} PlayMark
 snack::menuCommand Audio {Play All} PlayAll
 snack::menuBind . p Audio {Play All}
 snack::menuCommand Audio {Stop Play} StopPlay
 #snack::menuCommand Audio {Gain Control...} {snack::gainBox rp}
 snack::menuCommand Audio Mixer... snack::mixerDialog
-#if {[audio inputs] != ""} {
+#if {[snack::mixer inputs] != ""} {
 #    snack::menuCascade Audio Input
-#    foreach jack [audio inputs] {
-#	audio input $jack v(in$jack)
+#    foreach jack [snack::mixer inputs] {
+#	snack::mixer input $jack v(in$jack)
 #	snack::menuCheck Input $jack v(in$jack)
 #    }
 #}
-#if {[audio outputs] != ""} {
+#if {[snack::mixer outputs] != ""} {
 #    snack::menuCascade Audio Output
-#    foreach jack [audio outputs] {
-#	audio output $jack v(out$jack)
+#    foreach jack [snack::mixer outputs] {
+#	snack::mixer output $jack v(out$jack)
 #	snack::menuCheck Output $jack v(out$jack)
 #    }
 #}
 snack::menuCascade Audio {Audio settings}
 snack::menuCascade {Audio settings} {Set frequency}
-set freqList [audio frequencies]
+set freqList [snack::audio frequencies]
 if {$freqList == ""} {
     set freqList {11025 22050 44100}
 }
@@ -362,13 +363,13 @@ pack [frame .tb.f2 -width 1 -height 20 -highlightth 1] -side left -padx 5
 pack [button .tb.undo -command Undo -image snackUndo -highlightthickness 0 -border $border -state disabled] -side left
 
 pack [frame .tb.f3 -width 1 -height 20 -highlightth 1] -side left -padx 5
-pack [button .tb.play -command PlayMark -bitmap play -fg blue3 -highlightthickness 0 -border $border] -side left
+pack [button .tb.play -command PlayMark -bitmap snackPlay -fg blue3 -highlightthickness 0 -border $border] -side left
 bind .tb.play <Enter> {SetMsg "Play mark"}
-pack [button .tb.pause -command PausePlay -bitmap pause -fg blue3 -highlightthickness 0 -border $border] -side left
+pack [button .tb.pause -command PausePlay -bitmap snackPause -fg blue3 -highlightthickness 0 -border $border] -side left
 bind .tb.pause <Enter> {SetMsg "Pause"}
-pack [button .tb.stop -command StopPlay -bitmap stop -fg blue3 -highlightthickness 0 -border $border] -side left
+pack [button .tb.stop -command StopPlay -bitmap snackStop -fg blue3 -highlightthickness 0 -border $border] -side left
 bind .tb.stop <Enter> {SetMsg "Stop"}
-pack [button .tb.rec -command Record -bitmap record -fg red -highlightthickness 0 -border $border] -side left
+pack [button .tb.rec -command Record -bitmap snackRecord -fg red -highlightthickness 0 -border $border] -side left
 bind .tb.rec <Enter> {SetMsg "Record"}
 #pack [button .tb.gain -command {snack::gainBox rp} -image snackGain -highlightthickness 0 -border $border] -side left
 pack [button .tb.gain -command snack::mixerDialog -image snackGain -highlightthickness 0 -border $border] -side left
@@ -580,7 +581,12 @@ bind $c <Leave>  {
     $c coords ch1 -1 -1 -1 -1
     $c coords ch2 -1 -1 -1 -1
 }
-bind $c <3>      { PopUpMenu %X %Y %x %y }
+
+if [string match macintosh $::tcl_platform(platform)] {
+ bind $c <Control-1> { PopUpMenu %X %Y %x %y }
+} else {
+ bind $c <3> { PopUpMenu %X %Y %x %y }
+}
 
 bind .cf.fc.xscroll <ButtonRelease-1> SendXScroll
 bind .bf.lab <Any-KeyRelease> { InputFromMsgLine %K }
@@ -591,9 +597,9 @@ bind $c <F1> { PlayToCursor %x }
 bind $c <2>  { PlayToCursor %x }
 focus $c
 
-if [info exists package_sphere] {
-    snack::addExtTypes {{NIST .wav} {TIMIT .phn} {MIX .smp.mix} {HTK .lab} {WAVES .lab}}
-    snack::addLoadTypes {{{NIST Wav Files} {.wav}} {{MIX Files} {.mix}} {{HTK Label Files} {.lab}} {{TIMIT Label Files} {.phn}} {{TIMIT Label Files} {.wrd}} {{Waves Label Files} {.lab}}} {NIST MIX HTK TIMIT WAVES}
+if [info exists snack::snacksphere] {
+    snack::addExtTypes {{SPHERE .sph} {SPHERE .wav} {TIMIT .phn} {MIX .smp.mix} {HTK .lab} {WAVES .lab}}
+    snack::addLoadTypes {{{SPHERE Files} {.sph}} {{SPHERE Files} {.wav}} {{MIX Files} {.mix}} {{HTK Label Files} {.lab}} {{TIMIT Label Files} {.phn}} {{TIMIT Label Files} {.wrd}} {{Waves Label Files} {.lab}}} {SPHERE SPHERE MIX HTK TIMIT WAVES}
 } else {
     snack::addExtTypes {{TIMIT .phn} {MIX .smp.mix} {HTK .lab} {WAVES .lab}}
     snack::addLoadTypes {{{MIX Files} {.mix}} {{HTK Label Files} {.lab}} {{TIMIT Label Files} {.phn}} {{TIMIT Label Files} {.wrd}} {{Waves Label Files} {.lab}}} {MIX HTK TIMIT WAVES}
@@ -690,9 +696,12 @@ proc SaveFile {{fn ""}} {
     SetCursor watch
     set strip_fn [lindex [file split [file rootname $fn]] end]
     set ext  [file extension $fn]
-    set path [file dirname $fn]/
+    if [string match macintosh $::tcl_platform(platform)] {
+	set path [file dirname $fn]:
+    } else {
+	set path [file dirname $fn]/
+    }
     if {$path == "./"} { set path ""}
-
     if ![IsLabelFile $fn] {
 	if {$v(linkfile)} {
 	    if [string match [snd cget -file] _xs[pid].wav] {
@@ -702,7 +711,9 @@ proc SaveFile {{fn ""}} {
 	    }
 	    snd configure -file $fn
 	} else {
-	    snd write $fn
+	    if [catch {snd write $fn -progress snack::progressCallback}] {
+		SetMsg "Save cancelled"
+	    }
 	}
 	set v(smpchanged) 0
 	wm title . "xs: $fn"
@@ -733,7 +744,11 @@ proc OpenFiles fn {
     SetCursor watch
     set strip_fn [lindex [file split [file rootname $fn]] end]
     set ext  [file extension $fn]
-    set path [file dirname $fn]/
+    if [string match macintosh $::tcl_platform(platform)] {
+	set path [file dirname $fn]:
+    } else {
+	set path [file dirname $fn]/
+    }
     if {$path == "./"} { set path ""}
 
     if [IsLabelFile $fn] {
@@ -855,12 +870,17 @@ proc OpenFiles fn {
 	    }
 	} else {
 	    if {[string length $f(byteOrder)] == 0} {
-		if [catch {set v(smpfmt) [snd read $f(spath)$f(sndfile) -skip $f(skip) -guessproperties $f(guessraw)]} ret] {
+		if [catch {set v(smpfmt) [snd read $f(spath)$f(sndfile) \
+			-skip $f(skip) -guessproperties $f(guessraw) \
+			-progress snack::progressCallback]} ret] {
 		    SetMsg "$ret"
 		    return
 		}
 	    } else {
-		if [catch {set v(smpfmt) [snd read $f(spath)$f(sndfile) -skip $f(skip) -byteorder $f(byteOrder) -guessproperties $f(guessraw)]} ret] {
+		if [catch {set v(smpfmt) [snd read $f(spath)$f(sndfile) \
+			-skip $f(skip) -byteorder $f(byteOrder) \
+			-guessproperties $f(guessraw) \
+			-progress snack::progressCallback]} ret] {
 		    SetMsg "$ret"
 		    return
 		}
@@ -879,8 +899,8 @@ proc OpenFiles fn {
 	set v(smpchanged) 0
 	snack::menuEntryOff Edit Undo
 	.tb.undo config -state disabled
-	if {![regexp $v(freq) [audio frequencies]] || \
-		![regexp $v(sfmt) [audio formats]]} {
+	if {![regexp $v(freq) [snack::audio frequencies]] || \
+		![regexp $v(sfmt) [snack::audio formats]]} {
 	    tk_messageBox -icon warning -type ok -message "You need to \
 		    convert this sound\nif you want to play it"
 	}
@@ -1022,8 +1042,12 @@ proc SaveLabelFile { labels fn } {
     global f v
 
     if {$fn == "" || [regexp /$ $fn] == 1 || $labels == {}} return
-    set f(labfile) [lindex [file split $fn] end]
-    set f(lpath) [file dirname $fn]/
+    set f(labfile) [file tail $fn]
+    if [string match macintosh $::tcl_platform(platform)] {
+	set f(lpath) [file dirname $fn]:
+    } else {
+	set f(lpath) [file dirname $fn]/
+    }
     catch {file copy $fn $fn~}
     if [catch {open $fn w} out] {
 	SetMsg $out
@@ -1110,9 +1134,10 @@ proc SaveMark {} {
 	} else {
 	    set fn $gotfn
 	}
-
-	snd write $fn -start $start -end $end
-
+	if [catch {snd write $fn -start $start -end $end \
+		-progress snack::progressCallback}] {
+	    SetMsg "Save cancelled"
+	}
 	if {$labels != {}} {
 	    set fn $root[file extension $f(labfile)]
 	    switch $v(labfmt) {
@@ -1415,13 +1440,14 @@ proc Redraw args {
 	.cf.fyc.yc delete axis
 	if {$v(waveh) > 0} {
 	    if {$v(linkfile) && $f(sndfile) != ""} {
-		snack::openShapeMsgBox $f(spath)$f(sndfile)
+		snack::deleteInvalidShapeFile [file tail $f(spath)$f(sndfile)]
 		$c create waveform 0 0 -sound snd -height $v(waveh) \
 			-pixels $v(pps) -tags [list obj wave] \
 			-start $v(startsmp) -end $v(endsmp) \
 			-channel $v(vchan) -debug $debug -fill $v(fg) \
-			-shapefile [file rootname $f(spath)$f(sndfile)].shape
-		snack::closeShapeMsgBox $f(spath)$f(sndfile)
+	-shapefile [file rootname [file tail $f(spath)$f(sndfile)]].shape\
+			-progress snack::progressCallback
+		snack::makeShapeFileDeleteable [file tail $f(spath)$f(sndfile)]
 	    } else {
 		$c create waveform 0 0 -sound snd -height $v(waveh) \
 			-pixels $v(pps) -tags [list obj wave] \
@@ -1448,7 +1474,8 @@ proc Redraw args {
 		    -contrast $v(contrast) -brightness $v(brightness)\
 		    -gridtspacing $v(gridtspacing) \
 		    -gridfspacing $v(gridfspacing) -channel $v(vchan) \
-		    -colormap $v($v(cmap)) -gridcol $v(gridcolor) -debug $debug
+		    -colormap $v($v(cmap)) -gridcol $v(gridcolor) \
+		    -progress snack::progressCallback -debug $debug
 	    $c lower speg
 	    snack::frequencyAxis .cf.fyc.yc 0 $v(waveh) $v(yaxisw) $v(spegh)\
 		    -topfrequency $v(topfr) -tags axis -fill $v(fg)\
@@ -1696,12 +1723,12 @@ proc Reconf {} {
     set ww [.of.c itemcget overwave -width]
     set v(scrh) [winfo height .of.xscroll]
     set totw [expr [winfo width .] - 2 * $v(scrh)]
-    if {$ww != $totw} {
+    if {$ww != $totw && ![catch {pack info .of}]} {
 	.of.c delete overwave
         if {$v(linkfile) && $f(sndfile) != ""} {
 	    .of.c create waveform $v(scrh) 0 -sound snd -height 20 \
 		    -width $totw -tags overwave -fill $v(fg) -debug $debug \
-		    -shapefile [file rootname $f(spath)$f(sndfile)].shape
+	    -shapefile [file rootname [file tail $f(spath)$f(sndfile)]].shape
 	} else {
 	    .of.c create waveform $v(scrh) 0 -sound snd -height 20 \
 		    -width $totw -tags overwave -fill $v(fg) -debug $debug
@@ -1928,7 +1955,7 @@ proc PausePlay {} {
     set v(pause) [expr 1 - $v(pause)]
     if $v(pause) {
 	after cancel PutPlayMarker
-	set v(s0) [expr $v(s0) + int([audio elapsedTime] * $v(freq))]
+	set v(s0) [expr $v(s0) + int([snack::audio elapsedTime] * $v(freq))]
 	Stop snd
     } else {
 	after 50 PutPlayMarker
@@ -1941,8 +1968,8 @@ proc PutPlayMarker {} {
 
     if $v(pause) return
 
-    set time [expr [audio elapsedTime] + double($v(s0)) / $v(freq)]
-    if {$time > [expr double($v(s1)) / $v(freq)] || ![audio active]} {
+    set time [expr [snack::audio elapsedTime] + double($v(s0)) / $v(freq)]
+    if {$time > [expr double($v(s1)) / $v(freq)] || ![snack::audio active]} {
 	.of.c delete playmark
 	$c delete playmark
 	return
@@ -1988,7 +2015,7 @@ proc xsGetGeometry {} {
 proc ToggleSpeg {} {
     global v
 
-    if [audio active] return
+    if [snack::audio active] return
     if $v(showspeg) {
         set v(spegh) $v(remspegh)
     } else {
@@ -2592,17 +2619,21 @@ proc Convert {format frequency channels} {
     StopPlay
     set v(smpchanged) 1
     $c delete speg wave
-    if {$frequency != ""} {
-	snd convert -frequency $frequency
-	set v(freq) [snd cget -frequency]
-    }
-    if {$format != ""} {
-	snd convert -format $format
-	set v(sfmt) [snd cget -format]
-    }
-    if {$channels != ""} {
-	snd convert -channels $channels
-	set v(chan) [snd cget -channels]
+    if [catch {
+	if {$frequency != ""} {
+	    snd convert -frequency $frequency -progress snack::progressCallback
+	    set v(freq) [snd cget -frequency]
+	}
+	if {$format != ""} {
+	    snd convert -format $format -progress snack::progressCallback
+	    set v(sfmt) [snd cget -format]
+	}
+	if {$channels != ""} {
+	    snd convert -channels $channels -progress snack::progressCallback
+	    set v(chan) [snd cget -channels]
+	}
+    }] {
+	SetMsg "Convert cancelled"
     }
     Redraw
 }
@@ -3079,8 +3110,12 @@ proc OpenZoomWindow {} {
     .zmenu add command -label "Play Range" -command PlayMark
     .zmenu add command -label "Mark Start" -command {PutZMarker zm1 $x}
     .zmenu add command -label "Mark End" -command {PutZMarker zm2 $x}
-    bind .zoom.c <3> {set x %x; set y %y; catch {tk_popup .zmenu %X %Y 0}}
-
+    if [string match macintosh $::tcl_platform(platform)] {
+	bind $c <Control-1> \
+		{set x %x; set y %y; catch {tk_popup .zmenu %X %Y 0}}
+    } else {
+	bind .zoom.c <3> {set x %x; set y %y; catch {tk_popup .zmenu %X %Y 0}}
+    }
     bind .zoom <Configure> { DrawZoom 1 }
 }
 
@@ -3105,9 +3140,9 @@ proc DrawZoom factor {
 	if {$v(linkfile) && $f(sndfile) != ""} {
 	    .zoom.c create waveform 0 [expr $z(zoomwavh)/2] -sound snd \
 		    -height [expr int($z(zoomwavh) * $z(f))] \
-		    -start $start -end $end	-channel $v(vchan) \
+		    -start $start -end $end -channel $v(vchan) \
 		    -pixels $zoompps -tags zoomwave -anchor w -fill $v(fg) \
-		    -shapefile [file rootname $f(spath)$f(sndfile)].shape
+	    -shapefile [file rootname [file tail $f(spath)$f(sndfile)]].shape
 	} else {
 	    .zoom.c create waveform 0 [expr $z(zoomwavh)/2] -sound snd \
 		    -height [expr int($z(zoomwavh) * $z(f))] \
@@ -3149,42 +3184,6 @@ proc PutZMarker {m x} {
 	.zoom.f.lab config -text "Marker 2 at $n ($s)"
 	PutMarker m2 $n 0 0
     }
-}
-
-proc OpenViewWindow {} {
-    global c v
-
-    catch {destroy .snack::view}
-    toplevel .snack::view
-    wm title .snack::view {View Control Panel}
-    
-    set contrast   [$c itemcget speg -contrast]
-    set brightness [$c itemcget speg -brightness]
-
-    set start [Coord2Sample [$c canvasx [expr [winfo width .cf.fc]/2 - 100]]]
-    set end   [Coord2Sample [$c canvasx [expr [winfo width .cf.fc]/2 + 100]]]
-
-    pack [canvas .snack::view.c -height 200 -width 200]
-    .snack::view.c create spectrogram 0 0 -sound snd -fftlen $v(fftlen)\
-	    -height 200 -width 200 -pixels $v(pps) \
-	    -preemph $v(preemph) -topfr $v(topfr)\
-	    -start $start -end $end -tags speg -contrast $contrast \
-	    -brightness $brightness -gridtspacing $v(gridtspacing) \
-	    -gridfspacing $v(gridfspacing) -channel $v(vchan) \
-	    -colormap $v($v(cmap)) -gridcol $v(gridcolor) 
-
-    pack [frame .snack::view.f1]
-    pack [scale .snack::view.f1.b -label Brightness -variable brightness \
-	    -orient horiz -command ".snack::view.c itemconf speg -brightness " \
-	    -from -100 -to 100 -res 0.1 -length 200]
-    
-    pack [scale .snack::view.f1.c -label Contrast -variable contrast \
-	    -orient horiz -command ".snack::view.c itemconf speg -contrast" \
-	    -from -100 -to 100 -res 0.1 -length 200]
-    pack [frame .snack::view.f2]
-    pack [button .snack::view.f2.appB -text Apply -command { set v(contrast) $contrast; set v(brightness) $brightness; Redraw}] -side left
-    pack [button .snack::view.f2.okB -text Ok -command {set v(contrast) $contrast; set v(brightness) $brightness; Redraw; destroy .snack::view}] -side left
-    pack [button .snack::view.f2.canB -text Cancel -command {destroy .snack::view}] -side left
 }
 
 proc Version {} {
@@ -3442,14 +3441,14 @@ proc Settings {} {
 	.dim.ll.c create waveform 0 0 -sound snd -height $v(waveh) -width 300 \
 		-pixels $v(pps) -tags [list wave both] -start $start \
 		-channel $v(vchan) -fill $v(fg) -frame yes -debug 0 \
-		-shapefile [file rootname $f(spath)$f(sndfile)].shape
+	-shapefile [file rootname [file tail $f(spath)$f(sndfile)]].shape
     } else {
 	.dim.ll.c create waveform 0 0 -sound snd -height $v(waveh) -width 300 \
 		-pixels $v(pps) -tags [list wave both] -start $start \
 		-channel $v(vchan) -fill $v(fg) -frame yes -debug 0
     }
     if {$v(spegh) > 0} {
-	.dim.ll.c create spectrogram 0 $v(waveh) -sound snd -fftlen $v(fftlen) \
+	.dim.ll.c create spectrogram 0 $v(waveh) -sound snd -fftlen $v(fftlen)\
 		-height $v(spegh) -width 300 -pixels $v(pps) \
 		-preemph $v(preemph) -topfr $v(topfr) \
 		-start $start -tags [list speg both] \
@@ -3661,7 +3660,7 @@ proc PopUpMenu {X Y x y} {
 proc SaveSettings {} {
     global v f s
 
-    if [catch {open "~/.xsrc" w} out] {
+    if [catch {open [file join ~ .xsrc] w} out] {
 	SetMsg $out
     } else {
 	puts $out "set v(s_version) $v(p_version)"
@@ -3764,6 +3763,11 @@ proc GetStdin {} {
     }
 }
 
+if [info exists demoFlag] {
+    OpenFiles [file join [pwd] ex2.wav]
+    OpenFiles [file join [pwd] ex2.phn]
+    return
+}
 if {$argv == "-"} {
     fconfigure stdin -translation binary -blocking 0
     if {$tcl_version > 8.0} {
@@ -3776,5 +3780,7 @@ if {$argv == "-"} {
 	OpenFiles $file
     }
 } else {
-    GetOpenFileName
+    if [string compare macintosh $::tcl_platform(platform)] {
+	GetOpenFileName
+    }
 }

@@ -34,7 +34,7 @@ namespace eval pitchPlot_v1 {
 		-font $v(sfont)
 
 	$c delete pitch
-	set i 2
+	set i 0
 	foreach val $pitchPlot(vector) {
 	    set x [expr $i * 0.01 * $v(pps)]
 	    set y [expr $ypos+$pitchPlot(height)-0.25*$val]
@@ -53,7 +53,7 @@ namespace eval pitchPlot_v1 {
 	variable pitchPlot
 
 	set pitchPlot(vector) [snd pitch -maxpitch $pitchPlot(max) \
-		-minpitch $pitchPlot(min)]
+		-minpitch $pitchPlot(min) -progress snack::progressCallback]
 	set pitchPlot(height) 100
 	::Redraw
     }

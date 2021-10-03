@@ -23,3 +23,9 @@ A very simple play list program.
 
 cool.tcl
 A simple sound viewer which demonstrates how to link to disk files.
+
+spectrum.tcl
+16-channel spectrum analyzer.
+
+vu.tcl
+Two channel vu meter.

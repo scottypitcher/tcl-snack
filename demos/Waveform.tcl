@@ -1,8 +1,8 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 
 set width 400
 set height 100
@@ -41,8 +41,8 @@ pack [ radiobutton .f2.s25 -text 25% -variable stipple -value gray25 \
 	-command {.c itemconf wave -stipple $stipple}] -side left
 
 pack [ frame .f3] -pady 2
-pack [ button .f3.br -bitmap record -command Record -fg red] -side left
-pack [ button .f3.bs -bitmap stop -command {s stop}] -side left
+pack [ button .f3.br -bitmap snackRecord -command Record -fg red] -side left
+pack [ button .f3.bs -bitmap snackStop -command {s stop}] -side left
 pack [ label .f3.l -text "Load sound file:"] -side left
 pack [ button .f3.b1 -text ex1.wav -command {s read ex1.wav}] -side left
 pack [ button .f3.b2 -text ex2.wav -command {s read ex2.wav}] -side left
@@ -60,7 +60,7 @@ pack [ button .f4.b -text Save -command {.c postscript -file $filename}] -side l
 
 pack [ button .bExit -text Exit -command exit]
 
-sound s -load ex1.wav
+snack::sound s -load ex1.wav
 
 update
 

@@ -1,0 +1,25 @@
+# Commands covered: sound insert
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test insert-1.1 {insert command} {
+  set s1 [snack::sound snd1 -load ex1.wav]
+  set s2 [snack::sound snd2]
+  $s2 length 1000
+  $s2 insert $s1 500 -start 5000 -end 10000
+  set res [list [$s2 sample 499] [$s2 sample 500] [$s2 sample 5500] \
+	[$s2 sample 5501]]
+  $s1 destroy
+  $s2 destroy
+  set res
+} {0 7443 779 0}
+
+# cleanup
+::tcltest::cleanupTests
+return

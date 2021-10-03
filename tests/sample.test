@@ -1,0 +1,96 @@
+# Commands covered: sound sample
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test sample-1.1 {sample command, get} {
+  set s [snack::sound snd]
+  $s length 10
+  set res [$s sample 0]
+  $s destroy
+  set res
+} 0
+
+test sample-1.2 {sample command, set/get} {
+  set s [snack::sound snd]
+  $s length 10
+  $s sample 9 17
+  set res [$s sample 9]
+  $s destroy
+  set res
+} 17
+
+test sample-1.3 {sample command, index out of bounds} {
+  set s [snack::sound snd]
+  $s length 10
+  set res [list [catch {$s sample 10 17} msg] $msg]
+  $s destroy
+  set res
+} {1 {Index out of bounds}}
+
+test sample-1.4 {sample command, stereo get} {
+  set s [snack::sound snd -channels 2]
+  $s length 10
+  set res [$s sample 9]
+  $s destroy
+  set res
+} {0 0}
+
+test sample-1.5 {sample command, stereo get/set left channel} {
+  set s [snack::sound snd -channels 2]
+  $s length 10
+  $s sample 9 17
+  set res [$s sample 9]
+  $s destroy
+  set res
+} {17 0}
+
+test sample-1.6 {sample command, stereo get/set left channel using ?} {
+  set s [snack::sound snd -channels 2]
+  $s length 10
+  $s sample 9 17 ?
+  set res [$s sample 9]
+  $s destroy
+  set res
+} {17 0}
+
+test sample-1.7 {sample command, stereo get/set right channel} {
+  set s [snack::sound snd -channels 2]
+  $s length 10
+  $s sample 9 ? 18
+  set res [$s sample 9]
+  $s destroy
+  set res
+} {0 18}
+
+test sample-1.8 {sample command, stereo get/set both channels} {
+  set s [snack::sound snd -channels 2]
+  $s length 10
+  $s sample 9 17 18
+  set res [$s sample 9]
+  $s destroy
+  set res
+} {17 18}
+
+test sample-1.9 {sample command, get from loaded ex1.wav} {
+  set s [snack::sound snd -load ex1.wav]
+  set res [$s sample 0]
+  $s destroy
+  set res
+} {1177}
+
+test sample-1.10 {sample command, get from linked ex1.wav} {
+  set s [snack::sound snd -file ex1.wav]
+  set res [$s sample 0]
+  $s destroy
+  set res
+} {1177}
+
+# cleanup
+::tcltest::cleanupTests
+return

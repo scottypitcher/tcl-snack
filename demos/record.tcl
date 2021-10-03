@@ -1,13 +1,13 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 
 option add *font {Helvetica 10 bold}
 
 set file [lindex $argv 0]
-sound s -file _record[pid].wav -debug 0
+snack::sound s -file _record[pid].wav -debug 0
 if [file exists $file] {
     s configure -file $file
 }
@@ -38,12 +38,12 @@ snack::menuCommand File {Save As...} SaveFile
 snack::menuCommand File Exit Exit
 
 snack::menuPane Samplefreq
-foreach f [audio frequencies] {
+foreach f [snack::audio frequencies] {
     snack::menuRadio Samplefreq $f sampfreq $f "s configure -frequency $f"
 }
 
 snack::menuPane Format 5
-foreach f [audio formats] {
+foreach f [snack::audio formats] {
     snack::menuRadio Format $f sampfmt $f "s config -format $f"
 }
 
@@ -51,18 +51,18 @@ snack::menuPane Channel
 snack::menuRadio Channel Mono chan 1 "s config -channels Mono"
 snack::menuRadio Channel Stereo chan 2 "s config -channels Stereo"
 
-if {[audio inputs] != ""} {
+if {[snack::mixer inputs] != ""} {
     snack::menuPane Input
-    foreach jack [audio inputs] {
-	audio input $jack v(in$jack)
+    foreach jack [snack::mixer inputs] {
+	snack::mixer input $jack v(in$jack)
 	snack::menuCheck Input $jack v(in$jack)
     }
 }
 
-if {[audio outputs] != ""} {
+if {[snack::mixer outputs] != ""} {
     snack::menuPane Output
-    foreach jack [audio outputs] {
-	audio output $jack v(out$jack)
+    foreach jack [snack::mixer outputs] {
+	snack::mixer output $jack v(out$jack)
 	snack::menuCheck Output $jack v(out$jack)
     }
 }
@@ -80,9 +80,9 @@ pack [ frame .f] -anchor w
 pack [ button .f.bO -image snackOpen -command OpenFile] -side left
 pack [ button .f.b3 -image snackSave -command SaveFile] -side left
 pack [frame .f.f1 -width 1 -height 20 -highlightth 1] -side left -padx 5
-pack [ button .f.bR -bitmap record -fg red -command Record] -side left
-pack [ button .f.bS  -bitmap stop -command {s stop ; after cancel $afterid}] -side left
-pack [ button .f.b2 -bitmap play -command {s play}] -side left
+pack [ button .f.bR -bitmap snackRecord -fg red -command Record] -side left
+pack [ button .f.bS  -bitmap snackStop -command {s stop ; after cancel $afterid}] -side left
+pack [ button .f.b2 -bitmap snackPlay -command {s play}] -side left
 
 pack [ frame .f2] -anchor w
 pack [ label .f2.l   -textvar time] -side left
@@ -92,7 +92,7 @@ pack [ label .f2.min -textvar min -wi 6]  -side left
 proc OpenFile {} {
     global s file sampfreq sampfmt time max min
 
-    set file [lindex [file split $file] end]
+    set file [file tail $file]
     set file [snack::getOpenFile -initialfile $file]
     if [string compare $file ""] {
 	s configure -file $file
@@ -110,7 +110,7 @@ proc OpenFile {} {
 proc SaveFile {} {
     global s file
 
-    set file [lindex [file split $file] end]
+    set file [file tail $file]
     set file [snack::getSaveFile -initialfile $file]
     if [string compare $file ""] {
 	if [string match [s cget -file] _record[pid].wav] {
@@ -136,10 +136,11 @@ proc Draw {} {
     catch {destroy .c}
     if {$feedback == "Waveform"} {
 	pack [ canvas .c -width $width -height 50] -before .f2
-	snack::openShapeMsgBox $file
+	snack::deleteInvalidShapeFile [file tail $file]
 	.c create waveform 0 0 -sound s -height 50 -width $width -tags w \
-		-pixels 250 -shapefile [file rootname $file].shape
-	snack::closeShapeMsgBox $file
+  	       -pixels 250 -shapefile [file rootname [file tail $file]].shape \
+		-progress snack::progressCallback 
+	snack::makeShapeFileDeleteable [file tail $file]
     } elseif {$feedback == "Spectrogram"} {
 	pack [ canvas .c -width $width -height 50] -before .f2
 	.c create spectrogram 0 0 -sound s -height 50 -width $width -tags w \

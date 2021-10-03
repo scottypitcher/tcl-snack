@@ -1,10 +1,10 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 
-sound snd -debug 0
+snack::sound snd -debug 0
 set port 23654
 
 proc Cmd { sock addr port } {
@@ -51,11 +51,12 @@ pack [label .mid.l -text Port] -side left
 pack [entry .mid.e -textvar port -width 6] -side left
 pack [button .mid.b -text Set -command NewPort] -side left
 
-set gain [audio play_gain]
+set gain [snack::audio play_gain]
 pack [frame .bot]
-pack [button .bot.bs -bitmap stop -com {snd stop; set msg idle}] -side left
-pack [button .bot.bp -bitmap pause -com {snd pause}] -side left
-pack [scale .bot.s -show no -orient horiz -com {audio play_gain} -var gain]\
+pack [button .bot.bs -bitmap snackStop -com {snd stop; set msg idle}] \
 	-side left
+pack [button .bot.bp -bitmap snackPause -com {snd pause}] -side left
+pack [scale .bot.s -show no -orient horiz -com {snack::audio play_gain} \
+	-var gain] -side left
 
 vwait forever

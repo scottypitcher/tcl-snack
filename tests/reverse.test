@@ -1,0 +1,21 @@
+# Commands covered: sound reverse
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test reverse-1.1 {reverse command} {
+  set s [snack::sound snd -load ex1.wav]
+  $s reverse -start 5000 -end 10000
+  set res [list [$s sample 5000] [$s sample 10000]]
+  $s destroy
+  set res
+} {779 7443}
+
+# cleanup
+::tcltest::cleanupTests
+return

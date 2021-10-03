@@ -1,0 +1,43 @@
+# Commands covered: sound play
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test play-1.1 {play command, non-blocking} {
+  set s [snack::sound snd -load ex1.wav]
+  $s play -command {set flag 1} -start 0 -end -1
+  vwait flag
+  $s destroy
+  set flag
+} 1
+
+test play-1.2 {play command, blocking} {
+  set s [snack::sound snd -load ex1.wav]
+  $s play -blocking 1 -command {set flag 1}
+  $s destroy
+  set flag
+} 1
+
+test play-1.3 {play command, using default sound device} {
+  set s [snack::sound snd -load ex1.wav]
+  $s play -device "" -command {set flag 1}
+  $s destroy
+  set flag
+} 1
+
+test play-1.4 {play command, using all first sound device} {
+  set s [snack::sound snd -load ex1.wav]
+  set dev [lindex [snack::audio outputDevices] 0]
+  $s play -device $dev -command {set flag 1}
+  $s destroy
+  set flag
+} 1
+
+# cleanup
+::tcltest::cleanupTests
+return

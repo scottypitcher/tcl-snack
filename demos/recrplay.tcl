@@ -1,8 +1,10 @@
-#!/usr/local/bin/wish8.2
+#!/bin/sh
+# the next line restarts using wish \
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 
-sound s
+snack::sound s
 
 set last 0
 set server localhost:23654
@@ -55,7 +57,7 @@ proc SendData {} {
 
     # User hit stop button, close down
 
-    if ![audio active] {
+    if ![snack::audio active] {
 	set last 0
 	close $sock
 	return
@@ -70,7 +72,8 @@ pack [label .f1.l -text "Server:"] -side left
 pack [entry .f1.e -textvar server] -side left
 
 pack [frame .f2]
-pack [button .f2.a -bitmap record -com Start -wi 40 -he 20 -fg red] -si left
-pack [button .f2.b -bitmap stop -com Stop -wi 40 -he 20] -side left
-pack [button .f2.c -bitmap play -com {s play} -wi 40 -he 20] -side left
+pack [button .f2.a -bitmap snackRecord -com Start -wi 40 -he 20 -fg red] \
+	-side left
+pack [button .f2.b -bitmap snackStop -com Stop -wi 40 -he 20] -side left
+pack [button .f2.c -bitmap snackPlay -com {s play} -wi 40 -he 20] -side left
 pack [button .f2.d -text Exit -command exit] -side left

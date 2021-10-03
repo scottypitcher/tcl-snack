@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using tclsh \
-exec tclsh8.2 "$0" "$@"
+exec tclsh8.3 "$0" "$@"
 
 if {[llength $argv] == 0} {
   puts {Usage: rplay.tcl file [host1:port] [host2:port] ...}

@@ -1,0 +1,18 @@
+In order to use Snack you will have to install Tcl/Tk 8.3.0 first.
+
+Building Snack
+-------------------------------------------------------------------
+Snack can be compiled using Apple's free MPW compiler which can be downloaded
+at http://developer.apple.com/tools/mpw-tools/
+
+You will have to edit the makefile in order to specify the location of the
+Tcl/Tk include files which are part of the Tcl/Tk source distribution.
+
+
+Installation
+-------------------------------------------------------------------
+You must put the file snack.shlb in the standard library location, 
+i.e. the "Tool Command Language" folder within the Extensions folder. 
+
+Known bugs:
+some mp3 files causes lock-up

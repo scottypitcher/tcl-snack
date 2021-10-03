@@ -1,0 +1,56 @@
+# Commands covered: sound data/append
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test data-1.1 {data command, read sound from binary variable} {
+  if [catch {set fd [open ex1.wav]} res] {
+    return $res
+  }
+  fconfigure $fd -translation binary
+  if {$::tcl_version > 8.0} {
+    fconfigure $fd -encoding binary
+  }
+  set data [read $fd]
+  
+  set s [snack::sound snd]
+  $s data $data
+
+  set res [$s info]
+  $s destroy
+  set res
+} {15820 16000 14264 -8288 Lin16 1 WAV 44}
+
+test data-1.2 {data command, write sound to binary variable} {
+  set s [snack::sound snd -load ex1.wav]
+  set var [$s data -start 5000 -end 5000 -fileformat raw -byteorder bigEndian]
+  binary scan $var S out
+  $s destroy
+  set out
+} 7443
+
+test data-1.3 {data command, append binary variable} {
+  if [catch {set fd [open ex1.wav]} res] {
+    return $res
+  }
+  fconfigure $fd -translation binary
+  if {$::tcl_version > 8.0} {
+    fconfigure $fd -encoding binary
+  }
+  set data [read $fd]
+  set s [snack::sound snd]
+  $s length 1000
+  $s append $data
+  set res [list [$s sample 999] [$s sample 6000] [$s sample 11000]]
+  $s destroy
+  set res
+} {0 7443 779}
+
+# cleanup
+::tcltest::cleanupTests
+return

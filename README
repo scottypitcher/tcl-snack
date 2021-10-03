@@ -1,4 +1,4 @@
-Snack v1.6
+Snack v1.7
 
 Kåre Sjölander <kare@speech.kth.se>
 
@@ -11,34 +11,35 @@ and even visualize sound. Snack supports in-memory sound objects, file based
 audio, and streaming audio. It handles fileformats such as WAV, AU, AIFF, and
 MP3.
 The visualization canvas item types update in real-time and can output
-postscript. The same scripts run on Unix (HP-UX, Linux, Solaris, IRIX) and
-Windows95/98/NT. It is also possible to run scripts embedded in web 
-pages through the use of the Tcl plug-in.
-A sound file viewer/label editor, which is easy to customize, is included in 
-the package.
+postscript. The same scripts run on Unix (HP-UX, Linux, Solaris, IRIX, NetBSD),
+Macintosh, and Windows95/98/NT. It is also possible to run scripts embedded
+in web pages through the use of the Tcl plug-in.
+Several example scripts can be found in the demos directory.
 
 In order to use Snack you must have Tcl and Tk version 8.0 or later. Always 
-use the latest stable release, currently 8.2.2, which can be downloaded from 
+use the latest stable release, currently 8.3.0, which can be downloaded from 
 ftp://ftp.scriptics.com/pub/tcl/.
 
 The Snack package has been tested on the following systems:
-SunOS 5.5.1 (Sparc and x86)
+Windows95/98/NT
 Linux 2.0.35 (OSS 3.5) - 2.2.12 (OSS 3.8.2)
+SunOS 5.5.1 (Sparc and x86)
 HP-UX B.10.20
 IRIX 6.2, 6.3 & 6.4 (even runs under SoftWindows, although slowly)
-Windows95/98/NT
+NetBSD-current/i386 using the OSS emulation library
+MacOS 8.6
 
-Make sure you have the latest version from http://www.speech.kth.se/snack/
-before proceeding.
+Make sure you have the latest Snack version available at
+http://www.speech.kth.se/snack/ before proceeding.
 
 Compilation instructions for Snack
 -------------------------------------------------------------------
 
 You must have Tcl/Tk built on your system first. Both Tcl and Tk must have
 been configured with the "--enable-shared" flag at build time (this is 
-default for the 8.2 versions). Build them before Snack.
+default for the 8.3 versions). Build them before Snack.
 
-Unpack Snack and change directory to the snack1.6/src directory.
+Unpack Snack and change directory to the snack1.7.0/unix directory.
 
 Type "./configure".
 
@@ -46,14 +47,13 @@ If you get this error message "Can't find Tcl configuration definitions",
 you have to specify their locations using the options "--with-tcl" and
 "--with-tk" when running configure. For example, use 
 "--with-tcl=/usr/lib --with-tk=/usr/lib" if Tcl/Tk was
-installed in "/usr/lib", or "--with-tcl=../tcl8.1.1/unix" if you use that
+installed in "/usr/lib", or "--with-tcl=../tcl8.2.1/unix" if you use that
 version.
 
 Type "make".
 
 IMPORTANT: if you use Tcl/Tk 8.0 to 8.0.5 you will have to use the flag
---disable-stubs, when configuring Snack. This is a change from earlier
-versions of Snack.
+--disable-stubs, when configuring Snack.
 
 If the make fails you will have to edit the Makefile and possibly also the 
 configure script. TCL_INCPATH should be the path to the directory which 
@@ -63,16 +63,13 @@ XINCLUDES should be the path to the directory containing the X11 include files.
 Summary in case you download Tcl, Tk, and Snack and build from scratch:
 You should place the distributions in the same directory and unpack them. Then 
 use the following commands:
-cd tcl8.2.2/unix
-configure --enable-shared
-cd ../../tk8.2.2/unix
-configure --enable-shared
-cd ../../snack1.6/src
-configure
+cd tcl8.3.0/unix
+./configure --enable-shared
+cd ../../tk8.3.0/unix
+./configure --enable-shared
+cd ../../snack1.7.0/unix
+./configure
 make
-setenv TCLLIBPATH "path-to-distribution"/snack1.6/src
-cd ../demos
-widget.tcl
 
 If you use Tcl/Tk 8.0 to 8.0.5 you change the last configure to
 configure --disable-stubs
@@ -85,9 +82,9 @@ When you have succesfully compiled Snack it's time to look at the demos.
 In order to run these you will have to set the environment variable 
 TCLLIBPATH to the directory containing the Snack library files (you don't 
 need this step if you install Snack as described below). If you have 
-compiled Snack in /u/kare/snack1.6/src, this would be:
+compiled Snack in /u/kare/snack1.7.0/unix, this would be:
 
-setenv TCLLIBPATH /u/kare/snack1.6/src
+setenv TCLLIBPATH /u/kare/snack1.7.0/unix
 
 Change to the demos directory and type ./widget:
 
@@ -95,6 +92,14 @@ cd ../demos
 ./widget.tcl
 
 this runs the Snack widget demonstration.
+
+You should also try the Snack test suite. Type:
+
+make test
+
+in the build directory. You should then see a printout of the test files
+processed. If any errors occur, you'll see a much more substantial printout
+for each error. Please report any problems to the author.
 
 
 System wide installation
@@ -133,10 +138,10 @@ $HOME/.netscape/) use:
 ./configure --enable-plugin --with-mozilla=$SOMEWHERE
 
 You can also simply copy the files yourself to get something similar to this:
-/usr/local/lib/netscape/tclplug/2.0/snack1.6/libsnack.sl
-/usr/local/lib/netscape/tclplug/2.0/snack1.6/libsound.sl
-/usr/local/lib/netscape/tclplug/2.0/snack1.6/pkgIndex.tcl
-/usr/local/lib/netscape/tclplug/2.0/snack1.6/snack.tcl
+/usr/local/lib/netscape/tclplug/2.0/snack1.7.0/unix/libsnack.sl
+/usr/local/lib/netscape/tclplug/2.0/snack1.7.0/unix/libsound.sl
+/usr/local/lib/netscape/tclplug/2.0/snack1.7.0/unix/pkgIndex.tcl
+/usr/local/lib/netscape/tclplug/2.0/snack1.7.0/unix/snack.tcl
 
 Currently you need to set this environment variable before starting Netscape:
 setenv TCL_PLUGIN_WISH 1
@@ -168,22 +173,15 @@ The loader must be able to find the "libsnack.so" shared object. You may have
 to set the environment variable LD_LIBRARY_PATH to point the directory where
 it is located. This variable is a colon separated list of paths which can be
 modified using setenv. If you, for example, have compiled Snack in the
-directory /u/kare/snack/src and have the shared objects libtcl8.2.so and
-libtk8.2.so in /usr/local/bin you would use the following command at the 
+directory /u/kare/snack/unix and have the shared objects libtcl8.3.so and
+libtk8.3.so in /usr/local/bin you would use the following command at the 
 terminal prompt or in your .cshrc file:
 
-setenv LD_LIBRARY_PATH /u/kare/snack/src:/usr/local/bin:$LD_LIBRARY_PATH
+setenv LD_LIBRARY_PATH /u/kare/snack/unix:/usr/local/bin:$LD_LIBRARY_PATH
 
 (HP)
 The corresponding environment variable on HP-UX systems is SHLIB_PATH and 
 shared objects use ".sl" as file extension.
-
-
-Known problems
--------------------------------------------------------------------
-
-Some work remains on SGI audio support. Currently, the audio control panel
-must be used to set play volume and record gain.
 
 
 License
@@ -191,8 +189,8 @@ License
 Snack is currently licensed under GPL, see the file COPYING.
 Contact the author if this kind of license is a problem.
 (The only reason for GPL is the MPEG decoding code, see SnackMP3amp.c)
-With some small modifications it would be possible use a license similar to the
-one Tcl/Tk itself uses.
+With some small modifications it would be possible to use a license similar
+to the one Tcl/Tk uses.
 
 
 Acknowledgements
@@ -218,3 +216,8 @@ Egbert Ammicht
 Richard Donselius
 Seymour Shlien
 Leonid Spektor
+Frederic Bonnet
+Andreas Gustafsson
+Jeffrey Hobbs
+Johan Dahl
+Erhard Rank

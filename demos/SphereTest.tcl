@@ -1,9 +1,11 @@
-#!/usr/local/bin/tclsh
+#!/bin/sh
+# the next line restarts using wish \
+exec tclsh8.3 "$0" "$@"
 
-package require sound
-package require snackSphere
+package require -exact snack 1.7
+package require snacksphere
 
-sound s
+snack::sound s
 
 set path ".."
 set fileList [glob $path/nist/lib/data/ex*.wav] 

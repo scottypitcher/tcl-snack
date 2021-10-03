@@ -1,0 +1,23 @@
+# Commands covered: sound copy
+#
+
+package require -exact snack 1.7
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+test copy-1.1 {copy command} {
+  set s1 [snack::sound snd1 -load ex1.wav]
+  set s2 [snack::sound snd2]
+  $s2 copy $s1 -start 5000 -end 10000
+  set res [list [$s2 sample 0] [$s2 sample 5000]]
+  $s1 destroy
+  $s2 destroy
+  set res
+} {7443 779}
+
+# cleanup
+::tcltest::cleanupTests
+return

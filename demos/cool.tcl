@@ -1,13 +1,13 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
 # An example how to build a sound application using Snack.
 # Can also be used as a base for specialized applications.
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 
-sound snd -debug 0
+snack::sound snd -debug 0
 set v(freq) 16000
 set v(width) 600
 set v(height) 150
@@ -18,13 +18,20 @@ set v(pausex) -1
 set v(x0) 0
 set v(fileName) ""
 
+wm protocol . WM_DELETE_WINDOW exit
+
 pack [set s [scrollbar .scroll -orient horiz -command Scroll]] -fill x
 $s set 0 1
 #bind $s <ButtonRelease-1> Redisplay
 
 pack [set c [canvas .c -width $v(width) -height $v(height) -highlightthi 0]] -expand yes -fill both
-$c create waveform 0 0 -sound snd -height $v(height) -width $v(width) -tag [list obj wave] -debug 0
-$c create rect  -1 -1 -1 -1 -tags mark -fill yellow -stipple gray25 -width 2 -outline red
+$c create waveform 0 0 -sound snd -height $v(height) -width $v(width) -tag [list obj wave] -progress snack::progressCallback -debug 0
+if [string match macintosh $::tcl_platform(platform)] {
+    $c create rect  -1 -1 -1 -1 -tags mark -width 2 -outline red
+} else {
+    $c create rect  -1 -1 -1 -1 -tags mark -fill yellow -stipple gray25 \
+	    -width 2 -outline red
+}
 $c create line -1 -1 -1 -1 -fill red -tags playmark
 
 bind $c <ButtonPress-1>   { Button1Press %x }
@@ -33,9 +40,9 @@ bind $c <Configure> Reconfigured
 bind $c <Double-Button-1> ClearMark
 
 pack [frame .f] -side bottom -before $c -fill x
-pack [button .f.pl -bitmap play -command {Play 0}] -side left
-pack [button .f.pa -bitmap pause -command Pause] -side left
-pack [button .f.st -bitmap stop -command Stop] -side left
+pack [button .f.pl -bitmap snackPlay -command {Play 0}] -side left
+pack [button .f.pa -bitmap snackPause -command Pause] -side left
+pack [button .f.st -bitmap snackStop -command Stop] -side left
 snack::createIcons
 pack [button .f.op -image snackOpen -command LoadSound] -side left
 pack [button .f.zi -image snackZoomIn -command ZoomIn] -side left
@@ -162,10 +169,11 @@ proc DrawWaveform {} {
 	$c create waveform 0 0 -sound snd -height [winfo height $c] -debug 0 \
 		-width [winfo width $c] -tag [list obj wave]
     } else {
+	snack::deleteInvalidShapeFile [file tail $v(fileName)]
 	$c create waveform 0 0 -sound snd -height [winfo height $c] -debug 0 \
 		-width [winfo width $c] -start $v(start) -end $v(end) \
-		-tag [list obj wave] \
-		-shapefile [file rootname $v(fileName)].shape
+		-tag [list obj wave] -progress snack::progressCallback
+	snack::makeShapeFileDeleteable [file tail $v(fileName)]
     }
     $c lower obj
 }
@@ -184,11 +192,11 @@ proc LoadSound {} {
     set v(fileName) $fileName
 # Update scrollbar
     $s set 0.0 1.0
-    wm title . [lindex [file split $fileName] end]
-    snack::openShapeMsgBox $fileName
+    wm title . [file tail $fileName]
+    snack::deleteInvalidShapeFile [file tail $fileName]
     $c itemconf wave -sound snd -start $v(start) -end $v(end) \
-	    -shapefile [file rootname $fileName].shape
-    snack::closeShapeMsgBox $fileName
+	    -shapefile [file rootname [file tail $fileName]].shape
+    snack::makeShapeFileDeleteable [file tail $fileName]
     Redisplay
     ShowTime
 }
@@ -258,8 +266,8 @@ proc Play x {
 proc Pause {} {
     global v
 
-    if [audio active] {
-	set v(pausex) [expr $v(x0) + $v(pps) * [audio elapsedTime]]
+    if [snack::audio active] {
+	set v(pausex) [expr $v(x0) + $v(pps) * [snack::audio elapsedTime]]
 	snd stop
     } elseif {$v(pausex) != -1} {
 	Play $v(pausex)
@@ -276,7 +284,7 @@ proc Stop {} {
 proc PutPlayMarker args {
     global v c
 
-    if ![audio active] {
+    if ![snack::audio active] {
 	$c coords playmark -1 -1 -1 -1
 	ShowTime
 	return
@@ -284,7 +292,7 @@ proc PutPlayMarker args {
     if {$args != ""} {
 	set v(x0) [lindex $args 0]
     }
-    set x [expr $v(x0) + $v(pps) * [audio elapsedTime]]
+    set x [expr $v(x0) + $v(pps) * [snack::audio elapsedTime]]
     set co [$c coords mark]
     if {[lindex $co 0] != [lindex $co 2] && $x > [lindex $co 2]} {
 	$c coords playmark -1 -1 -1 -1

@@ -1,15 +1,35 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.2 "$0" "$@"
+exec wish8.3 "$0" "$@"
 
-package require -exact snack 1.6
+package require -exact snack 1.7
 
-sound s -debug 0
-sound s2
+snack::sound s -debug 0
+snack::sound s2
 
 set timestr ""
 option add *font {Helvetica 10 bold}
 wm title . "Snack Audio MPEG Player"
+
+if 0 {
+set draw 1
+pack [frame .f]
+pack [canvas .f.c -width 140 -height 40] -side left
+pack [checkbutton .f.a -text Analyzer -variable draw] -side left
+
+for {set i 0} {$i<16} {incr i} {
+  .f.c create rect [expr 10*$i] 20 [expr 10*$i+10] 40 -fill green  -outline ""
+  .f.c create rect [expr 10*$i] 16 [expr 10*$i+10] 20  -fill yellow -outline ""
+  .f.c create rect [expr 10*$i] 0  [expr 10*$i+10] 16  -fill red   -outline ""
+  .f.c create rect [expr 10*$i] 0  [expr 10*$i+10] 40 -fill black -tag c$i
+}
+for {set i 0} {$i<17} {incr i} {
+  .f.c create line [expr 10*$i] 0 [expr 10*$i] 40 -width 5
+}
+for {set i 0} {$i<7} {incr i} {
+  .f.c create line 0 [expr 6*$i] 140 [expr 6*$i] -width 3
+}
+}
 
 pack [frame .frame] -side top -expand yes -fill both
 scrollbar .frame.scroll -command ".frame.list yview"
@@ -23,13 +43,13 @@ bind . <BackSpace> Cut
 
 snack::createIcons
 pack [frame .panel] -side bottom -before .frame
-pack [button .panel.bp -bitmap play -com Play] -side left
-pack [button .panel.bs -bitmap stop -com Stop] -side left
+pack [button .panel.bp -bitmap snackPlay -com Play] -side left
+pack [button .panel.bs -bitmap snackStop -com Stop] -side left
 pack [button .panel.bo -image snackOpen -com Open] -side left
 set p 0
 pack [scale .panel.ss -show no -orient horiz -len 130 -var p] -side left
-set gain [audio play_gain]
-pack [scale .panel.sv -show no -orient horiz -com {audio play_gain} -len 70 -var gain] -side left
+set gain [snack::audio play_gain]
+pack [scale .panel.sv -show no -orient horiz -com {snack::audio play_gain} -len 70 -var gain] -side left
 set setdrag 1
 bind .panel.ss <ButtonPress-1> {set setdrag 0}
 bind .panel.ss <ButtonRelease-1> {set setdrag 1 ; Play2}
@@ -39,7 +59,7 @@ proc Open {} {
     global files
     set file [snack::getOpenFile -format MP3]
     if {$file != ""} {
-	set name [lindex [file split $file] end]
+	set name [file tail $file]
 	set files($name) $file
 	.frame.list insert end $name
     }
@@ -83,6 +103,7 @@ proc Timer {} {
     if $setdrag {
 	.panel.ss set [expr int(100 * $time / [s length -units sec])]
     }
+#    Draw
     after 100 Timer
 }
 
@@ -123,14 +144,52 @@ proc Drag y {
     set old $new
 }
 
+array set map {
+    0 2
+    1 3
+    2 4
+    3 5
+    4 7
+    5 9
+    6 12
+    7 15
+    8 19
+    9 23
+    10 28
+    11 34
+    12 41
+    13 49
+    14 56
+    15 63
+}
+
+proc Draw {} {
+    global draw
+    if ![snack::audio active] return
+    if {$draw == 1} {
+puts [time {
+	set pos [expr int([s cget -frequency] * [snack::audio elapsed])]
+	set spec [s dBPower -start $pos -fftlen 128 -windowlength 128]
+	for {set i 0} {$i < 16} {incr i} {
+	    set val [lindex $spec $::map($i)]
+	    .f.c coords c$i [expr 10*($i-2)] 0 [expr 10*($i-2)+9] \
+		    [expr 100-1.4*($val+100)]
+	}
+    }]
+    }
+}
+
 if [info exists argv] {
  if [file isdirectory $argv] {
   catch {cd $argv}
  }
 }
 
+wm protocol . WM_DELETE_WINDOW exit
+
 foreach file [lsort -dictionary [glob -nocomplain *.mp3 *.wav]] {
-    set name [lindex [file split $file] end]
+    set name [file tail $file]
     set files($name) $file
     .frame.list insert end $file
 }
+
