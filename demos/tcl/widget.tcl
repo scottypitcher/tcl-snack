@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 package require http
 
 option add *font {Helvetica 10 bold}
@@ -30,7 +30,7 @@ snack::menuCommand File Mixer... snack::mixerDialog
 snack::menuCommand File Quit exit
 
 proc CheckV token {
-  set ::version "Your version of Snack was released March 27, 2001. \
+  set ::version "Your version of Snack was released June 21, 2001. \
       Latest version released [::http::data $token]."
 }
 
@@ -106,6 +106,8 @@ pack [button .f4.b1 -text "Channel Map" -command {Run mapChan.tcl}] -side left
 pack [button .f4.b3 -text "Echo" -command {Run echo.tcl}] -side left
 pack [button .f4.b4 -text "Composite" -command {Run compose.tcl}] -side left
 pack [button .f4.b5 -text "Synthesis" -command {Run formant.tcl}] -side left
+pack [button .f4.b6 -text "Generator" -command {Run generator.tcl}] -side left
+pack [button .f4.b7 -text "Notescale" -command {Run notescale.tcl}] -side left
 pack [frame  .f5] -pady 2
 pack [label  .f5.l -text "Sound tools:"] -side left
 pack [button .f5.b1 -text "Simple" -command {Run cool.tcl}] -side left

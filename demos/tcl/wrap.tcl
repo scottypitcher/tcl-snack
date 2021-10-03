@@ -14,7 +14,7 @@ update
 
 # Get the Snack package's directory
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 set tmp [package ifneeded snack [package provide snack]]
 set tmp [lindex [lindex [split $tmp ";"] 0] end]
 set snackdir [file dirname $tmp]
@@ -66,6 +66,20 @@ foreach {dir list} [list $wrapdir/snack \
   file copy $file $dir
  }
 }
+
+# Copy standard extension packages if they are needed
+
+set f0 [open ${mainprog}.tcl r]
+while {[eof $f0] == 0} {
+  set line [gets $f0]
+  if {[string match {*package require*snackogg*} $line]} {
+    file copy $snackdir/libsnackogg[info sharedlibextension] $dir
+  }
+  if {[string match {*package require*snacksphere*} $line]} {
+    file copy $snackdir/libsnacksphere[info sharedlibextension] $dir
+  }
+}
+close $f0
 
 # copy script files to the wrap directory, and insert magic code
 

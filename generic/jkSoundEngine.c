@@ -57,12 +57,15 @@ extern int debugLevel;
 extern char *snackDumpFile;
 static Tcl_Channel snackDumpCh = NULL;
 
+extern struct Snack_FileFormat *snackFileFormats;
+
 static void
 RecCallback(ClientData clientData)
 {
   jkQueuedSound *p;
   int nRead = 0, i, sampsleft = SnackAudioReadable(&adi);
   int size = globalRate / FPS;
+  Snack_FileFormat *ff;
 
   if (debugLevel > 1) Snack_WriteLogInt("  Enter RecCallback", sampsleft);
 
@@ -95,9 +98,13 @@ RecCallback(ClientData clientData)
 	  (float) shortBuffer[i];
       }
 
-      WriteSound(NULL, s, s->interp, s->rwchan, NULL,
-		 s->length - s->validStart, nRead, 0);
-
+      for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+	if (strcmp(s->fileType, ff->name) == 0) {
+	  WriteSound(ff->writeProc, s, s->interp, s->rwchan, NULL,
+		     s->length - s->validStart, nRead);
+	}
+      }
+      
       Tcl_Flush(s->rwchan);
       
     } else { /* sound in memory */
@@ -213,7 +220,7 @@ DumpQueue(char *msg, struct jkQueuedSound *q)
   printf("\n");
 }
 */
-extern struct Snack_FileFormat *snackFileFormats;
+
 extern Tcl_HashTable *filterHashTable;
 extern float globalScaling;
 
@@ -701,6 +708,7 @@ Snack_StopSound(Sound *s, Tcl_Interp *interp)
     /* file or channel sound record */
 
     if ((rop == READ || rop == PAUSED) && (s->readStatus == READ)) {
+      Snack_FileFormat *ff;
       for (p = rsoundQueue; p->sound != s; p = p->next);
       if (p->sound == s) {
 	if (p->next != NULL) {
@@ -731,11 +739,18 @@ Snack_StopSound(Sound *s, Tcl_Interp *interp)
 	    FSAMPLE(s, (s->length - s->validStart) * s->nchannels + i) =
 	      (float) shortBuffer[i];
 	  }
-	  
+
+	  for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+	    if (strcmp(s->fileType, ff->name) == 0) {
+	      WriteSound(ff->writeProc, s, s->interp, s->rwchan, NULL,
+			 s->length - s->validStart, nRead);
+	    }
+	  }
+	  /*
 	  WriteSound(NULL, s, s->interp, s->rwchan, NULL,
 		     (s->length - s->validStart) * s->nchannels,
-		     nRead * s->nchannels, 0);
-	  
+		     nRead * s->nchannels);
+	  */
 	  Tcl_Flush(s->rwchan);
 
 	  if (s->debug > 2) Snack_WriteLogInt("    Tcl_Read", nRead);
@@ -749,11 +764,16 @@ Snack_StopSound(Sound *s, Tcl_Interp *interp)
 	CleanRecordQueue();
       }
       if (Tcl_Seek(s->rwchan, 0, SEEK_SET) != -1) {
-	PutHeader(s, interp, s->length);
+	PutHeader(s, interp, 0, NULL, s->length);
 	Tcl_Seek(s->rwchan, 0, SEEK_END);
       }
       if (s->storeType == SOUND_IN_FILE) {
-	Tcl_Close(interp, s->rwchan);
+	for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+	  if (strcmp(s->fileType, ff->name) == 0) {
+	    SnackCloseFile(ff->closeProc, s, interp, &s->rwchan);
+	  }
+	}
+	/*Tcl_Close(interp, s->rwchan);*/
       }
       ckfree((char *)s->tmpbuf);
       s->tmpbuf = NULL;
@@ -1323,7 +1343,20 @@ recordCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     }
     
     if (s->storeType == SOUND_IN_FILE) {
-      s->rwchan = Tcl_OpenFileChannel(interp, s->fcname, "w", 420);
+      Snack_FileFormat *ff;
+
+      for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+	if (strcmp(s->fileType, ff->name) == 0) {
+	  if (SnackOpenFile(ff->openProc, s, interp, &s->rwchan, "w") !=
+	      TCL_OK) {
+	    return TCL_ERROR;
+	  }
+	}
+      }
+
+      /*
+	s->rwchan = Tcl_OpenFileChannel(interp, s->fcname, "w", 420);
+      */
       if (s->rwchan != NULL) {
 	mode = TCL_WRITABLE;
       }
@@ -1345,7 +1378,7 @@ recordCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       return TCL_ERROR;
     }
     
-    if (PutHeader(s, interp, -1) < 0) {
+    if (PutHeader(s, interp, 0, NULL, -1) < 0) {
       return TCL_ERROR;
     }
     s->validStart = 0;

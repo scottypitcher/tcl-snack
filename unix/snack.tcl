@@ -19,7 +19,7 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 
-package provide snack 2.0
+package provide snack 2.1
 
 # Set playback latency according to the environment variable PLAYLATENCY
 
@@ -112,7 +112,7 @@ namespace eval snack {
 	if {[snack::mixer outputs] != ""} {
 	    pack [label $wi.f.f2.lo -text "Output jacks:"]
 	    foreach jack [snack::mixer outputs] {
-		snack::mixer lines $jack [namespace current]::v(out$jack)
+		snack::mixer output $jack [namespace current]::v(out$jack)
 		pack [checkbutton $wi.f.f2.b$jack -text $jack \
 			-variable [namespace current]::v(out$jack)] \
 			-anchor w
@@ -251,7 +251,19 @@ namespace eval snack {
 	if {$data(-initialdir) == ""} {
 	    set data(-initialdir) "."
 	}
-	return [tk_getSaveFile -title $data(-title) -filetypes [saveTypes $data(-format)] -defaultextension [fmt2ext $data(-format)] -initialdir $data(-initialdir) -initialfile $data(-initialfile)]
+	if {[string match macintosh $::tcl_platform(platform)]} {
+	  set tmp [tk_getSaveFile -title $data(-title) \
+	      -initialdir $data(-initialdir) -initialfile $data(-initialfile)]
+	  if {[string compare [file ext $tmp] ""] == 0} {
+	    append tmp [fmt2ext $data(-format)]
+	  }
+	  return $tmp
+	} else {
+	  return [tk_getSaveFile -title $data(-title) \
+	      -filetypes [saveTypes $data(-format)] \
+	      -defaultextension [fmt2ext $data(-format)] \
+	      -initialdir $data(-initialdir) -initialfile $data(-initialfile)]
+	}
     }
 
     set saveTypes ""
@@ -1096,6 +1108,8 @@ namespace eval snack {
 	    set lm(height) $a(-length)
 	    set lm(width)  $a(-width)
 	}
+	set lm(maxtime) [clock seconds]
+	set lm(maxlevel) 0.0
 
 	proc drawLevelMeter {w} {
             upvar [namespace current]::${w}::levelmeter lm
@@ -1107,18 +1121,24 @@ namespace eval snack {
 	    $c create rectangle 0 0 $lm(width) $lm(height) \
 		    -fill $lm(oncolor) -outline ""
 	    $c create rectangle 0 0 0 0 -outline "" -fill $lm(offcolor) \
-		    -tag mask
+		    -tag mask1
+	    $c create rectangle 0 0 0 0 -outline "" -fill $lm(offcolor) \
+		    -tag mask2
 	    $c create rectangle 0 0 [expr $lm(width)-1] [expr $lm(height)-1] \
 		    -outline $lm(bg)
 	    if {[string match horiz* $lm(orient)]} {
-		$c coords mask [expr {$lm(level)*$lm(width)}] 0 \
+		$c coords mask1 [expr {$lm(level)*$lm(width)}] 0 \
+			$lm(width) $lm(height)
+		$c coords mask2 [expr {$lm(level)*$lm(width)}] 0 \
 			$lm(width) $lm(height)
 		for {set x 5} {$x < $lm(width)} {incr x 5} {
 		    $c create line $x 0 $x [expr $lm(width)-1] -fill black \
 			    -width 2
 		}
 	    } else {
-		$c coords mask 0 0 $lm(width) \
+		$c coords mask1 0 0 $lm(width) \
+			[expr {$lm(height)-$lm(level)*$lm(height)}]
+		$c coords mask2 0 0 $lm(width) \
 			[expr {$lm(height)-$lm(level)*$lm(height)}]
 		for {set y 5} {$y < $lm(height)} {incr y 5} {
 		    $c create line 0 [expr $lm(height)-$y] \
@@ -1138,13 +1158,29 @@ namespace eval snack {
 		  set arg [expr {$arg/32768.0}]
 		  if {$arg < 0.00001} { set arg 0.00001 }
 		  set lm(level) [expr {log($arg)/4.516+1.0}]
+
+		  if {[clock seconds] - $lm(maxtime) > 2} {
+		    set lm(maxtime) [clock seconds]
+		    set lm(maxlevel) 0.0
+		  }
+		  if {$lm(level) > $lm(maxlevel)} {
+		    set lm(maxlevel) $lm(level)
+		  }
+
 		  if {[string match horiz* $lm(orient)]} {
-		      ${w}_levelMeter coords mask \
-			      [expr {$lm(level)*$lm(width)}] 0 \
-			      $lm(width) $lm(height)
+		    set l1 [expr {5*int($lm(level)*$lm(width)/5)}]
+		    set l2 [expr {5*int($lm(maxlevel)*$lm(width)/5)}]
+		    ${w}_levelMeter coords mask1 $l2 0 \
+			$lm(width) $lm(height)
+		    ${w}_levelMeter coords mask2 [expr {$l2-5}] 0 \
+			$l1 $lm(height)
 		  } else {
-		      ${w}_levelMeter coords mask 0 0 $lm(width) \
-			      [expr {$lm(height)-$lm(level)*$lm(height)}]
+		    set l1 [expr {5*int($lm(level)*$lm(height)/5)}]
+		    set l2 [expr {5*int($lm(maxlevel)*$lm(height)/5)}]
+		    ${w}_levelMeter coords mask1 0 0 $lm(width) \
+			[expr {$lm(height)-$l2}]
+		    ${w}_levelMeter coords mask2 0 [expr {$lm(height)-$l2+5}] \
+			$lm(width) [expr {$lm(height)-$l1}]
 		  }	 
 	      }
 	      -length {

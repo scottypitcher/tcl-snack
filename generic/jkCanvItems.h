@@ -86,7 +86,9 @@ typedef struct SnackItemInfo {
 
 extern int  CheckFFTlen(Tcl_Interp *interp, int fftlen);
 
-extern int  CheckWinlen(Tcl_Interp *interp, int winlen);
+extern int  CheckWinlen(Tcl_Interp *interp, int winlen, int fftlen);
+
+extern int  CheckLPCorder(Tcl_Interp *interp, int lpcorder);
 
 #if !defined(WIN) && !defined(MAC)
 #define TkPutImage(colors, ncolors, display, pixels, gc, image, \
@@ -100,7 +102,10 @@ extern int  CheckWinlen(Tcl_Interp *interp, int winlen);
 #endif
 
 #if defined MAC
-#include <tclMacMath.h>
+#  include <tclMacMath.h>
+#  define hypot hypotd
+
+  extern double hypot(double x, double y);
 #endif
 
 #define OptSpecified(option) (configSpecs[option].specFlags & TK_CONFIG_OPTION_SPECIFIED)

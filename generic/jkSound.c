@@ -446,16 +446,15 @@ Snack_ResizeSoundStorage(Sound *s, int len)
     i = 1;
     s->maxlength = len;
   } else if (neededblks > s->nblks) {
+    float *tmp = s->blocks[0];
 
     if (s->debug > 2) {
       Snack_WriteLogInt("    Allocating full block(s)", neededblks - s->nblks);
     }
 
-    /* De-allocate any exact block */
+    /* Do not count exact block, needs to be re-allocated */
     if (s->exact > 0) {
-      ckfree((char *) s->blocks[0]);
       s->nblks = 0;
-      s->exact = 0;
     }
 
     for (i = s->nblks; i < neededblks; i++) {
@@ -470,6 +469,14 @@ Snack_ResizeSoundStorage(Sound *s, int len)
       }
       return TCL_ERROR;
     }
+
+    /* Copy and de-allocate any exact block */
+    if (s->exact > 0) {
+      memcpy(s->blocks[0], tmp, s->exact);
+      ckfree((char *) tmp);
+      s->exact = 0;
+    }
+
     s->maxlength = neededblks * blockSize / s->nchannels;
   } else if (neededblks == 1 && s->exact > 0) {
 
@@ -866,7 +873,8 @@ flushCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 static int
 configureCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  int arg, filearg = 0;
+  int arg, filearg = 0, newobjc;
+  Tcl_Obj **newobjv = NULL;
   static char *optionStrings[] = {
     "-load", "-file", "-channel", "-rate", "-frequency", "-channels",
     "-encoding", "-format", "-byteorder", "-buffersize", "-skiphead",
@@ -878,8 +886,25 @@ configureCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     BYTEORDER, BUFFERSIZE, SKIPHEAD, GUESSPROPS, PRECISION, CHGCMD, FILEFORMAT,
     OPTDEBUG
   };
-
+  Snack_FileFormat *ff;
+  
   if (s->debug > 0) { Snack_WriteLog("Enter configureCmd\n"); }
+
+  Snack_RemoveOptions(objc-2, objv+2, optionStrings, &newobjc,
+		      (Tcl_Obj **) &newobjv);
+  if (newobjc > 0) {
+    for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+      if (strcmp(s->fileType, ff->name) == 0) {
+	if (ff->configureProc != NULL) {
+	  if ((ff->configureProc)(s, interp, objc, objv)) return TCL_OK;
+	}
+      }
+    }
+  }
+  for (arg = 0; arg <newobjc; arg++) {
+    Tcl_DecrRefCount(newobjv[arg]);
+  }
+  ckfree((char *)newobjv);
 
   if (objc == 2) { /* get all options */
     Tcl_Obj *objs[6];
@@ -1015,6 +1040,7 @@ configureCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 
     for (arg = 2; arg < objc; arg+=2) {
       int index;
+
       if (Tcl_GetIndexFromObj(interp, objv[arg], optionStrings, "option", 0,
 			      &index) != TCL_OK) {
 	return TCL_ERROR;
@@ -1580,6 +1606,9 @@ Snack_NewSound(int rate, int encoding, int nchannels)
   s->soundTable = NULL;
   s->filterName = NULL;
   s->extHead    = NULL;
+  s->extHeadType = 0;
+  s->extHead2   = NULL;
+  s->extHead2Type = 0;
   s->loadOffset = 0;
   s->changeCmdPtr = NULL;
   s->userFlag   = 0;

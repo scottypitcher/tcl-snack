@@ -6,7 +6,7 @@ exec wish8.3 "$0" "$@"
 # of Snack on the machine it is run on.
 # Lots of functionality on Linux - play volume only on Windows, currently.
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 
 proc Update {} {
   global doMonitor

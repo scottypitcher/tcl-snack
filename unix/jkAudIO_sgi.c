@@ -472,7 +472,7 @@ SnackAudioGetRates(char *device, char *buf, int n)
 int
 SnackAudioMaxNumberChannels(char *device)
 {
-  return(8);
+  return(16);
 }
 
 void

@@ -48,6 +48,14 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
 }
 #endif
 
+#ifdef MAC
+#include <string.h>
+int main (void)
+{
+	return 0;
+}
+#endif
+
 Tcl_Channel snackDebugChannel = NULL;
 static Tcl_Interp *debugInterp = NULL;
 int debugLevel = 0;
@@ -87,7 +95,7 @@ Snack_DebugCmd(ClientData cdata, Tcl_Interp *interp, int objc,
     str = Tcl_GetStringFromObj(objv[3], &len);
     snackDumpFile = (char *) ckalloc(len + 1);
     strcpy(snackDumpFile, str);
-   }
+  }
   if (debugLevel > 0) {
     str = Tcl_GetVar(interp, "sound::patchLevel", TCL_GLOBAL_ONLY);
     Tcl_Write(snackDebugChannel, "Sound patch level: ", 19);
@@ -110,7 +118,12 @@ int useOldObjAPI = 0;
 static int initialized = 0;
 int littleEndian = 0;
 
+#ifdef __cplusplus
+extern "C" SnackStubs *snackStubs;
+#else
 extern SnackStubs *snackStubs;
+#endif
+
 extern Tcl_HashTable *filterHashTable;
 
 #if defined(Tcl_InitHashTable) && defined(USE_TCL_STUBS)
@@ -127,7 +140,7 @@ Sound_Init(Tcl_Interp *interp)
     char c[sizeof(short)];
     short s;
   } order;
-
+  
 #ifdef USE_TCL_STUBS
   if (Tcl_InitStubs(interp, "8", 0) == NULL) {
     return TCL_ERROR;
@@ -136,7 +149,7 @@ Sound_Init(Tcl_Interp *interp)
 
   version = Tcl_GetVar(interp, "tcl_version",
 		       (TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG));
-
+  
   if (strcmp(version, "8.0") == 0) {
     useOldObjAPI = 1;
   }
@@ -157,7 +170,7 @@ Sound_Init(Tcl_Interp *interp)
 
   Tcl_CreateObjCommand(interp, "sound", Snack_SoundCmd,
 		       (ClientData) soundHashTable, (Tcl_CmdDeleteProc *)NULL);
-
+  
   Tcl_CreateObjCommand(interp, "snack::sound", Snack_SoundCmd,
 		       (ClientData) soundHashTable, (Tcl_CmdDeleteProc *)NULL);
   
@@ -166,7 +179,7 @@ Sound_Init(Tcl_Interp *interp)
   
   Tcl_CreateObjCommand(interp, "audio", Snack_AudioCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
-
+  
   Tcl_CreateObjCommand(interp, "snack::audio", Snack_AudioCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
   
@@ -175,20 +188,20 @@ Sound_Init(Tcl_Interp *interp)
   
   Tcl_CreateObjCommand(interp, "sound::mixer", Snack_MixerCmd,
 		       NULL, Snack_MixerDeleteCmd);
-
+  
   Tcl_CreateObjCommand(interp, "snack::mixer", Snack_MixerCmd,
 		       NULL, Snack_MixerDeleteCmd);
-
+  
   Tcl_CreateObjCommand(interp, "snack::filter", Snack_FilterCmd,
 		       (ClientData) filterHashTable, Snack_FilterDeleteCmd);
-
+  
   Tcl_CreateObjCommand(interp, "snack::debug",
 		       (Tcl_ObjCmdProc*) Snack_DebugCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
 
   snackDebugChannel = Tcl_GetStdChannel(TCL_STDERR);
   debugInterp = interp;
-
+  
   Tcl_SetVar(interp, "snack::patchLevel", SNACK_PATCH_LEVEL, TCL_GLOBAL_ONLY);
   Tcl_SetVar(interp, "snack::version",    SNACK_VERSION,     TCL_GLOBAL_ONLY);
   Tcl_SetVar(interp, "sound::patchLevel", SNACK_PATCH_LEVEL, TCL_GLOBAL_ONLY);
@@ -200,7 +213,7 @@ Sound_Init(Tcl_Interp *interp)
   if (initialized == 0) {
     SnackDefineFileFormats(interp);
     SnackCreateFilterTypes(interp);
-
+    
     SnackAudioInit();
     
     Tcl_CreateExitHandler(Snack_ExitProc, (ClientData) NULL);

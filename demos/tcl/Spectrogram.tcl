@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 
 set width 300
 set height 200
@@ -38,11 +38,9 @@ pack [ scale .f1.s7 -variable topfr -label Top -from 1000 -to 8000 -orient hori 
 
 pack [ frame .f2] -pady 2
 tk_optionMenu .f2.cm type Hamming Hanning Bartlett Blackman Rectangle
-.f2.cm.menu entryconfigure 0 -command {.c itemconf speg -windowtype $type}
-.f2.cm.menu entryconfigure 1 -command {.c itemconf speg -windowtype $type}
-.f2.cm.menu entryconfigure 2 -command {.c itemconf speg -windowtype $type}
-.f2.cm.menu entryconfigure 3 -command {.c itemconf speg -windowtype $type}
-.f2.cm.menu entryconfigure 4 -command {.c itemconf speg -windowtype $type}
+for {set i 0} {$i < 5} {incr i} {
+  .f2.cm.menu entryconfigure $i -command {.c itemconf speg -windowtype $type}
+}
 pack .f2.cm -side left
 pack [ label .f2.lw -text "window:"] -side left
 foreach n {32 64 128 256 512 1024 2048} {

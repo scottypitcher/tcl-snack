@@ -2,11 +2,21 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 
 # there is no way (?) to find out from Tk if we can display UNICODE IPA
 # but it seems to be standard on windows installations
 if {[string match windows $tcl_platform(platform)]} {set UNICODE_IPA 1}
+
+switch $tcl_platform(platform) {
+ windows {
+  proc milliseconds { } {clock clicks}
+ }
+ unix {
+  proc milliseconds { } {expr {[clock clicks]/1000}}
+ }
+}
+
 
 set vowels(sw) {
  O: u      300 600 2350 3250
@@ -42,9 +52,9 @@ set vowels(us) {
 
 set vowels(lang) us
  
-proc vok4Create {w} {
+proc vok4Create {w {wid 200} {hei 200}} {
  upvar #0 $w a
- frame $w -width 200 -height 200
+ frame $w -width $wid -height $hei
  pack [canvas $w.c -bg black] -fill both -expand 1
  pack propagate $w 0
  set a(xm) 20
@@ -67,7 +77,7 @@ proc vok4Create {w} {
  
  # trailInit $w 10
  
- bind $w.c <ButtonPress-1> "Play;vok4Move $w %x %y"
+ bind $w.c <ButtonPress-1> "vok4Move $w %x %y;Play"
  bind $w.c <B1-Motion> [list vok4Move $w %x %y]
  bind $w.c <ButtonRelease-1> "Stop"
  bind $w.c <Configure> [list vok4Config $w %w %h]
@@ -108,18 +118,17 @@ proc vok4Config {w {wid -1} {hei -1}} {
 }
 
 proc vok4Move {w x y} {
+# puts [info level 0]
  upvar #0 $w a
  
- if $::v(on) {
-  set f1 [expr {int($a(F10)+($a(F11)-$a(F10))*($y-$a(y0))*1.0/($a(y1)-$a(y0)))}]
-  set f2 [expr {int($a(F20)+($a(F21)-$a(F20))*($x-$a(x0))*1.0/($a(x1)-$a(x0)))}]
-  set ::v(f1) $f1
-  set ::v(f2) $f2
-  Config
-  set a(curx) $x
-  set a(cury) $y
-  #  trailUpdate $w
- }
+ set f1 [expr {int($a(F10)+($a(F11)-$a(F10))*($y-$a(y0))*1.0/($a(y1)-$a(y0)))}]
+ set f2 [expr {int($a(F20)+($a(F21)-$a(F20))*($x-$a(x0))*1.0/($a(x1)-$a(x0)))}]
+ set ::v(f1) $f1
+ set ::v(f2) $f2
+ Config
+ set a(curx) $x
+ set a(cury) $y
+ #  trailUpdate $w
  return ""
 }
 
@@ -157,6 +166,8 @@ proc Play {} {
  s stop
  s play -filter $::v(All)
  updatePreview
+ set ::v(tstart) [milliseconds]
+ #  updateTracks
  .f1.b config -relief sunken
 }
 
@@ -169,6 +180,21 @@ proc Stop {} {
 proc Load {} {
  set file [snack::getOpenFile]
  if {$file != ""} {s read $file}
+}
+
+proc updateTracks {} {
+ set tt 50
+ set now [milliseconds]
+ set then $::v(tstart)
+ set dt [expr 1.0*([milliseconds]-$::v(tstart))]
+ #set ::v(g,freq) [expr 100+100*(1.0*$dt/$tt)*exp(-$dt/$tt)]
+ set ::v(g,freq) [expr {100+2*cos(2*3.1415*$dt/$tt)}]
+
+ Config
+
+ if $::v(on) {
+  after 50 updateTracks
+ }
 }
 
 proc labeledScale {w args} {
@@ -201,12 +227,12 @@ proc About {} {
  of vowels in real time, in the spirit of Gunnar Fant's 
  Orator Verbis Electris (OVE-1) synthesizer of 1953.
 
- Set source and filter parameters to the left. Click and 
- drag in the \"vowel space\" to the right to hear the vowels. 
+ Set source and filter parameters at the top. Click and 
+ drag in the \"vowel space\" to hear the vowels. 
  Right-click to select target language for vowel symbols.
  
- Waveform and power spectrum of source (red) and 
- output signal (green) are displayed at the bottom.
+ Power spectrum of source (red) and output signal (green) are 
+ to the right, waveforms are displayed at the bottom.
  
  The source type \"sampled\" will use a sound file 
  containing a single period of a waveform as voice source.
@@ -244,7 +270,7 @@ menu .m
 # Generator GUI
 
 frame .f1 -relief groove -bd 2
-grid .f1 -sticky news -padx 5 -pady 5
+grid .f1 -row 0 -col 0 -sticky news -padx 5 -pady 5
 label .f1.l -text Source -bg red -anchor w
 tk_optionMenu .f1.gt v(g,type) rectangle triangle sine sampled noise
 button .f1.b -bitmap snackPlay -command Play
@@ -259,11 +285,11 @@ grid .f1.gf -columnspan 4 -sticky we
 grid .f1.ga -columnspan 4 -sticky we
 grid .f1.gs -columnspan 4 -sticky we
 grid columnconfigure .f1 0 -weight 1
-
+grid rowconfigure .f1 4 -weight 1
 # Formant filter GUI
 
 frame .f2 -relief groove -bd 2
-grid .f2 -sticky news -padx 5 -pady 5
+grid .f2 -row 0 -col 1 -sticky news -padx 5 -pady 5
 label .f2.l -text "Formants" -bg green -anchor w
 grid .f2.l -columnspan 5 -sticky we -padx 5 -pady 5
 label .f2.lf -text "Frequency" -anchor w
@@ -285,38 +311,44 @@ for {set i 1} {$i<=4} {incr i} {
 }
 grid columnconfigure .f2 1 -weight 1
 
+set vokh 250
+set vokw 275
+
 # Vowel space
 
-vok4Create .voc
-grid .voc -row 0 -col 1 -rowspan 2 -sticky news
+vok4Create .voc $vokw $vokh
+grid .voc -row 1 -col 0 -sticky news
 
-# Waveforms preview
-
-set prew 550
+# Spectrum section preview
 
 snack::sound preview1
 snack::sound preview2
 
+set secw $vokw
+set sech $vokh
 
-canvas .c1 -bg black -height 100 -width $prew
-grid .c1 -columnspan 2 -sticky news
-.c1 create waveform 0 50 -anchor w -sound preview1 -fill red  -height 90 -pixelspersecond 16000
-.c1 create waveform 0 50 -anchor w -sound preview2 -fill green  -height 90 -pixelspersecond 16000
+canvas .c2 -bg black -height 100 -width $secw
+grid .c2 -row 1 -col 1  -sticky news
+.c2 create section 0 0 -sound preview1 -fill red -height $sech -topfrequency 4000 -width $secw -analysistype lpc -tags sect -maxvalue 30
+.c2 create section 0 0 -sound preview2 -fill green -height $sech -topfrequency 4000 -width $secw -analysistype lpc -tags sect -maxvalue 30
 
-# Spectrum section preview
-
-canvas .c2 -bg black -height 100 -width $prew
-grid .c2 -columnspan 2 -sticky news
-.c2 create section 0 50 -anchor w -sound preview1 -fill red -height 90 -topfrequency 8000 -width $prew -preemphasis 10 -maxval 40 -tags sect
-.c2 create section 0 50 -anchor w -sound preview2 -fill green -height 90 -topfrequency 8000 -width $prew -preemphasis 10 -maxval 40 -tags sect
-
-foreach freq {1 2 3 4 5 6 7 8} {
- set x [expr {$freq*$prew/8.0}]
- .c2 create line $x 0 $x 100 -fill #666666
- .c2 create text $x 0 -anchor ne -text $freq -fill #666666
+foreach freq {1 2 3 4} {
+ set x [expr {$freq*$secw/4.0}]
+ .c2 create line $x 0 $x $sech -fill #999999
+ .c2 create text $x 0 -anchor ne -text $freq -fill #999999
 }
-.c2 create text 0 0 -anchor nw -text kHz -fill #666666
+.c2 create text 0 0 -anchor nw -text kHz -fill #999999
 .c2 raise sect
+
+# Waveforms preview
+
+set wavw 550
+set wavh 90
+
+canvas .c1 -bg black -height 100 -width $wavw
+grid .c1 -row 2 -columnspan 2 -sticky news
+.c1 create waveform 0 50 -anchor w -sound preview1 -fill red  -height $wavh -pixelspersecond 16000
+.c1 create waveform 0 50 -anchor w -sound preview2 -fill green  -height $wavh -pixelspersecond 16000
 
 # Default values
 

@@ -615,7 +615,8 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 
   if (CheckFFTlen(interp, spegPtr->si.fftlen) != TCL_OK) return TCL_ERROR;
 
-  if (CheckWinlen(interp, spegPtr->si.winlen) != TCL_OK) return TCL_ERROR;
+  if (CheckWinlen(interp, spegPtr->si.winlen, spegPtr->si.fftlen) != TCL_OK)
+    return TCL_ERROR;
 
   if (OptSpecified(OPTION_SOUND)) {
     if (spegPtr->newSoundName == NULL) {
@@ -815,8 +816,6 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
     spegPtr->si.fftmax = -10000;
     spegPtr->si.fftmin = 10000;
     spegPtr->si.ssmp = spegPtr->ssmp;
-    Snack_InitWindow(spegPtr->si.hamwin, spegPtr->si.winlen,
-		     spegPtr->si.fftlen, spegPtr->si.windowType);
 
     n = ComputeSpeg(&spegPtr->si, nfft);
 
@@ -1253,16 +1252,17 @@ ComputeSpeg(SnackItemInfo *siPtr, int nfft)
 
   if (siPtr->debug > 2) Snack_WriteLogInt("    Enter ComputeSpeg", nfft);
 
-  Snack_InitFFT(fftlen);
-
   if (storeType != SOUND_IN_MEMORY) {
     if (OpenLinkedFile(siPtr->sound, &info) != TCL_OK) {
       return(0);
     }
   }
 
-  if (siPtr->winlen > siPtr->fftlen)
-    winlen = siPtr->fftlen;
+  if (winlen > fftlen)  /* should not happen */
+    winlen = fftlen;
+
+  Snack_InitFFT(fftlen);
+  Snack_InitWindow(siPtr->hamwin, winlen, fftlen, siPtr->windowType);
 
   siPtr->doneSpeg = 0;
   /*  siPtr->computing = 1;*/

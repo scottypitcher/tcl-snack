@@ -1,11 +1,13 @@
 #
 # Immediate loading of Snack because of item types etc.
 #
-# http://www.cogent.net/~duquette/tcl/namespaces.html
+# http://www.wjduquette.com/tcl/namespaces.html
 #
 
-package ifneeded snack 2.0 "[list load [file join $dir libsnack.dll]];[list source [file join $dir snack.tcl]]"
+package ifneeded snack 2.1 "[list load [file join $dir libsnack.dll]];[list source [file join $dir snack.tcl]]"
 
-package ifneeded sound 2.0 [list load [file join $dir libsound.dll]]
+package ifneeded sound 2.1 [list load [file join $dir libsound.dll]]
 
-package ifneeded snacksphere 1.0 [list load [file join $dir libsnacksphere.dll]]
+package ifneeded snacksphere 1.2 [list load [file join $dir libsnacksphere.dll]]
+
+package ifneeded snackogg 1.1 [list load [file join $dir libsnackogg.dll]]

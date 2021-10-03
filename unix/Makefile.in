@@ -23,7 +23,7 @@ MOZILLA_DIR = @MOZILLA_DIR@
 GENERIC_DIR = ../generic
 UNIX_DIR    = ../unix
 
-VERSION = 2.0
+VERSION = 2.1
 
 TCL_VERSION = @TCLVER@
 
@@ -44,12 +44,13 @@ all: libsound${SHLIB_SUFFIX} libsnack${SHLIB_SUFFIX} @DOSTUBLIB@ @LIBNIST@ editv
 
 OBJSO = sound.o jkSound.o jkSoundEngine.o jkSoundEdit.o jkSoundFile.o \
 	g711.o @AOBJ@ jkFormatMP3.o jkSoundProc.o ffa.o jkPitchCmd.o \
-	@STUBINITOBJ@ jkAudio.o jkMixer.o shape.o jkFilter.o jkSynthesis.o
+	@STUBINITOBJ@ jkAudio.o jkMixer.o shape.o jkFilter.o jkSynthesis.o \
+	jkFilterIIR.o
 
 OBJSN = snack.o jkSound.o jkSoundEngine.o jkSoundEdit.o jkSoundFile.o \
 	jkCanvSpeg.o jkCanvWave.o jkCanvSect.o ffa.o g711.o @AOBJ@ \
 	jkFormatMP3.o jkSoundProc.o jkPitchCmd.o @STUBINITOBJ@ \
-	jkAudio.o jkMixer.o shape.o jkFilter.o jkSynthesis.o
+	jkAudio.o jkMixer.o shape.o jkFilter.o jkSynthesis.o jkFilterIIR.o
 
 OBJSNST = snackStubLib.o
 
@@ -106,6 +107,9 @@ shape.o: $(GENERIC_DIR)/shape.c
 
 jkFilter.o: $(GENERIC_DIR)/jkFilter.c
 	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkFilter.c
+
+jkFilterIIR.o: $(GENERIC_DIR)/jkFilterIIR.c
+	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkFilterIIR.c
 
 jkSynthesis.o: $(GENERIC_DIR)/jkSynthesis.c
 	$(CC) -c $(CFLAGS) $(GENERIC_DIR)/jkSynthesis.c
@@ -223,6 +227,18 @@ editversion: ${OBJSN}
 	    sed s/wish8.3/wish${TCL_VERSION}/ wrap.tcl > tmp ;\
 	    mv -f tmp wrap.tcl ;\
 	    chmod 755 wrap.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ generator.tcl > tmp ;\
+	    mv -f tmp generator.tcl ;\
+	    chmod 755 generator.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ notescale.tcl > tmp ;\
+	    mv -f tmp notescale.tcl ;\
+	    chmod 755 notescale.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ oggstream.tcl > tmp ;\
+	    mv -f tmp oggstream.tcl ;\
+	    chmod 755 oggstream.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ polarspec.tcl > tmp ;\
+	    mv -f tmp polarspec.tcl ;\
+	    chmod 755 polarspec.tcl ;\
 	    sed s/wish8.3/wish${TCL_VERSION}/ xs.tcl > tmp ;\
 	    mv -f tmp xs.tcl ;\
 	    chmod 755 xs.tcl ;\
@@ -237,6 +253,15 @@ SphereFile.o: $(GENERIC_DIR)/SphereFile.c
 libsnacksphere${SHLIB_SUFFIX}: ${OBJNIST}
 	${SHLIB_LD} ${OBJNIST} ${LIBNIST} -o libsnacksphere${SHLIB_SUFFIX}
 
+LIBOGG = @OGGLIBS@ -lc @TCL_LIB_SPEC@ -L. @SNACK_STUB_LIB_FLAG@
+OBJOGG = SnackOgg.o
+
+SnackOgg.o: $(GENERIC_DIR)/SnackOgg.c
+	$(CC) @OGGINC@ -c $(CFLAGS) -DUSE_SNACK_STUBS $(GENERIC_DIR)/SnackOgg.c
+
+libsnackogg${SHLIB_SUFFIX}: ${OBJOGG}
+	${SHLIB_LD} ${OBJOGG} ${LIBOGG} -o libsnackogg${SHLIB_SUFFIX}
+
 install:
 	@if [ ! -d ${SNACK_INSTALL_PATH}/snack${VERSION} ] ; then \
 	    echo "Making directory ${SNACK_INSTALL_PATH}/snack${VERSION}"; \
@@ -248,6 +273,7 @@ install:
 	cp -f libsnack${SHLIB_SUFFIX} ${SNACK_INSTALL_PATH}/snack${VERSION}/
 	if test -f libsnackstub${VERSION}.a; then cp -f libsnackstub${VERSION}.a ${SNACK_INSTALL_PATH}/; fi
 	if test -f libsnacksphere${SHLIB_SUFFIX}; then cp -f libsnacksphere${SHLIB_SUFFIX} ${SNACK_INSTALL_PATH}/snack${VERSION}/; fi
+	if test -f libsnackogg${SHLIB_SUFFIX}; then cp -f libsnackogg${SHLIB_SUFFIX} ${SNACK_INSTALL_PATH}/snack${VERSION}/; fi
 	cp -f snack.tcl ${SNACK_INSTALL_PATH}/snack${VERSION}/
 	cp -f pkgIndex.tcl ${SNACK_INSTALL_PATH}/snack${VERSION}/
 	@if [ -d "@MOZILLA_DIR@" ] ; then \

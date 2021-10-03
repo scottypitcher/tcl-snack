@@ -39,6 +39,7 @@ typedef struct mp3Info {
   float u[2][2][32][16];
   int u_start[2];
   int u_div[2];
+  int bitrate;
 } mp3Info;
 
 /* "audio.h" */

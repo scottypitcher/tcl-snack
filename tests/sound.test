@@ -1,7 +1,7 @@
 # Commands covered: sound creation
 #
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -129,7 +129,7 @@ test sound-4.2 {sound command, two sounds in different interpreters with same na
   set s1 [snack::sound snd -load ex1.wav]
 
   set i [interp create]
-  $i eval package require -exact snack 2.0
+  $i eval package require -exact snack 2.1
   $i eval snack::sound snd
   $i eval snd destroy
   interp delete $i

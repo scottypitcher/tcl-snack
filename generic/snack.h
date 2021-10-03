@@ -29,5 +29,5 @@
 #include "jkSound.h"
 #include "jkAudIO.h"
 
-#define SNACK_VERSION     "2.0"
-#define SNACK_PATCH_LEVEL "2.0.7"
+#define SNACK_VERSION     "2.1"
+#define SNACK_PATCH_LEVEL "2.1"

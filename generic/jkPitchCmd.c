@@ -762,8 +762,15 @@ static int calcul_nrj_dpz(Sound *s, Tcl_Interp *interp, int start,int longueur)
   for (trame=i=0; i<longueur; i += cst_step_hamming,trame++) {
     J = minimum(s->length,(i+cst_length_hamming));
     JJ = J-1;
-    Snack_GetSoundData(s, i+start, Signal, cst_length_hamming);
-    
+    if (s->length < i + start + cst_length_hamming) {
+      Snack_GetSoundData(s, i+start, Signal, s->length - i + start);
+      for (j = s->length - i + start; j < cst_length_hamming; j++) {
+	Signal[j] = 0.0f;
+      }
+    } else {
+      Snack_GetSoundData(s, i+start, Signal, cst_length_hamming);
+    }    
+
     /* ---- nrj ---- */
     for (nrj=0.0,j=0; j<J-i; j++) 
       nrj += CARRE((double) Signal[j]);  

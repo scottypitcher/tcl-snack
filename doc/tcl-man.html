@@ -14,7 +14,7 @@
 <hr></h1>
 
 <h1>
-<b>Snack v2.0.7 manual</b></h1>
+<b>Snack v2.1 manual</b></h1>
 <font color="#FF6600">Last updated&nbsp;</font><script LANGUAGE="JavaScript">document.write(document.lastModified)</script>
 
 <dl>
@@ -38,6 +38,12 @@
 
 <dt>
 <a href="#waveform">waveform canvas item</a></dt>
+
+<dt>
+&nbsp;</dt>
+
+<dt>
+<a href="#defpack">Standard extension packages</a> (sound, snackogg, snacksphere)</dt>
 
 <dt>
 &nbsp;</dt>
@@ -151,6 +157,8 @@ can be any of rectangle, triangle, sine, noise, or sampled. In the case
 of sampled the generator will repeatedly get data from the sound it is
 applied on. <i>ntot</i> specifies how many samples to generate. The default,
 -1, will generate forever.</blockquote>
+<b>iir</b><i> ?-denominator list? ?-dither value? ?-impulse list? ?-noise value? ?-numerator list?</i>
+<blockquote>Creates an IIR or FIR filter. For FIR filters the coefficients are given as a list using the -impulse option. For IIR filters the coefficients are given as lists using the options -numerator and -denominator. The option -dither specifies the amount of triangular dithering to add to the output. The option -noise  specifies the amount of additive gaussian noise to add to the output.</blockquote>
 <b>map</b><i> val ?val val val ...?</i>
 <blockquote>Applies a linear transformation on each sample frame. For one
 channel sounds this is simply a multiplication. For multi-channel sounds,
@@ -263,7 +271,7 @@ fileformat? ?-byteorder endianess?</b></a></dd>
 <dd>
 <a href="#sfft"><i>soundName </i><b>dBPowerSpectrum ?-start sample? ?-end
 sample? ?-skip samples? ?-fftlength length? ?-windowlength length? ?-channel
-channel? ?-preemphasis factor?</b></a></dd>
+channel? ?-preemphasis factor? ?-windowtype type? ?-analysistype type? ?-lpcorder n?</b></a></dd>
 
 <dd>
 <a href="#sfilter"><i>soundName </i><b>filter filterName ?-start sample?
@@ -299,8 +307,7 @@ channel? ?-preemphasis factor?</b></a></dd>
 
 <dd>
 <a href="#splay"><i>soundName </i><b>play ?-start start? ?-end end? ?-output
-jack? ?-blocking boolean? -command ?callback? ?-device outputDevice? ?-rate
-rate? ?-channels channels?</b></a></dd>
+jack? ?-blocking boolean? -command ?callback? ?-device outputDevice? ?-devicerate rate? ?-devicechannels channels?</b></a></dd>
 
 <dd>
 <a href="#sread"><i>soundName </i><b>read </b><i>filename</i><b> ?-rate
@@ -467,9 +474,9 @@ fileformat? -byteorder ?endianess?</b>
 <a NAME="sdest"></a><i>soundName </i><b>destroy</b>
 <ul>Removes the sound command and frees the storage associated with it.</ul>
 <a NAME="sfft"></a><i>soundName </i><b>dBPowerSpectrum</b> <b>?-start sample?
-?-end sample? ?-fftlength length? ?-windowlength length? ?</b>-<b>windowtype
-type?</b><i> </i><b>?-skip samples? ?-channel channel? ?-preemphasisfactor
-factor?</b>
+?-end sample? ?-fftlength length? ?-windowlength length? ?-windowtype
+type? ?-skip samples? ?-channel channel? ?-preemphasisfactor
+factor? ?-analysistype type? ?-lpcorder n?</b>
 <ul>Computes the log FFT power spectrum of the sound at <b>-start</b> and
 returns a list of dB values. See the
 <a href="#section">section item</a>
@@ -528,7 +535,7 @@ See the <a href="#sread">read</a> command for a description on how to use
 the <b>-progress</b> option.</ul>
 <a NAME="splay"></a><i>soundName </i><b>play ?-start start? ?-end end?
 ?-output jack??-blocking boolean? ?-command callback? ?-device outputDevice?
-?-filter filter? ?-rate f? ?-channels n?</b>
+?-filter filter? ?-devicerate f? ?-devicechannels n?</b>
 <ul>Plays a sound. A range of samples to play can be specified using the
 <b>-start</b>
 and <b>-end</b> options. The <b>-output</b> option is used to specify any
@@ -543,7 +550,7 @@ The <b>-device</b> option selects which audio output device to use. The
 <b>-filter</b>
 option is used to specify a <a href="#filter">filter</a> which is to be
 applied during output. The audio device can be opened with different properties
-from those of the sound object using <b>-rate</b> and <b>-channels</b>,
+from those of the sound object using <b>-devicerate</b> and <b>-devicechannels</b>,
 which might be useful in some rare cases. The option
 <b>-starttime</b>
 is used to schedule the start of playback (in ms) relative to a previous
@@ -653,34 +660,34 @@ value ...?
 OPTIONS</h3>
 
 <dd>
-<i>-</i><b>anchor</b><i> anchorPos</i></dd>
+-<b>anchor</b><i> anchorPos</i></dd>
 
 <dd>
-<i>-</i><b>brightness</b><i> value</i></dd>
+-<b>brightness</b><i> value</i></dd>
 
 <dd>
-<i>-</i><b>channel</b><i> channel</i></dd>
+-<b>channel</b><i> channel</i></dd>
 
 <dd>
-<i>-</i><b>colormap</b><i> colorlist</i></dd>
+-<b>colormap</b><i> colorlist</i></dd>
 
 <dd>
-<i>-</i><b>contrast</b><i> value</i></dd>
+-<b>contrast</b><i> value</i></dd>
 
 <dd>
-<i>-</i><b>end</b><i> sample</i></dd>
+-<b>end</b><i> sample</i></dd>
 
 <dd>
 -<b>fftlength</b><i> length</i></dd>
 
 <dd>
-<i>-</i><b>gridcolor</b><i> color</i></dd>
+-<b>gridcolor</b><i> color</i></dd>
 
 <dd>
-<i>-</i><b>gridfspacing</b><i> value</i></dd>
+-<b>gridfspacing</b><i> value</i></dd>
 
 <dd>
-<i>-</i><b>gridtspacing</b><i> value</i></dd>
+-<b>gridtspacing</b><i> value</i></dd>
 
 <dd>
 -<b>height</b><i> size</i></dd>
@@ -695,13 +702,13 @@ OPTIONS</h3>
 -<b>sound</b><i> name</i></dd>
 
 <dd>
-<i>-</i><b>start</b><i> sample</i></dd>
+-<b>start</b><i> sample</i></dd>
 
 <dd>
 -<b>tags </b><i>tagList</i></dd>
 
 <dd>
-<i>-</i><b>topfrequency</b><i> frequency</i></dd>
+-<b>topfrequency</b><i> frequency</i></dd>
 
 <dd>
 -<b>width</b><i> size</i></dd>
@@ -714,7 +721,7 @@ OPTIONS</h3>
 
 <h3>
 DESCRIPTION</h3>
-This command draws a spectrogram of a sound on a canvas. The options <i>-</i><b>anchor</b>,
+This command draws a spectrogram of a sound on a canvas. The options -<b>anchor</b>,
 and -<b>tags</b> work as for ordinary Tk canvas items. -<b>sound</b> specifies
 which sound object to link to and -<b>height</b> the height of the spectrogram.
 The option <b>-fftlength</b> specifies the number of FFT points (8, 16,
@@ -732,16 +739,16 @@ are specified the spectrogram will be cut at one end depending on if a
 or <b>-end</b> option was also given. Use the <b>-channel</b> option to
 select which channel to show for multichannel sounds. Use left, right,
 both, all, -1 (all) or a channel number counting from 0 (left). The default
-is to show all, i.e. to add all channels. <i>-</i><b>brightness</b> and
-<i>-</i><b>contrast</b>
-takes values beteween -100.0 and 100.0 with the default being 0.0. <i>-</i><b>topfrequency</b>
+is to show all, i.e. to add all channels. -<b>brightness</b> and
+-<b>contrast</b>
+takes values beteween -100.0 and 100.0 with the default being 0.0. -<b>topfrequency</b>
 is the frequency value at the top of the spectrogram, default is the Nyquist
-frequency. <i>-</i><b>gridtspacing</b> is the spacing between markers in
+frequency. -<b>gridtspacing</b> is the spacing between markers in
 seconds (default 0 means no grid) and
-<i>-</i><b>gridfspacing</b> is the
+-<b>gridfspacing</b> is the
 frequency spacing in Hz (default 0 means no grid). -<b>gridcolor</b> specifies
 the color of the grid. A colormap for the spectrogram is given with the
-<i>-</i><b>colormap</b>
+-<b>colormap</b>
 option. It takes a list of colors as parameter and at least two must be
 specified. The first color is used for the lowest intensity in the spectrogram.
 An empty list gives the default 32-level grey scale. Currently, spectrograms
@@ -762,31 +769,37 @@ value ...?
 OPTIONS</h3>
 
 <dd>
-<i>-</i><b>anchor</b><i> anchorPos</i></dd>
+-<b>anchor</b><i> anchorPos</i></dd>
 
 <dd>
-<i>-</i><b>channel</b><i> channel</i></dd>
+-<b>analysistype</b><i> type</i></dd>
 
 <dd>
-<i>-</i><b>end</b><i> sample</i></dd>
+-<b>channel</b><i> channel</i></dd>
+
+<dd>
+-<b>end</b><i> sample</i></dd>
 
 <dd>
 -<b>fftlength</b><i> length</i></dd>
 
 <dd>
-<i>-</i><b>fill</b><i> color</i></dd>
+-<b>fill</b><i> color</i></dd>
 
 <dd>
-<i>-</i><b>frame</b><i> boolean</i></dd>
+-<b>frame</b><i> boolean</i></dd>
 
 <dd>
 -<b>height</b><i> size</i></dd>
 
 <dd>
-<i>-</i><b>maxvalue</b><i> value</i></dd>
+-<b>lpcorder</b><i> n</i></dd>
 
 <dd>
-<i>-</i><b>minvalue</b><i> value</i></dd>
+-<b>maxvalue</b><i> value</i></dd>
+
+<dd>
+-<b>minvalue</b><i> value</i></dd>
 
 <dd>
 -<b>preemphasisfactor</b><i> factor</i></dd>
@@ -798,16 +811,16 @@ OPTIONS</h3>
 -<b>sound</b><i> name</i></dd>
 
 <dd>
-<i>-</i><b>start</b><i> sample</i></dd>
+-<b>start</b><i> sample</i></dd>
 
 <dd>
-<i>-</i><b>stipple</b><i> value</i></dd>
+-<b>stipple</b><i> value</i></dd>
 
 <dd>
 -<b>tags </b><i>tagList</i></dd>
 
 <dd>
-<i>-</i><b>topfrequency</b><i> frequency</i></dd>
+-<b>topfrequency</b><i> frequency</i></dd>
 
 <dd>
 -<b>width</b><i> size</i></dd>
@@ -821,20 +834,20 @@ OPTIONS</h3>
 <h3>
 DESCRIPTION</h3>
 This command draws an FFT log power spectrum section of a sound on a canvas.
-The options <i>-</i><b>anchor</b>, -<b>fill</b>, -<b>stipple</b>, and -<b>tags</b>
+The options -<b>anchor</b>, -<b>fill</b>, -<b>stipple</b>, and -<b>tags</b>
 work as for ordinary Tk canvas line items. -<b>sound</b> specifies which
 sound object to link to and -<b>height</b> and -<b>width</b> the height/width
 of the section.The option <b>-fftlength</b> specifies the number of FFT
 points (8, 16, 32, 64, 128, 256, 512, 1024, 2048, or 4096). The option
 <b>-windowtype</b>
 is used to select windowing function, (valid values are Hamming, Hanning,
-Bartlett, Blackman, or Rectangle). <b>-winlength</b> specifies the size
+Bartlett, Blackman, or Rectangle). <b>-analysistype</b> is either <b>FFT</b> or <b>LPC</b>, for LPC analysis the order is specified using <b>-lpcorder</b> (default 20). <b>-winlength</b> specifies the size
 of the window, which should be equal to or less than the number of FFT
 points. -<b>preemphasisfactor</b> is used to specify the amount of preemphasis
 applied to the signal prior to the FFT calculation.
 <b>-start</b> and <b>-end</b>
 controls which part of the sound to display.
-<i>-</i><b>topfrequency</b>
+-<b>topfrequency</b>
 is the frequency value at the right end of the section. -<b>maxvalue</b>
 and -<b>minvalue</b> specify the range (in dB) which will be shown (default
 0.0 to -80.0). Use the <b>-channel</b> option to select which channel to
@@ -856,10 +869,10 @@ value ...?
 OPTIONS</h3>
 
 <dd>
-<i>-</i><b>anchor</b><i> anchorPos</i></dd>
+-<b>anchor</b><i> anchorPos</i></dd>
 
 <dd>
-<i>-</i><b>channel</b><i> channel</i></dd>
+-<b>channel</b><i> channel</i></dd>
 
 <dd>
 -<b>end </b><i>sample</i></dd>
@@ -868,13 +881,13 @@ OPTIONS</h3>
 -<b>fill </b><i>color</i></dd>
 
 <dd>
-<i>-</i><b>frame</b><i> boolean</i></dd>
+-<b>frame</b><i> boolean</i></dd>
 
 <dd>
 -<b>height</b><i> size</i></dd>
 
 <dd>
-<i>-</i><b>limit</b><i> value</i></dd>
+-<b>limit</b><i> value</i></dd>
 
 <dd>
 -<b>pixelspersecond</b><i> value</i></dd>
@@ -883,7 +896,7 @@ OPTIONS</h3>
 <b>-progress</b> <i>procedure</i></dd>
 
 <dd>
-<i>-</i><b>shapefile</b><i> filename</i></dd>
+-<b>shapefile</b><i> filename</i></dd>
 
 <dd>
 -<b>sound</b><i> name</i></dd>
@@ -895,7 +908,7 @@ OPTIONS</h3>
 -<b>stipple </b><i>bitmap</i></dd>
 
 <dd>
-<i>-</i><b>subsample</b><i> value</i></dd>
+-<b>subsample</b><i> value</i></dd>
 
 <dd>
 -<b>tags </b><i>tagList</i></dd>
@@ -908,7 +921,7 @@ OPTIONS</h3>
 
 <h3>
 DESCRIPTION</h3>
-This command draws the waveform of a sound on a canvas. The options <i>-</i><b>anchor</b>,
+This command draws the waveform of a sound on a canvas. The options -<b>anchor</b>,
 -<b>fill</b>, -<b>stipple</b>, and -<b>tags</b> work as for ordinary Tk
 canvas line items. -<b>sound</b> specifies which sound object to link to
 and -<b>height</b> the height of the waveform. The options <b>-start</b>
@@ -922,7 +935,7 @@ both, all, -1 (all) or a channel number counting from 0. The default is
 to show all, i.e. to add all channels. Use <b>-limit</b> to specify the
 maximum shown value for the sound amplitude. <b>-zerolevel</b> specifies
 whether the zero level will be displayed and <b>-frame</b> whether a frame
-will be drawn around the waveform. The <i>-</i><b>subsample</b> option
+will be drawn around the waveform. The -<b>subsample</b> option
 is useful for large sounds to specify how precisely they should be analyzed
 for shape calculation. The default value 1 uses every sample in the sound
 to draw the waveform envelope, which can be slow for large sounds. A value
@@ -940,10 +953,15 @@ description on how to use the <b>-progress</b> option.
 <br>See also code examples in the widget demonstration.
 <p>
 <hr>
-<p>The command <b>package require snack</b> gives you access to all commands
-described above.
-<br>There is also a package called <b>sound</b> which gives you the <b>snack::audio,
-snack::filter, snack::mixer, </b>and <b>snack::sound </b>commands. This is useful on some systems if you want to use the tclsh interpreter.
+<a NAME="defpack"></a>
+<h3>Standard extension packages</h3>
+<p>The following packages are included in the Snack distribution or can be downloaded separately.
+<p><b>sound</b>
+<ul>The <b>sound</b> package gives you the <b>snack::audio, snack::filter, snack::mixer, </b>and <b>snack::sound </b>commands. Basicly the same functions as the <b>snack</b> package except for graphics. This is useful on some systems if you want to use the tclsh interpreter.</ul>
+<p><b>snackogg</b>
+<ul>The <b>snackogg</b> package adds support for the Ogg/Vorbis compressed sound file format. Ogg format files and streams are detected automatically. Encoding is supported. Simply use the extension .ogg when writing files or use the option <b>-fileformat ogg</b>. When creating Ogg files the additional options <b>-nominalbitrate</b>, <b>-maxbitrate</b>, <b>-minbitrate</b>, and <b>-comment</b> apply.</ul>
+<p><b>snacksphere</b>
+<ul>The <b>snacksphere</b> package adds support for reading the NIST/Sphere sound file formats. Sphere files are detected automatically.</ul>
 <p>
 <hr WIDTH="100%">
 <br><a href="http://www.speech.kth.se/snack/index.html">Snack home</a>

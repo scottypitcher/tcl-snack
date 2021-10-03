@@ -2,7 +2,9 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.0
+package require -exact snack 2.1
+# Try to load optional file format handler
+catch { package require snackogg }
 
 snack::debug 0
 
@@ -17,7 +19,7 @@ proc Cmd { sock addr port } {
 	    set s [snack::sound -debug 0]
 	    puts $sock $s ;# return token for this job
 	    flush $sock
-	    $s config -channel $sock -guessproperties yes
+	    $s configure -channel $sock -guessproperties yes
 	    $s play -command "[list close $sock]; set msg idle;$s destroy"
 	    set msg playing
 	}

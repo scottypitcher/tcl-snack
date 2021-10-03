@@ -14,7 +14,7 @@ set tomAmp(elapsed) 0
 set tomAmp(current) {}
 set tomAmp(currentMP3) {}
 ;# Setup sound settings
-package require -exact snack 2.0
+package require -exact snack 2.1
 # Buttons
 option add *font {Helvetica 10 bold}
 option add *Button.activeBackground yellow

@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 
 set width 300
 set height 200
@@ -16,7 +16,9 @@ set topfr 8000
 set maxval 0.0
 set minval -80.0
 set skip 500
-set type Hamming
+set atype FFT
+set order 20
+set wtype Hamming
 option add *font {Helvetica 10 bold}
 
 pack [ canvas .c -width 400 -height 250]
@@ -43,12 +45,26 @@ pack [ scale .f1.s6 -variable skip -label "Skip" -from 50 -to 500 \
     -side left
 
 pack [ frame .f2i] -pady 2
-tk_optionMenu .f2i.cm type Hamming Hanning Bartlett Blackman Rectangle
-.f2i.cm.menu entryconfigure 0 -command {.c itemconf sect -windowtype $type}
-.f2i.cm.menu entryconfigure 1 -command {.c itemconf sect -windowtype $type}
-.f2i.cm.menu entryconfigure 2 -command {.c itemconf sect -windowtype $type}
-.f2i.cm.menu entryconfigure 3 -command {.c itemconf sect -windowtype $type}
-.f2i.cm.menu entryconfigure 4 -command {.c itemconf sect -windowtype $type}
+pack [ label .f2i.lt -text "Type:"] -side left
+tk_optionMenu .f2i.at atype FFT LPC
+.f2i.at.menu entryconfigure 0 -command {.c itemconf sect -analysistype $atype;.f2i.e configure -state disabled;.f2i.s configure -state disabled}
+.f2i.at.menu entryconfigure 1 -command {.c itemconf sect -analysistype $atype;.f2i.e configure -state normal;.f2i.s configure -state normal}
+pack .f2i.at -side left
+
+pack [ label .f2i.lo -text "order:"] -side left
+entry .f2i.e -textvariable order -width 3
+
+scale .f2i.s -variable order -from 1 -to 40 -orient horiz -length 60 -show no
+pack .f2i.e .f2i.s -side left
+.f2i.e configure -state disabled
+.f2i.s configure -state disabled
+bind .f2i.e <Key-Return> {.c itemconf sect -lpcorder $order}
+bind .f2i.s <Button1-Motion> {.c itemconf sect -lpcorder $order}
+
+tk_optionMenu .f2i.cm wtype Hamming Hanning Bartlett Blackman Rectangle
+for {set i 0} {$i < 5} {incr i} {
+  .f2i.cm.menu entryconfigure $i -command {.c itemconf sect -windowtype $wtype}
+}
 pack .f2i.cm -side left
 
 pack [ label .f2i.lw -text "window:"] -side left

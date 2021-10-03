@@ -109,6 +109,9 @@ typedef struct Sound {
   Tcl_HashTable *soundTable;
   char *filterName;
   char *extHead;
+  char *extHead2;
+  int extHeadType;
+  int extHead2Type;
   int loadOffset;
   Tcl_Obj *changeCmdPtr;
   unsigned int userFlag; /* User flags, for new file formats, etc */
@@ -216,7 +219,8 @@ extern char *LoadSound(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj,
 		       int startpos, int endpos);
 
 extern int SaveSound(Sound *s, Tcl_Interp *interp, char *filename,
-		     Tcl_Obj *obj, int startpos, int len, char *type);
+		     Tcl_Obj *obj, int objc, Tcl_Obj *CONST objv[],
+		     int startpos, int len, char *type);
 
 extern int GetChannels(Tcl_Interp *interp, Tcl_Obj *obj, int *nchannels);
 
@@ -235,7 +239,8 @@ extern void SwapIfLE(Sound *s);
 
 extern int GetHeader(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj);
 
-extern int PutHeader(Sound *s, Tcl_Interp *interp, int length);
+extern int PutHeader(Sound *s, Tcl_Interp *interp, int objc,
+		     Tcl_Obj *CONST objv[], int length);
 
 extern int WriteLELong(Tcl_Channel ch, long l);
 
@@ -260,7 +265,8 @@ typedef int  (getHeaderProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
 typedef char *(extensionFileTypeProc)(char *buf);
 
 typedef int  (putHeaderProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
-			     Tcl_Obj *obj, int length);
+			     Tcl_Obj *obj, int objc,
+			     Tcl_Obj *CONST objv[], int length);
 
 typedef int  (openProc)(Sound *s, Tcl_Interp *interp,Tcl_Channel *ch,
 			char *mode);
@@ -271,12 +277,15 @@ typedef int  (readSamplesProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
 			       char *inBuffer, float *outBuffer, int length);
 
 typedef int  (writeSamplesProc)(Sound *s, Tcl_Channel ch, Tcl_Obj *obj,
-				float *buffer, int length);
+				int start, int length);
 
 typedef int  (seekProc)(Sound *s, Tcl_Interp *interp, Tcl_Channel ch,
 			int position);
 
 typedef void (freeHeaderProc)(Sound *s);
+
+typedef int  (configureProc)(Sound *s, Tcl_Interp *interp, int objc,
+			     Tcl_Obj *CONST objv[]);
 
 /* Deprecated: SnackFileFormat */
 
@@ -307,6 +316,7 @@ typedef struct Snack_FileFormat {
   writeSamplesProc        *writeProc;
   seekProc                *seekProc;
   freeHeaderProc          *freeHeaderProc;
+  configureProc           *configureProc;
   struct Snack_FileFormat *nextPtr;
 } Snack_FileFormat;
 
@@ -386,6 +396,9 @@ extern int CloseMP3File(Sound *s, Tcl_Interp *interp, Tcl_Channel *ch);
 
 extern void FreeMP3Header(Sound *s);
 
+extern int ConfigMP3Header(Sound *s, Tcl_Interp *interp, int objc,
+			   Tcl_Obj *CONST objv[]);
+
 typedef enum {
   SNACK_WIN_HAMMING,
   SNACK_WIN_HANNING,
@@ -398,6 +411,10 @@ extern int GetWindowType(Tcl_Interp *interp, char *str, SnackWindowType *type);
 
 extern int GetChannel(Tcl_Interp *interp, char *str, int nchannels,
 		      int *channel);
+
+extern float LpcAnalysis(float *data, int N, float *f, int order);
+
+extern void PreEmphase(float *sig, float presample, int len, float preemph);
 
 extern double SnackCurrentTime();
 
@@ -509,7 +526,11 @@ void SnackCreateFilterTypes(Tcl_Interp *interp);
 
 extern int WriteSound(writeSamplesProc *writeProc, Sound *s,
 		      Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
-		      int startpos, int len, int hdsize);
+		      int startpos, int len);
+
+extern void Snack_RemoveOptions(int objc, Tcl_Obj *CONST objv[],
+				char **subOptionStrings, int *newobjc,
+				Tcl_Obj **newobjv);
 
 #ifndef MAC
 #  define PBSIZE 100000

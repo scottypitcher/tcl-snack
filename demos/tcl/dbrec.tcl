@@ -4,7 +4,7 @@ exec wish8.3 "$0" "$@"
 
 # Prompted sentence recording application
  
-package require -exact snack 2.0
+package require -exact snack 2.1
 
 set rate 16000
 snack::sound t -rate $rate

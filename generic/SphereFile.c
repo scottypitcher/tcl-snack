@@ -29,6 +29,7 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
 #define NIST_STRING "NIST"
 #define SPHERE_STRING "SPHERE"
 #define SPHERE_HEADERSIZE 1024
+#define SNACK_SPHERE_INT 17
 
 static int
 GetSphereHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
@@ -74,8 +75,21 @@ OpenSphereFile(Sound *s, Tcl_Interp *interp, Tcl_Channel *ch, char *mode)
     */
   GetSphereHeader(s, interp, *ch, NULL, NULL);
 
+  if (s->extHead != NULL && s->extHeadType != SNACK_SPHERE_INT) {
+    Snack_FileFormat *ff;
+    
+    for (ff = Snack_GetFileFormats(); ff != NULL; ff = ff->nextPtr) {
+      if (strcmp(s->fileType, ff->name) == 0) {
+	if (ff->freeHeaderProc != NULL) {
+	  (ff->freeHeaderProc)(s);
+	}
+      }
+    }
+  }
+  
   if (s->extHead == NULL) {
     s->extHead = ckalloc(sizeof(short) * SPHERE_BUFFER_SIZE);
+    s->extHeadType = SNACK_SPHERE_INT;
   }
 
   return TCL_OK;
@@ -107,7 +121,7 @@ ReadSphereSamples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf,
   int size = min(tot, SPHERE_BUFFER_SIZE / Snack_GetNumChannels(s));
   int read = sp_read_data(s->extHead, size, (SP_FILE *)ch);
 
-  if (sp_error((SP_FILE *)ch)) {
+  if (!(sp_error((SP_FILE *)ch) == 0 || sp_error((SP_FILE *)ch) == 101)) {
     return -1;
   }
   
@@ -266,7 +280,7 @@ GetSphereHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
       }
    }
    if (sample_coding != "") {
-      free(sample_coding);
+     free(sample_coding);
    }
 
    /* header size shouldn't be needed by user,
@@ -284,10 +298,11 @@ FreeSphereHeader(Sound *s)
   if (s->extHead != NULL) {
     ckfree((char *) s->extHead);
     s->extHead = NULL;
+    s->extHeadType = 0;
   }
 }
 
-#define SPHEREFILE_VERSION "1.1"
+#define SPHEREFILE_VERSION "1.2"
 
 Snack_FileFormat snackSphFormat = {
   SPHERE_STRING,
@@ -301,6 +316,7 @@ Snack_FileFormat snackSphFormat = {
   NULL,
   SeekSphereFile,
   FreeSphereHeader,
+  NULL,
   (Snack_FileFormat *) NULL
 };
 

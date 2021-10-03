@@ -39,6 +39,7 @@ Snack_FileFormat *format
 *seekProc;
 <br>&nbsp; freeHeaderProc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 *freeHeaderProc;
+<br>&nbsp; configureProc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*configureProc;
 <br>&nbsp; struct Snack_FileFormat *nextPtr;
 <br>} Snack_FileFormat;
 <p>char *<b>name</b>
@@ -47,7 +48,7 @@ Snack_FileFormat *format
 ch, Tcl_Obj *obj, char *buf)
 <p>char *<b>extensionFileTypeProc</b> (char *buf);
 <p>int&nbsp; <b>putHeaderProc</b> (Sound *s, Tcl_Interp *interp, Tcl_Channel
-ch, Tcl_Obj *obj, int length)
+ch, Tcl_Obj *obj, int objc, Tcl_Obj *CONST objv[], int length)
 <p>int&nbsp; <b>openProc</b> (Sound *s, Tcl_Interp *interp,Tcl_Channel
 *ch, char *mode)
 <p>int&nbsp; <b>closeProc </b>(Sound *s, Tcl_Interp *interp, Tcl_Channel
@@ -55,10 +56,11 @@ ch, Tcl_Obj *obj, int length)
 <p>int&nbsp; <b>readSamplesProc</b> (Sound *s, Tcl_Interp *interp, Tcl_Channel
 ch, char *inBuffer, float *outBuffer, int length)
 <p>int&nbsp; <b>writeSamplesProc</b> (Sound *s, Tcl_Channel ch, Tcl_Obj
-*obj, char *buffer, int length)
+*obj, int start, int length)
 <p>int&nbsp; <b>seekProc</b> (Sound *s, Tcl_Interp *interp, Tcl_Channel
 ch, int position)
 <p>void <b>freeHeaderProc</b> (Sound *s)
+<p>int&nbsp; <b>configureProc</b>(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 <br>&nbsp;
 <h3>
 DESCRIPTION</h3>

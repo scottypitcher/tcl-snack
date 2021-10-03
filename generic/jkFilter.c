@@ -441,10 +441,11 @@ mapConfigProc(Snack_Filter f, Tcl_Interp *interp, int objc,
   int i;
   double val;
 
-  ckfree((char *) mf->m);
-  mf->m = (float *) ckalloc(sizeof(float) * objc);
-  mf->nm = objc;
-
+  if (objc > mf->nm) {
+    ckfree((char *) mf->m);
+    mf->m = (float *) ckalloc(sizeof(float) * objc);
+    mf->nm = objc;
+  }
   for (i = 0; i < objc; i++) {
     if (Tcl_GetDoubleFromObj(interp, objv[i], &val) != TCL_OK) {
       return TCL_ERROR;
@@ -452,9 +453,9 @@ mapConfigProc(Snack_Filter f, Tcl_Interp *interp, int objc,
     mf->m[i] = (float) val;
   }
 
-  if (objc == 1 && mf->nm > 1 && mf->si != NULL) {
+  if (objc == 1 && mf->nm > 1 && mf->width > 0) {
     /* Special case, duplicate m[0] on the diagonal */
-    for (i = 0; i < mf->nm; i = i + mf->si->streamWidth + 1) {
+    for (i = 0; i < mf->nm; i = i + mf->width + 1) {
       mf->m[i] = mf->m[0];
     }
   }
@@ -474,6 +475,7 @@ mapCreateProc(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   }
   mf->ns = 0;
   mf->s = NULL;
+  mf->width = 0;
 
   if (mapConfigProc((Snack_Filter) mf, interp, objc, objv) != TCL_OK) {
     ckfree((char *) mf->m);
@@ -1250,6 +1252,7 @@ Snack_CreateFilterType(Snack_FilterType *typePtr)
 }
 
 extern void createSynthesisFilters();
+extern void createIIRFilter();
 
 void
 SnackCreateFilterTypes(Tcl_Interp *interp)
@@ -1260,6 +1263,6 @@ SnackCreateFilterTypes(Tcl_Interp *interp)
   Snack_CreateFilterType(&snackEchoType);
   Snack_CreateFilterType(&snackReverbType);
   createSynthesisFilters();
+  createIIRFilter();
   /*  Snack_CreateFilterType(&snackLowpassType);*/
 }
-

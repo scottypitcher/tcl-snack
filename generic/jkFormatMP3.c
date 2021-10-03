@@ -25,7 +25,6 @@ must retain this copyright notice.
 */
 
 #include <stdlib.h>
-#include <tcl.h>
 #include "snack.h"
 #include "jkFormatMP3.h"
 #include <string.h>
@@ -2969,18 +2968,34 @@ InitMP3()
   imdct_init();
 }
 
+extern struct Snack_FileFormat *snackFileFormats;
+
+#define SNACK_MP3_INT 18
+
 int
 GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 	     char *buf)
 {
   int offset = 0, okHeader = 0, i, j;
-  int mean_frame_size = 0, bitrate, fs;
+  int mean_frame_size = 0, bitrate = 0, fs;
   int layer, prot, br_index, sr_index, pad, mode, totalFrames;
   int passes = 0;
   mp3Info *Si = (mp3Info *)S->extHead;
   
   if (S->debug > 2) Snack_WriteLog("    Enter GetMP3Header\n");
-
+  
+  if (S->extHead != NULL && S->extHeadType != SNACK_MP3_INT) {
+    Snack_FileFormat *ff;
+    
+    for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+      if (strcmp(S->fileType, ff->name) == 0) {
+	if (ff->freeHeaderProc != NULL) {
+	  (ff->freeHeaderProc)(S);
+	}
+      }
+    }
+  }
+  
   if (Si == NULL) {
     Si = (mp3Info *) ckalloc(sizeof(mp3Info));
     for (i = 0; i < 32; i++) {
@@ -3161,9 +3176,11 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   Si->gotHeader = 1;
   Si->append = 0;
   Si->data = 0;
+  Si->bitrate = 1000 * bitrate;
   memcpy((char *)&Si->headerInt, &buf[offset], 4);
 
   S->extHead = (char *) Si;
+  S->extHeadType = SNACK_MP3_INT;
 
   if (S->debug > 2) Snack_WriteLogInt("    Exit GetMP3Header", S->length);
 
@@ -3300,7 +3317,6 @@ ReadMP3Samples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf,
 	Si->ind > 0) break;    
     last = Si->ind;
     if (processHeader(s, &header, Si->cnt)) break;
-    /*printf("AAAA %d\n", bufind);*/
     if (layer3_frame((mp3Info *)s->extHead, &header, len)) break;
   }
 
@@ -3330,11 +3346,24 @@ OpenMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel *ch, char *mode)
 {
   int i, j;
   mp3Info *Si = NULL;
-
+  
   if (S->debug > 2) Snack_WriteLog("    Enter OpenMP3File\n");
+
+  if (S->extHead != NULL && S->extHeadType != SNACK_MP3_INT) {
+    Snack_FileFormat *ff;
+    
+    for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+      if (strcmp(S->fileType, ff->name) == 0) {
+	if (ff->freeHeaderProc != NULL) {
+	  (ff->freeHeaderProc)(S);
+	}
+      }
+    }
+  }
 
   if (S->extHead == NULL) {
     S->extHead = (char *) ckalloc(sizeof(mp3Info));
+    S->extHeadType = SNACK_MP3_INT;
   }
   Si = (mp3Info *)S->extHead;
   for (i = 0; i < 32; i++) {
@@ -3396,7 +3425,64 @@ FreeMP3Header(Sound *s)
   if (s->extHead != NULL) {
     ckfree((char *)s->extHead);
     s->extHead = NULL;
+    s->extHeadType = 0;
   }
 
   if (s->debug > 2) Snack_WriteLog("    Exit FreeMP3Header\n");
+}
+
+int
+ConfigMP3Header(Sound *s, Tcl_Interp *interp, int objc,
+		Tcl_Obj *CONST objv[])
+{
+  mp3Info *si = (mp3Info *)s->extHead;
+  int arg, index;
+  static char *optionStrings[] = {
+    "-bitrate", NULL
+  };
+  enum options {
+    BITRATE
+  };
+  
+  if (si == NULL || objc < 3) return 0;
+
+  if (objc == 3) { /* get option */
+    if (Tcl_GetIndexFromObj(interp, objv[2], optionStrings, "option", 0,
+			    &index) != TCL_OK) {
+      Tcl_AppendResult(interp, ", or\n", NULL);
+      return 0;
+    }
+    
+    switch ((enum options) index) {
+    case BITRATE:
+      {
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(si->bitrate));
+	break;
+      }
+    }
+  } else {
+    for (arg = 2; arg < objc; arg+=2) {
+      int index;
+      
+      if (Tcl_GetIndexFromObj(interp, objv[arg], optionStrings, "option", 0,
+			      &index) != TCL_OK) {
+	return TCL_ERROR;
+      }
+      
+      if (arg + 1 == objc) {
+	Tcl_AppendResult(interp, "No argument given for ",
+			 optionStrings[index], " option\n", (char *) NULL);
+	return 0;
+      }
+      
+      switch ((enum options) index) {
+      case BITRATE:
+	{
+	  break;
+	}
+      }
+    }
+  }
+
+  return 1;
 }

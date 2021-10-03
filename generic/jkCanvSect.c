@@ -33,6 +33,8 @@
 #define SNACK_DEFAULT_SECTWINTYPE      SNACK_WIN_HAMMING
 #define SNACK_DEFAULT_SECTWINTYPE_NAME "hamming"
 
+#define SNACK_DEFAULT_LPC_ORDER        "20"
+
 /*
  * Section item structure
  */
@@ -69,6 +71,9 @@ typedef struct SectionItem  {
   double maxValue;
   double minValue;
   char *windowTypeStr;
+  char *analysisTypeStr;
+  int type;
+  int lpcOrder;
   Tcl_Interp *interp;
   double preemph;
 
@@ -97,7 +102,9 @@ typedef enum {
   OPTION_MAXVAL,
   OPTION_MINVAL,
   OPTION_SKIP,
-  OPTION_WINTYPE
+  OPTION_WINTYPE,
+  OPTION_ANALYSISTYPE,
+  OPTION_LPCORDER
 } ConfigSpec;
 
 static Tk_ConfigSpec configSpecs[] = {
@@ -158,6 +165,12 @@ static Tk_ConfigSpec configSpecs[] = {
 
   {TK_CONFIG_STRING, "-windowtype", (char *) NULL, (char *) NULL,
    SNACK_DEFAULT_SECTWINTYPE_NAME, Tk_Offset(SectionItem, windowTypeStr), 0},
+
+  {TK_CONFIG_STRING, "-analysistype", (char *) NULL, (char *) NULL,
+   "fft", Tk_Offset(SectionItem, analysisTypeStr), 0},
+
+  {TK_CONFIG_INT, "-lpcorder", (char *) NULL, (char *) NULL,
+   SNACK_DEFAULT_LPC_ORDER, Tk_Offset(SectionItem, lpcOrder), 0},
 
   {TK_CONFIG_INT, "-debug", (char *) NULL, (char *) NULL,
    "0", Tk_Offset(SectionItem, debug), 0},
@@ -263,8 +276,6 @@ CreateSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   sectPtr->si.fftlen = 512;
   sectPtr->si.winlen = 256;
   sectPtr->preemph = 0.0;
-  sectPtr->si.fftmax = -10000;
-  sectPtr->si.fftmin = 10000;
   sectPtr->si.hamwin = (float *) ckalloc(NMAX * sizeof(float));
   sectPtr->si.abmax = 0.0f;
   sectPtr->xfft = (float *)  ckalloc(NMAX * sizeof(float));
@@ -292,6 +303,9 @@ CreateSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   sectPtr->si.windowType = SNACK_DEFAULT_SECTWINTYPE;
   sectPtr->si.windowTypeSet = SNACK_DEFAULT_SECTWINTYPE;
   sectPtr->windowTypeStr = NULL;
+  sectPtr->analysisTypeStr = NULL;
+  sectPtr->type = 0;
+  sectPtr->lpcOrder = atoi(SNACK_DEFAULT_LPC_ORDER);
   sectPtr->interp = interp;
 
   if (sectPtr->si.hamwin == NULL) {
@@ -388,25 +402,92 @@ ComputeSectionCoords(Tk_Item *itemPtr)
 }
 
 void
+GetFloatMonoSigSect(SnackItemInfo *siPtr,SnackLinkedFileInfo *info,
+		    float *sig,int beg, int len) {
+  /* sig buffer must be allocated, file must be open! */
+
+  int i;
+
+  if (siPtr->storeType == SOUND_IN_MEMORY) {
+    if (siPtr->nchannels == 1 || siPtr->channel != -1) {
+      int p = beg * siPtr->nchannels + siPtr->channel;
+
+      for (i = 0; i < len; i++) {
+	sig[i] = (float) (FSAMPLE(siPtr, p));
+	p += siPtr->nchannels;
+      }
+    } else {
+      int c;
+
+      for (i = 0; i < len; i++) {
+	sig[i] = 0.0;
+      }
+      for (c = 0; c < siPtr->nchannels; c++) {
+	int p = beg * siPtr->nchannels + c;
+
+	for (i = 0; i < len; i++) {
+	  sig[i] += (float) (FSAMPLE(siPtr, p));
+	  p += siPtr->nchannels;
+	}
+      }
+      for (i = 0; i < len; i++) {
+	sig[i] /= siPtr->nchannels;
+      }
+    }
+  } else { /* storeType != SOUND_IN_MEMORY */
+    if (siPtr->nchannels == 1 || siPtr->channel != -1) {
+      int p = beg * siPtr->nchannels + siPtr->channel;
+	
+      for (i = 0; i < len; i++) {
+	sig[i] = (float) (GetSample(info, p));
+	p += siPtr->nchannels;
+      }
+    } else {
+      int c;
+	
+      for (i = 0; i < len; i++) {
+	sig[i] = 0.0;
+      }
+      for (c = 0; c < siPtr->nchannels; c++) {
+	int p = beg * siPtr->nchannels + c;
+	  
+	for (i = 0; i < len; i++) {
+	  sig[i] += (float) (GetSample(info, p));
+	  p += siPtr->nchannels;
+	}
+      }
+      for (i = 0; i < len; i++) {
+	sig[i] /= siPtr->nchannels;
+      }
+    }
+  }
+}
+
+void
 ComputeSection(Tk_Item *itemPtr)
 {
   SectionItem *sectPtr = (SectionItem *) itemPtr;
   SnackItemInfo *siPtr = &sectPtr->si;
   int i, j;
   int fftlen     = siPtr->fftlen;
+  int winlen     = siPtr->winlen;
   float preemph  = siPtr->preemph;
   int RestartPos = siPtr->RestartPos - siPtr->validStart;
   int storeType  = siPtr->storeType;
   int n, skip = siPtr->skip;
-  double Max = -1000.0, Min = 1000.0;
   SnackLinkedFileInfo info;
-
+  float *sig_lpc;
+  float presample = 0.0;
+  int siglen;
+  float g_lpc;
+  
   if (sectPtr->debug) Snack_WriteLogInt("Enter ComputeSection", sectPtr->ssmp);
 
   if (skip < 1) {
     skip = fftlen;
   }
-  n = (sectPtr->esmp - siPtr->RestartPos) / skip;
+  siglen = sectPtr->esmp - siPtr->RestartPos;
+  n = siglen / skip;
 
   for (i = 0; i < fftlen/2; i++) {
     sectPtr->ffts[i] = 0.0;
@@ -414,7 +495,8 @@ ComputeSection(Tk_Item *itemPtr)
 
   if (n == 0) return;
 
-  Snack_InitFFT(siPtr->fftlen);
+  Snack_InitFFT(fftlen);
+  Snack_InitWindow(siPtr->hamwin, winlen, fftlen, siPtr->windowType);
 
   if (storeType != SOUND_IN_MEMORY) {
     if (OpenLinkedFile(sectPtr->sound, &info) != TCL_OK) {
@@ -422,82 +504,115 @@ ComputeSection(Tk_Item *itemPtr)
     }
   }
 
-  for (j = 0; j < n; j++) {
-    if (storeType == SOUND_IN_MEMORY) {
-      if (siPtr->nchannels == 1 || siPtr->channel != -1) {
-	int p = (RestartPos + j * skip) * siPtr->nchannels + siPtr->channel;
+  if (sectPtr->type != 0 && n > 0) { /* LPC + FFT */
 
-	for (i = 0; i < fftlen; i++) {
-	  sectPtr->xfft[i] = (float) ((FSAMPLE(siPtr, p + siPtr->nchannels)
-				       - preemph * FSAMPLE(siPtr, p))
-				      * siPtr->hamwin[i]);
-	  p += siPtr->nchannels;
-	}
-      } else {
-	int c;
-	
-	for (i = 0; i < fftlen; i++) {
-	  sectPtr->xfft[i] = 0.0;
-	}
-	for (c = 0; c < siPtr->nchannels; c++) {
-	  int p = (RestartPos + j * skip) * siPtr->nchannels + c;
-	  
-	  for (i = 0; i < fftlen; i++) {
-	    sectPtr->xfft[i] += (float) ((FSAMPLE(siPtr, p + siPtr->nchannels)
-					  - preemph * FSAMPLE(siPtr, p))
-					 * siPtr->hamwin[i]);
-	    p += siPtr->nchannels;
-	  }
-	}
-	for (i = 0; i < fftlen; i++) {
-	  sectPtr->xfft[i] /= siPtr->nchannels;
-	}
-      }
-    } else { /* storeType != SOUND_IN_MEMORY */
-      if (siPtr->nchannels == 1 || siPtr->channel != -1) {
-	int p = (RestartPos + j * skip) * siPtr->nchannels + siPtr->channel;
-	
-	for (i = 0; i < fftlen; i++) {
-	  sectPtr->xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels)
-				       - preemph * GetSample(&info, p))
-				      * siPtr->hamwin[i]);
-	  p += siPtr->nchannels;
-	}
-      } else {
-	int c;
-	
-	for (i = 0; i < fftlen; i++) {
-	  sectPtr->xfft[i] = 0.0;
-	}
-	for (c = 0; c < siPtr->nchannels; c++) {
-	  int p = (RestartPos + j * skip) * siPtr->nchannels + c;
-	  
-	  for (i = 0; i < fftlen; i++) {
-	    sectPtr->xfft[i] += (float) ((GetSample(&info, p +siPtr->nchannels)
-					  - preemph * GetSample(&info, p))
-					 * siPtr->hamwin[i]);
-	    p += siPtr->nchannels;
-	  }
-	}
-	for (i = 0; i < fftlen; i++) {
-	  sectPtr->xfft[i] /= siPtr->nchannels;
-	}
-      }
+    sig_lpc = (float *) ckalloc(siglen * sizeof(float));
+
+    GetFloatMonoSigSect(siPtr,&info,sig_lpc,RestartPos,siglen);
+    if (RestartPos > 0)
+	GetFloatMonoSigSect(siPtr,&info,&presample,RestartPos-1,1);
+    PreEmphase(sig_lpc,presample,siglen,preemph);
+
+    /* windowing signal to make lpc look more like the fft spectrum ??? */
+    for (i = 0; i < winlen/2; i++) {
+      sig_lpc[i] = sig_lpc[i] * siPtr->hamwin[i];
+    }
+    for (i = winlen/2; i < winlen; i++) {
+      sig_lpc[i+siglen-winlen] = sig_lpc[i+siglen-winlen] * siPtr->hamwin[i];
     }
 
-    Snack_DBPowerSpectrum(sectPtr->xfft);
+    g_lpc = LpcAnalysis(sig_lpc,siglen,sectPtr->xfft,sectPtr->lpcOrder);
+    ckfree((char *)sig_lpc);
 
+    for (i=0; i<=sectPtr->lpcOrder; i++) {
+      /* the factor is a guess, try looking for analytical value */
+      sectPtr->xfft[i] = sectPtr->xfft[i] * 5000000000.0f;
+    }
+    for (i = sectPtr->lpcOrder + 1; i < fftlen; i++) {
+      sectPtr->xfft[i] = 0.0;
+    }
+    
+    Snack_DBPowerSpectrum(sectPtr->xfft);
+    
     for (i = 0; i < fftlen/2; i++) {
-      sectPtr->ffts[i] += sectPtr->xfft[i];
+      sectPtr->ffts[i] = -sectPtr->xfft[i];
+    }
+  } else {  /* usual FFT */
+    
+    for (j = 0; j < n; j++) {
+      if (storeType == SOUND_IN_MEMORY) {
+	if (siPtr->nchannels == 1 || siPtr->channel != -1) {
+	  int p = (RestartPos + j * skip) * siPtr->nchannels + siPtr->channel;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    sectPtr->xfft[i] = (float) ((FSAMPLE(siPtr, p + siPtr->nchannels)
+					 - preemph * FSAMPLE(siPtr, p))
+					* siPtr->hamwin[i]);
+	    p += siPtr->nchannels;
+	  }
+	} else {
+	  int c;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    sectPtr->xfft[i] = 0.0;
+	  }
+	  for (c = 0; c < siPtr->nchannels; c++) {
+	    int p = (RestartPos + j * skip) * siPtr->nchannels + c;
+	    
+	    for (i = 0; i < fftlen; i++) {
+	      sectPtr->xfft[i] += (float)((FSAMPLE(siPtr, p + siPtr->nchannels)
+					   - preemph * FSAMPLE(siPtr, p))
+					  * siPtr->hamwin[i]);
+	      p += siPtr->nchannels;
+	    }
+	  }
+	  for (i = 0; i < fftlen; i++) {
+	    sectPtr->xfft[i] /= siPtr->nchannels;
+	  }
+	}
+      } else { /* storeType != SOUND_IN_MEMORY */
+	if (siPtr->nchannels == 1 || siPtr->channel != -1) {
+	  int p = (RestartPos + j * skip) * siPtr->nchannels + siPtr->channel;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    sectPtr->xfft[i] = (float) ((GetSample(&info, p + siPtr->nchannels)
+					 - preemph * GetSample(&info, p))
+					* siPtr->hamwin[i]);
+	    p += siPtr->nchannels;
+	  }
+	} else {
+	  int c;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    sectPtr->xfft[i] = 0.0;
+	  }
+	  for (c = 0; c < siPtr->nchannels; c++) {
+	    int p = (RestartPos + j * skip) * siPtr->nchannels + c;
+	    
+	    for (i = 0; i < fftlen; i++) {
+	      sectPtr->xfft[i] += (float)((GetSample(&info, p+siPtr->nchannels)
+					   - preemph * GetSample(&info, p))
+					  * siPtr->hamwin[i]);
+	      p += siPtr->nchannels;
+	    }
+	  }
+	  for (i = 0; i < fftlen; i++) {
+	    sectPtr->xfft[i] /= siPtr->nchannels;
+	  }
+	}
+      }
+      
+      Snack_DBPowerSpectrum(sectPtr->xfft);
+      
+      for (i = 0; i < fftlen/2; i++) {
+	sectPtr->ffts[i] += sectPtr->xfft[i];
+      }
+    }
+    
+    for (i = 0; i < fftlen/2; i++) {
+      sectPtr->ffts[i] = sectPtr->ffts[i] / (float) n;
     }
   }
-
-  for (i = 0; i < fftlen/2; i++) {
-    sectPtr->ffts[i] = sectPtr->ffts[i] / (float) n;
-    if (sectPtr->ffts[i] > Max) Max = sectPtr->ffts[i];
-    if (sectPtr->ffts[i] < Min) Min = sectPtr->ffts[i];
-  }  
-
   if (storeType != SOUND_IN_MEMORY) {
     CloseLinkedFile(&info);
   }
@@ -590,10 +705,6 @@ UpdateSection(ClientData clientData, int flag)
   
   sectPtr->si.validStart = s->validStart;
 
-  sectPtr->si.fftmax = -10000;
-  sectPtr->si.fftmin = 10000;
-  Snack_InitWindow(sectPtr->si.hamwin, sectPtr->si.winlen, sectPtr->si.fftlen,
-		   sectPtr->si.windowType);
   ComputeSection((Tk_Item *)sectPtr);
   
   if (ComputeSectionCoords((Tk_Item *)sectPtr) != TCL_OK) {
@@ -659,7 +770,10 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 
   if (CheckFFTlen(interp, sectPtr->si.fftlen) != TCL_OK) return TCL_ERROR;
 
-  if (CheckWinlen(interp, sectPtr->si.winlen) != TCL_OK) return TCL_ERROR;
+  if (CheckWinlen(interp, sectPtr->si.winlen, sectPtr->si.fftlen) != TCL_OK)
+    return TCL_ERROR;
+
+  if (CheckLPCorder(interp, sectPtr->lpcOrder) != TCL_OK) return TCL_ERROR;
 
   if (OptSpecified(OPTION_SOUND)) {
     if (sectPtr->newSoundName == NULL) {
@@ -779,6 +893,22 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
     sectPtr->si.channel = 0;
   }
 
+  if (OptSpecified(OPTION_ANALYSISTYPE)) {
+    int len = strlen(sectPtr->analysisTypeStr);
+
+    if (strncasecmp(sectPtr->analysisTypeStr, "lpc", len) == 0) {
+      sectPtr->type = 1;
+    } else if (strncasecmp(sectPtr->analysisTypeStr, "fft", len) == 0) {
+      sectPtr->type = 0;
+    } else {
+      Tcl_AppendResult(interp, "-type should be FFT or LPC", (char *) NULL);
+      return TCL_ERROR;
+    }
+    doCompute = 1;
+  }
+  if (OptSpecified(OPTION_LPCORDER)) {
+    doCompute = 1;
+  }
   if (OptSpecified(OPTION_WINTYPE)) {
     if (GetWindowType(interp, sectPtr->windowTypeStr,
 		      &sectPtr->si.windowTypeSet)
@@ -792,10 +922,6 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   if (doCompute) {
     sectPtr->nPoints = sectPtr->si.fftlen / 2;
     sectPtr->si.RestartPos = sectPtr->ssmp;
-    sectPtr->si.fftmax = -10000;
-    sectPtr->si.fftmin = 10000;
-    Snack_InitWindow(sectPtr->si.hamwin, sectPtr->si.winlen,
-		     sectPtr->si.fftlen, sectPtr->si.windowType);
     ComputeSection((Tk_Item *)sectPtr);
   }
 

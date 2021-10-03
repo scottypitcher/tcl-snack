@@ -2,7 +2,33 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.0
+package require -exact snack 2.1
+# Try to load optional file format handlers
+catch { package require snacksphere }
+catch { package require snackogg }
+
+# If they are present add new filetypes to file dialogs
+set extTypes  {}
+set loadTypes {}
+set loadKeys  {}
+set saveTypes {}
+set saveKeys  {}
+if {[info exists snack::snacksphere]} {
+    lappend extTypes {SPHERE .sph} {SPHERE .wav}
+    lappend loadTypes {{SPHERE Files} {.sph}} {{SPHERE Files} {.wav}}
+    lappend loadKeys SPHERE SPHERE
+}
+if {[info exists snack::snackogg]} {
+  lappend extTypes  {OGG .ogg}
+  lappend loadTypes {{Ogg Vorbis Files} {.ogg}}
+  lappend loadKeys  OGG
+  lappend saveTypes {{Ogg Vorbis Files} {.ogg}}
+  lappend saveKeys  OGG
+}
+snack::addExtTypes $extTypes
+snack::addLoadTypes $loadTypes $loadKeys
+snack::addSaveTypes $saveTypes $saveKeys
+
 
 snack::debug 0
 snack::sound s -debug 0
@@ -197,7 +223,11 @@ if [info exists argv] {
 
 wm protocol . WM_DELETE_WINDOW exit
 
-foreach file [lsort -dictionary [glob -nocomplain *.mp3 *.wav *.MP3 *.WAV]] {
+set filelist [glob -nocomplain *.mp3 *.wav *.MP3 *.WAV]
+if {[info exists snack::snackogg]} {
+  set filelist [concat $filelist [glob -nocomplain *.ogg *.OGG]]
+}
+foreach file [lsort -dictionary $filelist] {
     set name [file tail $file]
     set files($name) $file
     .frame.list insert end $file

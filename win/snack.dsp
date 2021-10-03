@@ -54,7 +54,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 tclstub83.lib tkstub83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.0\libsnack.dll" /libpath:"C:\Program Files\Tcl\lib"
+# ADD LINK32 tclstub83.lib tkstub83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.1\libsnack.dll" /libpath:"C:\Program Files\Tcl\lib"
 
 !ELSEIF  "$(CFG)" == "snack - Win32 Debug"
 
@@ -106,8 +106,8 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 tclstub83.lib tkstub83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.0\libsnack.dll" /libpath:"C:\Program Files\Tcl\lib"
-# ADD LINK32 tcl80.lib tk80.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.0\libsnack.dll" /libpath:"C:\Program Files\Tcl\lib"
+# ADD BASE LINK32 tclstub83.lib tkstub83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.1\libsnack.dll" /libpath:"C:\Program Files\Tcl\lib"
+# ADD LINK32 tcl80.lib tk80.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.1\libsnack.dll" /libpath:"C:\Program Files\Tcl\lib"
 
 !ENDIF 
 
@@ -150,6 +150,10 @@ SOURCE=..\generic\jkCanvWave.c
 # Begin Source File
 
 SOURCE=..\generic\jkFilter.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\jkFilterIIR.c
 # End Source File
 # Begin Source File
 

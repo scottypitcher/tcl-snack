@@ -58,4 +58,14 @@ Demo of a composed filter, i.e. one map filter pipe-lined with an echo filter.
 formant.tcl
 Demo of a simple formant speech synthesizer built using Snack filters.
 
+polarspec.tcl
+Polar spectrum plot of microphone input signal.
 
+oggstream.tcl
+Demo that sends a live recorded Ogg/Vorbis stream to aserver.tcl
+
+generator.tcl
+Simple real-time tone generator.
+
+notescale.tcl
+Example of on-the-fly beep generation.

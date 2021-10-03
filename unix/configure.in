@@ -4,7 +4,7 @@ dnl	generate the file "configure", which is run during Snack installation
 dnl	to configure the system for the local environment.
 AC_INIT(../generic/snack.h)
 
-SNACK_VERSION=2.0
+SNACK_VERSION=2.1
 
 #--------------------------------------------------------------------
 #       See if there was a command-line option for where Tcl is;  if
@@ -156,7 +156,21 @@ NISTLIBS="$NIST_DIR/lib/libsp.a $NIST_DIR/lib/libutil.a"
 if test ! "$NIST_DIR" = ""; then
   LIBNIST="libsnacksphere${SHLIB_SUFFIX}"
 fi
+
+
 #--------------------------------------------------------------------
+#	Get the path to the Ogg/Vorbis installation. This is
+#	only necessary if you want to build the snackogg package.
+#--------------------------------------------------------------------
+
+LIBOGG=""
+AC_ARG_WITH(ogg,[  --with-ogg=DIR          use Ogg/Vorbis installation in DIR],
+        OGG_DIR=$withval, OGG_DIR="")
+OGGINC="-I$OGG_DIR/include"
+OGGLIBS="$OGG_DIR/lib/libvorbisfile.a $OGG_DIR/lib/libvorbis.a $OGG_DIR/lib/libogg.a"
+if test ! "$OGG_DIR" = ""; then
+  LIBOGG="libsnackogg${SHLIB_SUFFIX}"
+fi
 
 #--------------------------------------------------------------------
 #	Disable stub support. This is necessary if you
@@ -207,6 +221,9 @@ AC_SUBST(AOBJ)
 AC_SUBST(NISTINC)
 AC_SUBST(NISTLIBS)
 AC_SUBST(LIBNIST)
+AC_SUBST(OGGINC)
+AC_SUBST(OGGLIBS)
+AC_SUBST(LIBOGG)
 AC_SUBST(TCLAPI)
 AC_SUBST(LD_SEARCH_FLAGS)
 AC_SUBST(TCLVER)

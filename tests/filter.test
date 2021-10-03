@@ -1,7 +1,7 @@
 # Commands covered: snack::filter
 #
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -185,9 +185,10 @@ test filter-2.14 {sound filter command, stereo, map filter reconfigured} {
   $s sample 500002 -3000 -4000
   set f [snack::filter map 0.25]
   $s filter $f
+  set res [$s max],[$s min]
   $f configure 2.0
   $s filter $f
-  set res [$s max],[$s min]
+  append res ,[$s max],[$s min]
   $s sample 500001 0 0
   $s sample 500002 0 0
   $s changed New
@@ -195,7 +196,7 @@ test filter-2.14 {sound filter command, stereo, map filter reconfigured} {
   $f destroy
   $s destroy
   set res
-} {2000,-2000,0,0}
+} {1000,-1000,2000,-2000,0,0}
 
 test filter-3.1 {sound filter command, with -progress option} {
   set res ""
@@ -262,17 +263,17 @@ test filter-4.2 {filter compose, apply three-filter composition} {
 test filter-4.3 {filter compose, no filter specified} {
   catch {snack::filter compose} msg
   set msg
-} {wrong # args: should be " compose filter1 filter2 ..."}
+} {wrong # args: should be "compose filter1 filter2 ..."}
 
 test filter-4.4 {filter compose, only one filter specified} {
   catch {snack::filter compose junk} msg
   set msg
-} {wrong # args: should be " compose filter1 filter2 ..."}
+} {wrong # args: should be "compose filter1 filter2 ..."}
 
 test filter-5.1 {echo filter, missing parameter} {
   catch {snack::filter echo} msg
   set msg
-} {wrong # args: should be " echo inGain outGain delay1 decay1 ..."}
+} {wrong # args: should be "echo inGain outGain delay1 decay1 ..."}
 
 test filter-5.2 {echo filter, negative delay parameter} {
   catch {snack::filter echo 0.0 0.0 -100 0} msg

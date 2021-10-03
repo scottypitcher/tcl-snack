@@ -283,23 +283,23 @@ Snack_Init(Tcl_Interp *interp)
 
   Tcl_CreateObjCommand(interp, "sound", Snack_SoundCmd,
 		       (ClientData) soundHashTable, (Tcl_CmdDeleteProc *)NULL);
-
+  
   Tcl_CreateObjCommand(interp, "snack::sound", Snack_SoundCmd,
 		       (ClientData) soundHashTable, Snack_SoundDeleteCmd);
-
+  
   Tcl_CreateObjCommand(interp, "audio", Snack_AudioCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
-
+  
   Tcl_CreateObjCommand(interp, "snack::audio", Snack_AudioCmd,
 		       NULL, Snack_AudioDeleteCmd);
-
+  
   Tcl_CreateObjCommand(interp, "snack::mixer", Snack_MixerCmd,
 		       NULL, Snack_MixerDeleteCmd);
-
+  
   Tcl_CreateObjCommand(interp, "snack::filter", Snack_FilterCmd,
 		       (ClientData) filterHashTable, Snack_FilterDeleteCmd);
-
-  Tcl_CreateObjCommand(interp, "snack::debug", 
+  
+  Tcl_CreateObjCommand(interp, "snack::debug",
 		       (Tcl_ObjCmdProc*) Snack_DebugCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
 
@@ -315,11 +315,11 @@ Snack_Init(Tcl_Interp *interp)
   if (initialized == 0) {
     SnackDefineFileFormats(interp);
     SnackCreateFilterTypes(interp);
-
+    
     SnackAudioInit();
-      
+    
     Tcl_CreateExitHandler(Snack_ExitProc, (ClientData) NULL);
-
+    
     initialized = 1;
   }
 #ifdef SNACK_CSLU_TOOLKIT

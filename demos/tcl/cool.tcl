@@ -5,7 +5,32 @@ exec wish8.3 "$0" "$@"
 # An example of how to build a sound application using Snack.
 # Can also be used as a base for specialized applications.
 
-package require -exact snack 2.0
+package require -exact snack 2.1
+# Try to load optional file format handlers
+catch { package require snacksphere }
+catch { package require snackogg }
+
+# If they are present add new filetypes to file dialogs
+set extTypes  {}
+set loadTypes {}
+set loadKeys  {}
+set saveTypes {}
+set saveKeys  {}
+if {[info exists snack::snacksphere]} {
+    lappend extTypes {SPHERE .sph} {SPHERE .wav}
+    lappend loadTypes {{SPHERE Files} {.sph}} {{SPHERE Files} {.wav}}
+    lappend loadKeys SPHERE SPHERE
+}
+if {[info exists snack::snackogg]} {
+  lappend extTypes  {OGG .ogg}
+  lappend loadTypes {{Ogg Vorbis Files} {.ogg}}
+  lappend loadKeys  OGG
+  lappend saveTypes {{Ogg Vorbis Files} {.ogg}}
+  lappend saveKeys  OGG
+}
+snack::addExtTypes $extTypes
+snack::addLoadTypes $loadTypes $loadKeys
+snack::addSaveTypes $saveTypes $saveKeys
 
 set v(debug) 0
 snack::sound snd -debug $v(debug)

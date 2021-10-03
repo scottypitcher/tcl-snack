@@ -475,7 +475,7 @@ ComputeWaveCoords(Tk_Item *itemPtr)
       wavePtr->preSound->fcname = NULL;
       Snack_DeleteSound(wavePtr->preSound);
     }
-    wavePtr->preSound = Snack_NewSound(100, LIN8, wavePtr->sound->nchannels);
+    wavePtr->preSound = Snack_NewSound(200, LIN8, wavePtr->sound->nchannels);
     if (wavePtr->preSound != NULL) {
       wavePtr->preSound->fcname = wavePtr->preCompFile;
       type = LoadSound(wavePtr->preSound, interp, NULL, 0, -1);
@@ -592,7 +592,8 @@ ComputeWaveCoords(Tk_Item *itemPtr)
 			       "Computing waveform", 1.0);
       }
       if (SaveSound(wavePtr->preSound, interp, wavePtr->preCompFile, NULL,
-		0, wavePtr->preSound->length, AIFF_STRING) == TCL_ERROR) {
+		    0, NULL, 0, wavePtr->preSound->length, AIFF_STRING) ==
+	  TCL_ERROR) {
 	if (wavePtr->debug > 2) Snack_WriteLog("    Failed saving waveform\n");
 	wavePtr->preCompFile = NULL;
       }
@@ -1435,7 +1436,7 @@ WaveToPS(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr, int prepass)
     sprintf(buffer, "%.15g %.15g lineto\n%.15g %.15g lineto\n",
 	    x0[i] + xo, Tk_CanvasPsY(canvas, (double) 
 				     (-y0[i]/scale + yo+ wavePtr->height / 2)),
-	    x1[i] + xo, Tk_CanvasPsY(canvas, (double) 
+	    x1[i] + xo + 0.5, Tk_CanvasPsY(canvas, (double) 
 				    (-y1[i]/scale + yo+ wavePtr->height / 2)));
     Tcl_AppendResult(interp, buffer, (char *) NULL);
   }

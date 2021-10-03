@@ -95,7 +95,7 @@ EXTERN void		Snack_WriteLog _ANSI_ARGS_((char * s));
 /* 23 */
 EXTERN void		Snack_WriteLogInt _ANSI_ARGS_((char * s, int n));
 /* 24 */
-EXTERN SnackFileFormat * Snack_GetFileFormats _ANSI_ARGS_((void));
+EXTERN Snack_FileFormat * Snack_GetFileFormats _ANSI_ARGS_((void));
 /* 25 */
 EXTERN void		Snack_InitWindow _ANSI_ARGS_((float * hamwin, 
 				int winlen, int fftlen, int type));
@@ -149,7 +149,7 @@ typedef struct SnackStubs {
     int (*snackCloseFile) _ANSI_ARGS_((closeProc * CloseProc, Sound * s, Tcl_Interp * interp, Tcl_Channel * ch)); /* 21 */
     void (*snack_WriteLog) _ANSI_ARGS_((char * s)); /* 22 */
     void (*snack_WriteLogInt) _ANSI_ARGS_((char * s, int n)); /* 23 */
-    SnackFileFormat * (*snack_GetFileFormats) _ANSI_ARGS_((void)); /* 24 */
+    Snack_FileFormat * (*snack_GetFileFormats) _ANSI_ARGS_((void)); /* 24 */
     void (*snack_InitWindow) _ANSI_ARGS_((float * hamwin, int winlen, int fftlen, int type)); /* 25 */
     int (*snack_InitFFT) _ANSI_ARGS_((int n)); /* 26 */
     int (*snack_DBPowerSpectrum) _ANSI_ARGS_((float * x)); /* 27 */

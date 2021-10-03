@@ -22,6 +22,8 @@ ac_help="$ac_help
 ac_help="$ac_help
   --with-nist=DIR         use NIST/SPHERE libraries from DIR"
 ac_help="$ac_help
+  --with-ogg=DIR          use Ogg/Vorbis installation in DIR"
+ac_help="$ac_help
   --disable-stubs         disable stub support"
 
 # Initialize some variables set by options.
@@ -534,7 +536,7 @@ fi
 
 
 
-SNACK_VERSION=2.0
+SNACK_VERSION=2.1
 
 #--------------------------------------------------------------------
 #       See if there was a command-line option for where Tcl is;  if
@@ -558,7 +560,7 @@ if test "${with_tcl+set}" = set; then
 fi
 
 	echo $ac_n "checking for Tcl configuration""... $ac_c" 1>&6
-echo "configure:562: checking for Tcl configuration" >&5
+echo "configure:564: checking for Tcl configuration" >&5
 	if eval "test \"`echo '$''{'ac_cv_c_tclconfig'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -649,7 +651,7 @@ if test "${with_tk+set}" = set; then
 fi
 
 	echo $ac_n "checking for Tk configuration""... $ac_c" 1>&6
-echo "configure:653: checking for Tk configuration" >&5
+echo "configure:655: checking for Tk configuration" >&5
 	if eval "test \"`echo '$''{'ac_cv_c_tkconfig'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -831,7 +833,7 @@ fi
 
 if test "$enableval" != "no"; then
   echo $ac_n "checking Mozilla Home""... $ac_c" 1>&6
-echo "configure:835: checking Mozilla Home" >&5
+echo "configure:837: checking Mozilla Home" >&5
 # Check for Mozilla home (install directory of netscape (plugins))
   # Check whether --with-mozilla or --without-mozilla was given.
 if test "${with_mozilla+set}" = set; then
@@ -872,7 +874,27 @@ NISTLIBS="$NIST_DIR/lib/libsp.a $NIST_DIR/lib/libutil.a"
 if test ! "$NIST_DIR" = ""; then
   LIBNIST="libsnacksphere${SHLIB_SUFFIX}"
 fi
+
+
 #--------------------------------------------------------------------
+#	Get the path to the Ogg/Vorbis installation. This is
+#	only necessary if you want to build the snackogg package.
+#--------------------------------------------------------------------
+
+LIBOGG=""
+# Check whether --with-ogg or --without-ogg was given.
+if test "${with_ogg+set}" = set; then
+  withval="$with_ogg"
+  OGG_DIR=$withval
+else
+  OGG_DIR=""
+fi
+
+OGGINC="-I$OGG_DIR/include"
+OGGLIBS="$OGG_DIR/lib/libvorbisfile.a $OGG_DIR/lib/libvorbis.a $OGG_DIR/lib/libogg.a"
+if test ! "$OGG_DIR" = ""; then
+  LIBOGG="libsnackogg${SHLIB_SUFFIX}"
+fi
 
 #--------------------------------------------------------------------
 #	Disable stub support. This is necessary if you
@@ -910,6 +932,9 @@ else
     SNIST_LIB_SPEC="-lsnack"
 fi
 #--------------------------------------------------------------------
+
+
+
 
 
 
@@ -1101,6 +1126,9 @@ s%@AOBJ@%$AOBJ%g
 s%@NISTINC@%$NISTINC%g
 s%@NISTLIBS@%$NISTLIBS%g
 s%@LIBNIST@%$LIBNIST%g
+s%@OGGINC@%$OGGINC%g
+s%@OGGLIBS@%$OGGLIBS%g
+s%@LIBOGG@%$LIBOGG%g
 s%@TCLAPI@%$TCLAPI%g
 s%@LD_SEARCH_FLAGS@%$LD_SEARCH_FLAGS%g
 s%@TCLVER@%$TCLVER%g

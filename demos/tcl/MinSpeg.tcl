@@ -2,7 +2,7 @@
 # the next line restarts using wish \
 exec wish8.3 "$0" "$@"
 
-package require -exact snack 2.0
+package require -exact snack 2.1
 
 pack [canvas .c -height 200 -width 400]
 

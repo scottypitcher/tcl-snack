@@ -80,20 +80,110 @@ CheckFFTlen(Tcl_Interp *interp, int fftlen)
 }
 
 int
-CheckWinlen(Tcl_Interp *interp, int winlen)
+CheckWinlen(Tcl_Interp *interp, int winlen, int fftlen)
 {
+  char str[10];
+
   if (winlen < 1) {
     Tcl_AppendResult(interp, "-winlength must be > 0", NULL);
     return TCL_ERROR;
   }
-  
+  if (winlen > fftlen) {
+    Tcl_AppendResult(interp, "-winlength must be <= fftlength (", NULL);
+    sprintf(str, "%d)", fftlen);
+    Tcl_AppendResult(interp, str, NULL);
+    return TCL_ERROR;
+  }
+
   return TCL_OK;
+}
+
+void
+GetFloatMonoSig(Sound *s,SnackLinkedFileInfo *info,
+		float *sig, int beg, int len, int channel) {
+  /* sig buffer must be allocated, file must be open! */
+
+  int i;
+
+  if (s->storeType == SOUND_IN_MEMORY) {
+    if (s->nchannels == 1 || channel != -1) {
+      int p = beg * s->nchannels + channel;
+
+      for (i = 0; i < len; i++) {
+	sig[i] = (float) (FSAMPLE(s, p));
+	p += s->nchannels;
+      }
+    } else {
+      int c;
+
+      for (i = 0; i < len; i++) {
+	sig[i] = 0.0;
+      }
+      for (c = 0; c < s->nchannels; c++) {
+	int p = beg * s->nchannels + c;
+	  
+	for (i = 0; i < len; i++) {
+	  sig[i] += (float) (FSAMPLE(s, p));
+	  p += s->nchannels;
+	}
+      }
+      for (i = 0; i < len; i++) {
+	sig[i] /= s->nchannels;
+      }
+    }
+  } else { /* storeType != SOUND_IN_MEMORY */
+    if (s->nchannels == 1 || channel != -1) {
+      int p = beg * s->nchannels + channel;
+
+      for (i = 0; i < len; i++) {
+	sig[i] = (float) (GetSample(info, p));
+	p += s->nchannels;
+      }
+    } else {
+      int c;
+	
+      for (i = 0; i < len; i++) {
+	sig[i] = 0.0;
+      }
+      for (c = 0; c < s->nchannels; c++) {
+	int p = beg * s->nchannels + c;
+	  
+	for (i = 0; i < len; i++) {
+	  sig[i] += (float) (GetSample(info, p));
+	  p += s->nchannels;
+	}
+      }
+      for (i = 0; i < len; i++) {
+	sig[i] /= s->nchannels;
+      }
+    }
+  }
 }
 
 static float xfft[NMAX];
 static float ffts[NMAX];
 static float hamwin[NMAX];
 #define SNACK_DEFAULT_DBPWINTYPE SNACK_WIN_HAMMING
+#define SNACK_DEFAULT_DBP_LPC_ORDER 20
+#define SNACK_MAX_LPC_ORDER  40
+
+int
+CheckLPCorder(Tcl_Interp *interp, int lpcorder)
+{
+  char str[10];
+  if (lpcorder < 1) {
+    Tcl_AppendResult(interp, "-lpcorder must be > 0", NULL);
+    return TCL_ERROR;
+  }
+  if (lpcorder > SNACK_MAX_LPC_ORDER) {
+    Tcl_AppendResult(interp, "-lpcorder must be <= ", NULL);
+    sprintf(str, "%d)", SNACK_MAX_LPC_ORDER);
+    Tcl_AppendResult(interp, str, NULL);
+    return TCL_ERROR;
+  }
+  
+  return TCL_OK;
+}
 
 int
 dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
@@ -109,11 +199,17 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
   SnackWindowType wintype = SNACK_DEFAULT_DBPWINTYPE;
   static char *subOptionStrings[] = {
     "-start", "-end", "-channel", "-fftlength", "-winlength", "-windowlength",
-    "-preemphasisfactor", "-skip", "-windowtype", NULL
+    "-preemphasisfactor", "-skip", "-windowtype", "-analysistype",
+    "-lpcorder", NULL
   };
   enum subOptions {
-    START, END, CHANNEL, FFTLEN, WINLEN, WINDOWLEN, PREEMPH, SKIP, WINTYPE
+    START, END, CHANNEL, FFTLEN, WINLEN, WINDOWLEN, PREEMPH, SKIP, WINTYPE,
+    ANATYPE, LPCORDER
   };
+  float *sig_lpc;
+  float presample = 0.0;
+  int siglen, type = 0, lpcOrder = SNACK_DEFAULT_DBP_LPC_ORDER;
+  float g_lpc;
 
   if (s->debug > 0) Snack_WriteLog("Enter dBPowerSpectrumCmd\n");
 
@@ -184,12 +280,35 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
 	  return TCL_ERROR;
 	break;
       }
+    case ANATYPE:
+      {
+	int len;
+ 	char *str = Tcl_GetStringFromObj(objv[arg+1], &len);
+	
+	if (strncasecmp(str, "lpc", len) == 0) {
+	  type = 1;
+	} else if (strncasecmp(str, "fft", len) == 0) {
+	  type = 0;
+	} else {
+	  Tcl_AppendResult(interp, "-type should be FFT or LPC", (char *)NULL);
+	  return TCL_ERROR;
+	}
+	break;
+      }
+    case LPCORDER:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &lpcOrder) != TCL_OK)
+	  return TCL_ERROR;
+	if (CheckLPCorder(interp, lpcOrder) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
     }
   }
 
   if (CheckFFTlen(interp, fftlen) != TCL_OK) return TCL_ERROR;
 
-  if (CheckWinlen(interp, winlen) != TCL_OK) return TCL_ERROR;
+  if (CheckWinlen(interp, winlen, fftlen) != TCL_OK) return TCL_ERROR;
 
   preemph = (float) dpreemph;
 
@@ -223,7 +342,8 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
   if (skip < 1) {
     skip = fftlen;
   }
-  n = (endpos - startpos) / skip;
+  siglen = endpos - startpos;
+  n = siglen / skip;
   if (n < 1) {
     n = 1;
   }
@@ -232,73 +352,110 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
     channel = 0;
   }
 
-  for (j = 0; j < n; j++) {
-    if (s->storeType == SOUND_IN_MEMORY) {
-      if (s->nchannels == 1 || channel != -1) {
-	int p = (startpos + j * skip) * s->nchannels + channel;
+  if (type != 0 && n > 0) { /* LPC + FFT */
+    if (siglen == 0) siglen = fftlen;
+    sig_lpc = (float *) ckalloc(siglen * sizeof(float));
 
-	for (i = 0; i < fftlen; i++) {
-	  xfft[i] = (float) ((FSAMPLE(s, p + s->nchannels)
-			      - preemph * FSAMPLE(s, p))
-			     * hamwin[i]);
-	    p += s->nchannels;
-	}
-      } else {
-	int c;
-	
-	for (i = 0; i < fftlen; i++) {
-	  xfft[i] = 0.0;
-	}
-	for (c = 0; c < s->nchannels; c++) {
-	  int p = (startpos + j * skip) * s->nchannels + c;
-	  
-	  for (i = 0; i < fftlen; i++) {
-	    xfft[i] += (float) ((FSAMPLE(s, p + s->nchannels)
-				 - preemph * FSAMPLE(s, p))
-				* hamwin[i]);
-	    p += s->nchannels;
-	  }
-	}
-	for (i = 0; i < fftlen; i++) {
-	  xfft[i] /= s->nchannels;
-	}
-      }
-    } else { /* storeType != SOUND_IN_MEMORY */
-      if (s->nchannels == 1 || channel != -1) {
-	int p = (startpos + j * skip) * s->nchannels + channel;
+    GetFloatMonoSig(s, &info, sig_lpc, startpos, siglen, channel);
+    if (startpos > 0)
+      GetFloatMonoSig(s, &info, &presample, startpos - 1, 1, channel);
+    PreEmphase(sig_lpc, presample, siglen, preemph);
 
-	for (i = 0; i < fftlen; i++) {
-	  xfft[i] = (float) ((GetSample(&info, p + s->nchannels)
-			      - preemph * GetSample(&info, p))
-			     * hamwin[i]);
-	  p += s->nchannels;
-	}
-      } else {
-	int c;
-	
-	for (i = 0; i < fftlen; i++) {
-	  xfft[i] = 0.0;
-	}
-	for (c = 0; c < s->nchannels; c++) {
-	  int p = (startpos + j * skip) * s->nchannels + c;
-	  
-	  for (i = 0; i < fftlen; i++) {
-	    xfft[i] += (float) ((GetSample(&info, p + s->nchannels)
-				 - preemph * GetSample(&info, p))
-				* hamwin[i]);
-	    p += s->nchannels;
-	  }
-	}
-	for (i = 0; i < fftlen; i++) {
-	  xfft[i] /= s->nchannels;
-	}
-      }
+    /* windowing signal to make lpc look more like the fft spectrum ??? */
+    for (i = 0; i < winlen/2; i++) {
+      sig_lpc[i] = sig_lpc[i] * hamwin[i];
+    }
+    for (i = winlen/2; i < winlen; i++) {
+      sig_lpc[i + siglen - winlen] = sig_lpc[i + siglen - winlen] * hamwin[i];
     }
 
+    g_lpc = LpcAnalysis(sig_lpc, siglen, xfft, lpcOrder);
+    ckfree((char *) sig_lpc);
+
+    for (i = 0; i <= lpcOrder; i++) {
+      /* the factor is a guess, try looking for analytical value */
+      xfft[i] = xfft[i] * 5000000000.0f;
+    }
+    for (i = lpcOrder + 1; i < fftlen; i++) {
+      xfft[i] = 0.0;
+    }
+    
     Snack_DBPowerSpectrum(xfft);
     
     for (i = 0; i < fftlen/2; i++) {
-      ffts[i] += xfft[i];
+      ffts[i] = -xfft[i];
+    }
+
+  } else {  /* usual FFT */
+
+    for (j = 0; j < n; j++) {
+      if (s->storeType == SOUND_IN_MEMORY) {
+	if (s->nchannels == 1 || channel != -1) {
+	  int p = (startpos + j * skip) * s->nchannels + channel;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = (float) ((FSAMPLE(s, p + s->nchannels)
+				- preemph * FSAMPLE(s, p))
+			       * hamwin[i]);
+	    p += s->nchannels;
+	  }
+	} else {
+	  int c;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = 0.0;
+	  }
+	  for (c = 0; c < s->nchannels; c++) {
+	    int p = (startpos + j * skip) * s->nchannels + c;
+	    
+	    for (i = 0; i < fftlen; i++) {
+	      xfft[i] += (float) ((FSAMPLE(s, p + s->nchannels)
+				   - preemph * FSAMPLE(s, p))
+				  * hamwin[i]);
+	      p += s->nchannels;
+	    }
+	  }
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] /= s->nchannels;
+	  }
+	}
+      } else { /* storeType != SOUND_IN_MEMORY */
+	if (s->nchannels == 1 || channel != -1) {
+	  int p = (startpos + j * skip) * s->nchannels + channel;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = (float) ((GetSample(&info, p + s->nchannels)
+				- preemph * GetSample(&info, p))
+			       * hamwin[i]);
+	    p += s->nchannels;
+	  }
+	} else {
+	  int c;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = 0.0;
+	  }
+	  for (c = 0; c < s->nchannels; c++) {
+	    int p = (startpos + j * skip) * s->nchannels + c;
+	    
+	    for (i = 0; i < fftlen; i++) {
+	      xfft[i] += (float) ((GetSample(&info, p + s->nchannels)
+				   - preemph * GetSample(&info, p))
+				  * hamwin[i]);
+	      p += s->nchannels;
+	    }
+	  }
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] /= s->nchannels;
+	  }
+	}
+      }
+      
+      Snack_DBPowerSpectrum(xfft);
+      
+      for (i = 0; i < fftlen/2; i++) {
+	ffts[i] += xfft[i];
+      }
     }
   }
 
@@ -377,4 +534,93 @@ GetWindowType(Tcl_Interp *interp, char *str, SnackWindowType *wintype)
   *wintype = type;
 
   return TCL_OK;
+}
+
+float  
+LpcAnalysis (float *data, int N, float *f, int order) {
+   int    i,m;
+   float  sumU = 0.0;
+   float  sumD = 0.0;
+   float  b[SNACK_MAX_LPC_ORDER+1];
+   float KK;
+
+   float ParcorCoeffs[SNACK_MAX_LPC_ORDER];
+   /* PreData should be used when signal is not windowed */
+   float PreData[SNACK_MAX_LPC_ORDER];
+   float *errF;
+   float *errB;
+   float errF_m = 0.0;
+
+   if ((order < 1) || (order > SNACK_MAX_LPC_ORDER))  return 0.0f;
+
+   errF = (float *) ckalloc((N+SNACK_MAX_LPC_ORDER) * sizeof(float));
+   errB = (float *) ckalloc((N+SNACK_MAX_LPC_ORDER) * sizeof(float));
+
+   for (i=0; i<order; i++) {
+     ParcorCoeffs[i] = 0.0;
+     PreData[i] = 0.0; /* delete here and use as argument when sig not windowed */
+   };
+
+   for (m=0; m<order; m++)
+     errF[m] = PreData[m];
+   for (m=0; m<N; m++)
+     errF[m+order] = data[m] ;
+
+   errB[0] = 0.0;
+   for (m=1; m<N+order; m++)
+     errB[m] = errF[m-1];
+
+   for (i=0; i<order; i++) {
+
+     sumU=0.0;
+     sumD=0.0;
+     for (m=i+1; m<N+order; m++) {
+       sumU -= errF[m] * errB[m];
+       sumD += errF[m] * errF[m] + errB[m] * errB[m];
+     };
+
+     if (sumD != 0) KK = 2.0f * sumU / sumD;   
+     else KK = 0;
+     ParcorCoeffs[i] = KK;
+
+
+     for (m=N+order-1; m>i; m--) {
+       errF[m] += KK * errB[m];
+       errB[m] = errB[m-1] + KK * errF[m-1];
+     };
+   };
+
+   for (i=order; i<N+order; i++) {
+     errF_m += errF[i]*errF[i];
+   }
+   errF_m /= N;
+
+   ckfree((char *)errF);
+   ckfree((char *)errB);
+
+   /* convert to direct filter coefficients */
+   f[0] = 1.0;    
+   for (m=1; m<=order; m++) {
+     f[m] = ParcorCoeffs[m-1];
+     for (i=1; i<m; i++)
+       b[i] = f[i];
+     for (i=1; i<m; i++)
+       f[i] = b[i] + ParcorCoeffs[m-1] * b[m-i];
+   }
+
+   return (float)sqrt(errF_m);
+}
+
+
+void PreEmphase(float *sig, float presample, int len, float preemph) {
+  int i;
+  float temp;
+
+  if (preemph == 0.0)  return;
+
+  for (i = 0; i < len; i++) {
+    temp = sig[i];
+    sig[i] = temp - preemph * presample;
+    presample = temp;
+  }
 }

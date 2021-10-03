@@ -37,6 +37,7 @@ SrcFiles        =  è
 				  "{SrcDir}jkMixer.c" è
 				  "{SrcDir}jkAudio.c" è
 				  "{SrcDir}jkFilter.c" è
+				  "{SrcDir}jkFilterIIR.c" è
 				  "{SrcDir}jkSynthesis.c" è
 				  "{SrcDir}shape.c" è
 				  "{SrcDir}snackStubInit.c"
@@ -63,6 +64,7 @@ ObjFiles-PPC    =  è
 				  "{ObjDir}jkMixer.c.x" è
 				  "{ObjDir}jkAudio.c.x" è
 				  "{ObjDir}jkFilter.c.x" è
+				  "{ObjDir}jkFilterIIR.c.x" è
 				  "{ObjDir}jkSynthesis.c.x" è
 				  "{ObjDir}shape.c.x" è
 				  "{ObjDir}snackStubInit.c.x"
@@ -122,6 +124,7 @@ snack  üü  snack.shlb
 "{ObjDir}jkFormatMP3.c.x"  ü  "{SrcDir}jkFormatMP3.c"
 "{ObjDir}jkAudio.c.x"  ü  "{SrcDir}jkAudio.c"
 "{ObjDir}jkFilter.c.x"  ü  "{SrcDir}jkFilter.c"
+"{ObjDir}jkFilterIIR.c.x"  ü  "{SrcDir}jkFilterIIR.c"
 "{ObjDir}jkSynthesis.c.x"  ü  "{SrcDir}jkSynthesis.c"
 "{ObjDir}jkMixer.c.x"  ü  "{SrcDir}jkMixer.c"
 "{ObjDir}shape.c.x"  ü  "{SrcDir}shape.c"

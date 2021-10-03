@@ -1,4 +1,14 @@
-In order to use Snack you will have to install Tcl/Tk 8.3 first.
+In order to use Snack you will have to install Tcl/Tk 8.3.3 first.
+
+
+Building Snack using Metrowerks CodeWarrior
+-------------------------------------------------------------------
+Use the CodeWarrior project file: snack.mcp.sit.hqx
+
+You will have to specify the location of the Tcl/Tk include files
+which are part of the Tcl/Tk source distribution.
+This is the default compiler for the Snack Macintosh binaries.
+
 
 Building Snack using MPW
 -------------------------------------------------------------------
@@ -7,15 +17,6 @@ downloaded from http://developer.apple.com/tools/mpw-tools/
 
 You will have to edit the makefile in order to specify the location of the
 Tcl/Tk include files which are part of the Tcl/Tk source distribution.
-
-
-Building Snack using Metrowerks CodeWarrior
--------------------------------------------------------------------
-Building Snack using CodeWarrior is not as tested as with MPW.
-Use the CodeWarrior project file: snack.mcp.sit.hqx
-
-You will have to specify the location of the Tcl/Tk include files
-which are part of the Tcl/Tk source distribution.
 
 
 Installation

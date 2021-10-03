@@ -13,38 +13,45 @@ extern int littleEndian;
 extern int useOldObjAPI;
 
 typedef struct {
-   short max;
-   short min;
+  short max;
+  short min;
 } Maxmin;
 
 /* --------------------------------------------------------------------- */
 
 static short GetShortSample(Sound *s, long i, int c) {
-   if (i >= Snack_GetLength(s) || s->storeType == SOUND_IN_CHANNEL)
-      return 0;
-   i = i * Snack_GetNumChannels(s) + c;
-   if (s->storeType == SOUND_IN_MEMORY) {
-     return (short) FSAMPLE(s, i);
-   } else {
-      if (s->linkInfo.linkCh == NULL) {
- 	 OpenLinkedFile(s, &s->linkInfo);
-      }
- 	 return (short) GetSample(&s->linkInfo, i);
-   }
-   return 0;
+  short res = 0;
+  if (i >= Snack_GetLength(s) || s->storeType == SOUND_IN_CHANNEL)
+    return 0;
+  i = i * Snack_GetNumChannels(s) + c;
+  if (s->storeType == SOUND_IN_MEMORY) {
+    res = (short) FSAMPLE(s, i);
+  } else {
+    if (s->linkInfo.linkCh == NULL) {
+      OpenLinkedFile(s, &s->linkInfo);
+    }
+    res = (short) GetSample(&s->linkInfo, i);
+  }
+  if (Snack_GetSampleEncoding(s) == LIN8) {
+    res <<= 8;
+  }
+  return res;
 }
 
 static void SetShortSample(Sound *s, long i, int c, short val) {
   if (i >= Snack_GetLength(s) || s->storeType != SOUND_IN_MEMORY)
     return;
   i = i * Snack_GetNumChannels(s) + c;
+  if (Snack_GetSampleEncoding(s) == LIN8) {
+    val /= 256;
+  }
   FSAMPLE(s, i) = (float) val;
 }
 
 /* --------------------------------------------------------------------- */
 
 int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
-	     Tcl_Obj *CONST objv[])
+             Tcl_Obj *CONST objv[])
 {
   int arg, width = 0, pps = 0, startpos = 0, endpos = -1, check = 0;
   int byteOrder = SNACK_NATIVE;
@@ -78,10 +85,11 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 
     /* Store shape into sound */
     static char *subOptionStrings[] = {
-      "-start", "-end", "-pixelspersecond", "-format", "-check", NULL
+      "-start", "-end", "-pixelspersecond", "-format", "-encoding", "-check",
+      NULL
     };
     enum subOptions {
-      START, END, PPS, FORMAT, CHECK
+      START, END, PPS, FORMAT, ENCODING, CHECK
     };
     int index;
       
@@ -92,40 +100,41 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 
     for (arg = 3; arg < objc; arg += 2) {
       if (Tcl_GetIndexFromObj(interp, objv[arg], subOptionStrings,
-			      "option", 0, &index) != TCL_OK) {
-	return TCL_ERROR;
+                              "option", 0, &index) != TCL_OK) {
+        return TCL_ERROR;
       }
       switch ((enum subOptions) index) {
       case START:
-	{
-	  if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+        {
+          if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       case END:
-	{
-	  if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+        {
+          if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       case PPS:
-	{
-	  if (Tcl_GetIntFromObj(interp, objv[arg+1], &pps) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+        {
+          if (Tcl_GetIntFromObj(interp, objv[arg+1], &pps) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       case FORMAT:
-	{
-	  if (GetEncoding(interp, objv[arg+1], &encoding, &sampsize) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+      case ENCODING:
+        {
+          if (GetEncoding(interp, objv[arg+1], &encoding, &sampsize) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       case CHECK:
-	{
-	  if (Tcl_GetBooleanFromObj(interp, objv[arg+1], &check) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+        {
+          if (Tcl_GetBooleanFromObj(interp, objv[arg+1], &check) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       }
     }
   } else {
@@ -143,58 +152,58 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
     for (arg = 2; arg < objc; arg += 2) {
 
       if (Tcl_GetIndexFromObj(interp, objv[arg], subOptionStrings,
-			      "option", 0, &index) != TCL_OK) {
-	return TCL_ERROR;
+                              "option", 0, &index) != TCL_OK) {
+        return TCL_ERROR;
       }
       switch ((enum subOptions) index) {
       case START:
-	{
-	  if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+        {
+          if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       case END:
-	{
-	  if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+        {
+          if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       case WIDTH:
-	{
-	  if (Tcl_GetIntFromObj(interp, objv[arg+1], &width) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+        {
+          if (Tcl_GetIntFromObj(interp, objv[arg+1], &width) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       case PPS:
-	{
-	  if (Tcl_GetIntFromObj(interp, objv[arg+1], &pps) != TCL_OK)
-	    return TCL_ERROR;
-	  break;
-	}
+        {
+          if (Tcl_GetIntFromObj(interp, objv[arg+1], &pps) != TCL_OK)
+            return TCL_ERROR;
+          break;
+        }
       case SHAPE:
-	{
-	  int nchar = 0;
-	  char *str = Tcl_GetStringFromObj(objv[arg+1], &nchar);
-	  if (nchar > 0 && (preshp = Snack_GetSound(interp, str)) == NULL) {
-	    return TCL_ERROR;
-	  }
-	  break;
-	}
+        {
+          int nchar = 0;
+          char *str = Tcl_GetStringFromObj(objv[arg+1], &nchar);
+          if (nchar > 0 && (preshp = Snack_GetSound(interp, str)) == NULL) {
+            return TCL_ERROR;
+          }
+          break;
+        }
       case BYTEORDER:
-	{
-	  int length;
-	  char *str = Tcl_GetStringFromObj(objv[arg+1], &length);
-	  
-	  if (strncasecmp(str, "littleEndian", length) == 0) {
-	    byteOrder = SNACK_LITTLEENDIAN;
-	  } else if (strncasecmp(str, "bigEndian", length) == 0) {
-	    byteOrder = SNACK_BIGENDIAN;
-	  } else {
-	    Tcl_AppendResult(interp, "-byteorder option should be bigEndian or littleEndian", NULL);
-	    return TCL_ERROR;
-	  }
-	  break;
-	}
+        {
+          int length;
+          char *str = Tcl_GetStringFromObj(objv[arg+1], &length);
+          
+          if (strncasecmp(str, "littleEndian", length) == 0) {
+            byteOrder = SNACK_LITTLEENDIAN;
+          } else if (strncasecmp(str, "bigEndian", length) == 0) {
+            byteOrder = SNACK_BIGENDIAN;
+          } else {
+            Tcl_AppendResult(interp, "-byteorder option should be bigEndian or littleEndian", NULL);
+            return TCL_ERROR;
+          }
+          break;
+        }
       }
     }
   }
@@ -214,34 +223,34 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
   begin = (double) startpos / Fe;
   len = (double) (endpos - startpos + 1) / Fe;
   if (width <= 0 && pps > 0) {
-     width = (int) ceil(len * pps);
+    width = (int) ceil(len * pps);
   }
   if (width <= 0 || len <= 0) {
-     Tcl_SetResult(interp, "Bad boundaries for shape", TCL_STATIC);
-     return TCL_ERROR;
+    Tcl_SetResult(interp, "Bad boundaries for shape", TCL_STATIC);
+    return TCL_ERROR;
   }
 
   /* Only checks if existing shape seems compatible with sound then exits */
   if (shp && check) {
-     float shpLen = (float) Snack_GetLength(shp) / Snack_GetSampleRate(shp);
-     if (Snack_GetNumChannels(shp) == 2 * nc
-	 && fabs(len - shpLen) < 0.05 * len
-	 && Snack_GetSampleRate(shp) < 1000) {
-	Tcl_SetObjResult(interp, Tcl_NewBooleanObj(1));
-     } else {
-	Tcl_SetObjResult(interp, Tcl_NewBooleanObj(0));
-     }
-     return TCL_OK;
+    float shpLen = (float) Snack_GetLength(shp) / Snack_GetSampleRate(shp);
+    if (Snack_GetNumChannels(shp) == nc
+	&& fabs(len - shpLen) < 0.05 * len
+	&& Snack_GetSampleRate(shp) < 2000) {
+      Tcl_SetObjResult(interp, Tcl_NewBooleanObj(1));
+    } else {
+      Tcl_SetObjResult(interp, Tcl_NewBooleanObj(0));
+    }
+    return TCL_OK;
   }
 
   /* Try to use precomputed shape instead of original sound */
   if (preshp != NULL
-      && Snack_GetNumChannels(preshp) == 2 * nc
-      && Snack_GetSampleRate(preshp) * len / width > 2.0) {
-     Fe = Snack_GetSampleRate(preshp);
+      && Snack_GetNumChannels(preshp) == nc
+      && Snack_GetSampleRate(preshp) * len / width > 4) {
+    Fe = Snack_GetSampleRate(preshp) / 2;
   } else {
-     Fe = Snack_GetSampleRate(s);
-     preshp = NULL;
+    Fe = Snack_GetSampleRate(s);
+    preshp = NULL;
   }
 
   /* number of samples per point */
@@ -260,17 +269,17 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
     /* update shape parameters and get free space into sound target */
     Tcl_Obj *empty = Tcl_NewStringObj("",-1);
     if (Snack_GetSoundWriteStatus(shp) != IDLE &&
-	Snack_GetSoundReadStatus(shp) != IDLE) {
+        Snack_GetSoundReadStatus(shp) != IDLE) {
       Snack_StopSound(shp, interp);
     }
     SetFcname(shp, interp, empty);
     Tcl_DecrRefCount(empty);
     shp->storeType = SOUND_IN_MEMORY;
-    Snack_SetSampleRate(shp, pps);
+    Snack_SetSampleRate(shp, 2 * pps);
     Snack_SetSampleEncoding(shp, encoding);
     Snack_SetBytesPerSample(shp, sampsize);
-    Snack_SetNumChannels(shp, 2 * nc);
-    Snack_SetLength(shp, (int) ceil((endpos+1-pos)/hRatio));
+    Snack_SetNumChannels(shp, nc);
+    Snack_SetLength(shp, (int) 2 * ceil((endpos+1-pos)/hRatio));
     if (Snack_ResizeSoundStorage(shp, Snack_GetLength(shp)) != TCL_OK) {
       return TCL_ERROR;
     }
@@ -293,37 +302,37 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
   /* compute min/max for each point */
   q = (Maxmin *) Tcl_Alloc(sizeof(Maxmin) * nc);
   for (i=0; i<width; i++) {
-     k0 = (long) pos; pos += hRatio; k1 = (long) pos;
-     first = 1;
-     while (k0 < k1 && k0 <= endpos) {
-       for (c=0; c<nc; c++) {
-	 if (preshp) {
-	   mx = GetShortSample(preshp, k0, 2*c);
-	   mn = GetShortSample(preshp, k0, 2*c+1);
-	 } else {
-	   mn = mx = GetShortSample(s, k0, c);
-	 }
-	 if (first || (mn < q[c].min))
-	   q[c].min = mn; 
-	 if (first || (mx > q[c].max))
-	   q[c].max = mx; 
-	 }
-       first = 0;
-       k0++;
-     }
-     if (first && k0 > endpos) break;
-     if (shp) {
-       for (c=0; c<nc; c++) {
-	 SetShortSample(shp, i, 2*c,   q[c].max);
-	 SetShortSample(shp, i, 2*c+1, q[c].min);
-	 /* Snack_SetSample(shp, 2*c,   i, q[c].max);
-	    Snack_SetSample(shp, 2*c+1, i, q[c].min); */
-       }
-     } else {
-       for (c=0; c<nc; c++) {
-	 p[c+i*nc] = q[c];
-       }
-     }
+    k0 = (long) pos; pos += hRatio; k1 = (long) pos;
+    first = 1;
+    while (k0 < k1 && k0 <= endpos) {
+      for (c=0; c<nc; c++) {
+	if (preshp) {
+	  mx = GetShortSample(preshp, 2*k0, c);
+	  mn = GetShortSample(preshp, 2*k0+1, c);
+	} else {
+	  mn = mx = GetShortSample(s, k0, c);
+	}
+	if (first || (mn < q[c].min))
+	  q[c].min = mn; 
+	if (first || (mx > q[c].max))
+	  q[c].max = mx; 
+      }
+      first = 0;
+      k0++;
+    }
+    if (first && k0 > endpos) break;
+    if (shp) {
+      for (c=0; c<nc; c++) {
+	SetShortSample(shp, 2*i,   c, q[c].max);
+	SetShortSample(shp, 2*i+1, c, q[c].min);
+	/* Snack_SetSample(shp, 2*c,   i, q[c].max);
+	   Snack_SetSample(shp, 2*c+1, i, q[c].min); */
+      }
+    } else {
+      for (c=0; c<nc; c++) {
+	p[c+i*nc] = q[c];
+      }
+    }
   }
   Tcl_Free((char *)q);
 
@@ -335,13 +344,13 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
     /* Use correct byte order */
     if (littleEndian) {
       if (byteOrder == SNACK_BIGENDIAN) {
-	for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
-	  ((short *)p)[i] = Snack_SwapShort(((short *)p)[i]);
+        for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
+          ((short *)p)[i] = Snack_SwapShort(((short *)p)[i]);
       }
     } else {
       if (byteOrder == SNACK_LITTLEENDIAN) {
-	for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
-	  ((short *)p)[i] = Snack_SwapShort(((short *)p)[i]);
+        for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
+          ((short *)p)[i] = Snack_SwapShort(((short *)p)[i]);
       }
     }
     
@@ -353,7 +362,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
 /* --------------------------------------------------------------------- */
 
 int dataSamplesCmd(Sound *s, Tcl_Interp *interp, int objc,
-            Tcl_Obj *CONST objv[])
+		   Tcl_Obj *CONST objv[])
 {
   int arg, startpos = 0, endpos = -1;
   int byteOrder = SNACK_NATIVE;
@@ -364,44 +373,44 @@ int dataSamplesCmd(Sound *s, Tcl_Interp *interp, int objc,
   /* Get options */
   for (arg = 2; arg < objc; arg += 2) {
     static char *subOptionStrings[] = {
-       "-start", "-end", "-byteorder",  NULL
+      "-start", "-end", "-byteorder",  NULL
     };
     enum subOptions {
-       START, END, BYTEORDER
+      START, END, BYTEORDER
     };
     int index;
 
     if (Tcl_GetIndexFromObj(interp, objv[arg], subOptionStrings,
-			    "option", 0, &index) != TCL_OK) {
+                            "option", 0, &index) != TCL_OK) {
       return TCL_ERROR;
     }
     switch ((enum subOptions) index) {
     case START:
       {
-	if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
-	  return TCL_ERROR;
-	break;
+        if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
+          return TCL_ERROR;
+        break;
       }
     case END:
       {
-	if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
-	  return TCL_ERROR;
-	break;
+        if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
+          return TCL_ERROR;
+        break;
       }
     case BYTEORDER:
       {
-	int length;
-	char *str = Tcl_GetStringFromObj(objv[arg+1], &length);
+        int length;
+        char *str = Tcl_GetStringFromObj(objv[arg+1], &length);
 
-	if (strncasecmp(str, "littleEndian", length) == 0) {
-	   byteOrder = SNACK_LITTLEENDIAN;
-	} else if (strncasecmp(str, "bigEndian", length) == 0) {
-	   byteOrder = SNACK_BIGENDIAN;
-	} else {
-	  Tcl_AppendResult(interp, "-byteorder option should be bigEndian or littleEndian", NULL);
-	  return TCL_ERROR;
-	}
-	break;
+        if (strncasecmp(str, "littleEndian", length) == 0) {
+	  byteOrder = SNACK_LITTLEENDIAN;
+        } else if (strncasecmp(str, "bigEndian", length) == 0) {
+	  byteOrder = SNACK_BIGENDIAN;
+        } else {
+          Tcl_AppendResult(interp, "-byteorder option should be bigEndian or littleEndian", NULL);
+          return TCL_ERROR;
+        }
+        break;
       }
     }
   }
@@ -420,7 +429,7 @@ int dataSamplesCmd(Sound *s, Tcl_Interp *interp, int objc,
     p = (short *) resObj->bytes;
   } else {
 #ifdef TCL_81_API
-     p = (short *) Tcl_SetByteArrayLength(resObj, nbytes);
+    p = (short *) Tcl_SetByteArrayLength(resObj, nbytes);
 #endif
   }
 
@@ -436,12 +445,12 @@ int dataSamplesCmd(Sound *s, Tcl_Interp *interp, int objc,
   if (littleEndian) {
     if (byteOrder == SNACK_BIGENDIAN) {
       for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
-	p[i] = Snack_SwapShort(p[i]);
+        p[i] = Snack_SwapShort(p[i]);
     }
   } else {
     if (byteOrder == SNACK_LITTLEENDIAN) {
       for (i = 0; i < (int) (nbytes / sizeof(short)); i++)
-	p[i] = Snack_SwapShort(p[i]);
+        p[i] = Snack_SwapShort(p[i]);
     }
   }
 

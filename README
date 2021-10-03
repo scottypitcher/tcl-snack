@@ -1,4 +1,4 @@
-Snack v2.0 - a sound toolkit for scripting languages
+Snack v2.1 - a sound toolkit for scripting languages
 
 Kåre Sjölander <kare@speech.kth.se>
 
@@ -21,15 +21,15 @@ to run scripts embedded in web pages through the use of the Tcl plug-in.
 Several example scripts can be found in the demos directory.
 
 For more information on Tcl/Tk and Python see
-Tcl/Tk: http://dev.scriptics.com/
+Tcl/Tk: http://tcl.activestate.com/
 Python: http://www.python.org/
 
 In order to use Snack you must have Tcl and Tk version 8.0 or later. Always 
-use the latest stable release, currently 8.3.2, which can be downloaded from 
-ftp://ftp.scriptics.com/pub/tcl/.
+use the latest stable release, currently 8.3.3, which can be downloaded from 
+ftp.activestate.com/ActiveTcl/html/.
 
 Tcl/Tk is often included with Python distributions. Snack has been tested
-with Python 1.5.2 - 2.0 on Linux and Windows. See the Python
+with Python 1.5.2 - 2.1 on Linux and Windows. See the Python
 section below.
 
 The Snack package has been tested on the following platforms:
@@ -54,7 +54,7 @@ You must have Tcl/Tk installed on your system. Both Tcl and Tk must have
 been configured with the "--enable-shared" flag at build time (this is 
 default for the 8.3 versions). Build them before Snack.
 
-Unpack Snack and change directory to the snack2.0.7/unix directory.
+Unpack Snack and change directory to the snack2.1/unix directory.
 
 Type "./configure".
 
@@ -83,7 +83,7 @@ cd tcl8.3.1/unix
 ./configure --enable-shared
 cd ../../tk8.3.1/unix
 ./configure --enable-shared
-cd ../../snack2.0.7/unix
+cd ../../snack2.1/unix
 ./configure
 make
 
@@ -99,9 +99,9 @@ When you have succesfully compiled Snack it's time to look at the demos.
 In order to run these you will have to set the environment variable 
 TCLLIBPATH to the directory containing the Snack library files (you don't 
 need this step if you install Snack as described below). If you have 
-compiled Snack in /u/kare/snack2.0.7/unix, this would be:
+compiled Snack in /u/kare/snack2.1/unix, this would be:
 
-setenv TCLLIBPATH /u/kare/snack2.0.7/unix
+setenv TCLLIBPATH /u/kare/snack2.1/unix
 
 Change to the demos/tcl/ directory and type ./widget.tcl:
 
@@ -155,8 +155,10 @@ Using Snack with Python
 
 Snack must currently be used in conjunction with Tkinter. You need to have a
 matching installation of Snack and Tcl. For example, Python 1.5.2 uses
-Tcl8.0.5 and Python 1.6-2.0 uses Tcl8.3. You can check this by typing the
-following lines at the Python prompt:
+Tcl8.0.5 and Python 1.6-2.1 uses Tcl8.3 on Windows. For Unix you have to
+edit Modules/Setup before building Python to specify which Tcl version to use.
+The default is Tcl8.0. You can check this by typing the following lines
+at the Python prompt:
 
 import Tkinter
 Tkinter.Tk().tk.eval('info tclversion')
@@ -189,10 +191,10 @@ $HOME/.netscape/) use:
 ./configure --enable-plugin --with-mozilla=$SOMEWHERE
 
 You can also simply copy the files yourself to get something similar to this:
-/usr/local/lib/netscape/tclplug/2.0/snack2.0/unix/libsnack.sl
-/usr/local/lib/netscape/tclplug/2.0/snack2.0/unix/libsound.sl
-/usr/local/lib/netscape/tclplug/2.0/snack2.0/unix/pkgIndex.tcl
-/usr/local/lib/netscape/tclplug/2.0/snack2.0/unix/snack.tcl
+/usr/local/lib/netscape/tclplug/2.0/snack2.1/unix/libsnack.sl
+/usr/local/lib/netscape/tclplug/2.0/snack2.1/unix/libsound.sl
+/usr/local/lib/netscape/tclplug/2.0/snack2.1/unix/pkgIndex.tcl
+/usr/local/lib/netscape/tclplug/2.0/snack2.1/unix/snack.tcl
 
 Currently you need to set this environment variable before starting Netscape:
 setenv TCL_PLUGIN_WISH 1
@@ -218,9 +220,32 @@ On HP-UX with HP cc use: -Ae +z
 
 See SphereFile.txt for more info.
 
-Windows users can get a compiled dll at
-http://www.speech.kth.se/~kare/libsnacksphere.dll.
-Put it in ..Tcl\lib\Snack2.0 (together with libsnack.dll).
+Windows users can get a compiled dll at the address
+http://www.speech.kth.se/~kare/libsnacksphere.dll
+Put it in ..Tcl\lib\Snack2.1 (together with libsnack.dll).
+
+Linux users get a compiled library at the address
+http://www.speech.kth.se/~kare/libsnacksphere.so
+Put it in the Snack installation directory (together with libsnack.so).
+
+
+
+Using Snack with the OGG/Vorbis file format
+-------------------------------------------------------------------
+
+It is possible to configure Snack to create an additional package for
+handling the OGG/Vorbis file format. Use the configure option
+--with-ogg=DIR to specify the location of an existing OGG/Vorbis installation.
+More information about OGG/Vorbis available at http://www.vorbis.com/
+
+Windows users can get a compiled dll at the address
+http://www.speech.kth.se/~kare/ogg.tar.gz
+Put libsnackogg.dll in ..Tcl\lib\Snack2.1 (together with libsnack.dll).
+
+Linux users can get a compiled library at the address
+http://www.speech.kth.se/~kare/ogg.tar.gz
+Put libsnackogg.so in the Snack installation directory (together 
+with libsnack.so).
 
 
 
@@ -290,3 +315,4 @@ Nicolas Garbe
 Tom Wilkason
 Jonas Ekeroot
 Peter Kabal
+Ted Dunning
