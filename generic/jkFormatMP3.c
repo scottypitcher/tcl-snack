@@ -31,7 +31,7 @@ must retain this copyright notice.
 #include <string.h>
 #define FRAS2(is,a) ((is) > 0 ? t_43[(is)]*(a):-t_43[-(is)]*(a))
 #define MAXFRAMESIZE 2106  /* frame size starting at header */
-
+#define roundf(x) (floor((x)+(float )0.5f))
 static char *gblOutputbuf;
 static char *gblReadbuf;
 static int gblBufind = 0;
@@ -159,7 +159,7 @@ gethdr(struct AUDIO_HEADER *header)
   }
   header->protection_bit=_getbits(1);
   header->bitrate_index=_getbits(4);
-  if (header->bitrate_index == 0xFF || header->bitrate_index == 0) {  
+  if (header->bitrate_index == 0xFF || header->bitrate_index == 0) {
     /* free bitrate=0 is also invalid */
     return GETHDR_ERR;
   }
@@ -3101,7 +3101,7 @@ static int ExtractI4(unsigned char *buf)
 }
 #define FRAMES_FLAG     0x0001
 #define BYTES_FLAG      0x0002
-
+#define ENDCHECK        20000
 int
   GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
                char *buf) {
@@ -3112,6 +3112,8 @@ int
    int head_flags;
    int bufLen=CHANNEL_HEADER_BUFFER;
    int xFrames=0, xBytes=0, xAvgBitrate=0, xAvgFrameSize=0 ;
+   float tailAverage=0.0;
+   int tailChecked=0,tailTotal=0;
    mp3Info *Si = (mp3Info *)S->extHead;
 
    if (S->debug > 2) {
@@ -3191,7 +3193,7 @@ int
                              + (long)(buf[8]&0x7F)*128l
                              + (long)buf[9] + 10);
       /* Attempt to read beyond the ID3 offset if it is too large */
-      if (idOffset > bufLen) {
+      if (idOffset > bufLen*3/4) {
 
          if (Tcl_Seek(ch, idOffset, SEEK_SET) > 0) {
             bufLen = Tcl_Read(ch, &buf[0], bufLen);
@@ -3275,6 +3277,17 @@ int
             xBuf += 4 + (mode != 3 ? 17 : 9);
          }
 
+         mean_frame_size = (bitrate * sr_lookup[Si->id] / fs);   /* This frame size */
+
+         /* Max should be 2926 */
+
+         if (mean_frame_size > MAXFRAMESIZE) {
+            mean_frame_size = MAXFRAMESIZE;
+         } else if (mean_frame_size <= 0) {
+            offset++;
+            continue;
+         }
+
          if (strncmp("Xing", (char *) xBuf,4)==0) {
          /* We have a Xing VBR header */
             xBuf+=4;
@@ -3290,23 +3303,14 @@ int
             }
             /* Enough info to compute average VBR bitrate and framesize*/
             if ( xFrames > 0 && xBytes > 0 && (head_flags & (BYTES_FLAG | FRAMES_FLAG))) {
-               xAvgFrameSize =  xBytes/xFrames;
-               xAvgBitrate =  (xAvgFrameSize*fs)/sr_lookup[Si->id];   /* Layer 1 */
+               float fAvgFrameSize = (float)xBytes/(float)xFrames;
+               xAvgFrameSize =  (int)roundf(fAvgFrameSize);
+               xAvgBitrate =  (int)(fAvgFrameSize * (float)fs/(float)sr_lookup[Si->id]);   /* Layer 1 */
             }
          }
 
          /* End XING stuff */
 
-         mean_frame_size = (bitrate * sr_lookup[Si->id] / fs);   /* This frame size */
-
-         /* Max should be 2926 */
-
-         if (mean_frame_size > MAXFRAMESIZE) {
-            mean_frame_size = MAXFRAMESIZE;
-         } else if (mean_frame_size <= 0) {
-            offset++;
-            continue;
-         }
 
          /*
             If we didn't find a header where we first expected it
@@ -3333,47 +3337,126 @@ int
       }
       passes++;
    } while (okHeader == 0);
+   /*
+    * We have a valid first sync here
+    */
 
    if (S->debug > 0) Snack_WriteLogInt("Found MP3 header at offset", offset);
-   Si->bytesPerFrame = xAvgFrameSize ? xAvgFrameSize : mean_frame_size;
    /* Compute length */
    if (ch != NULL) {
-      if (Tcl_Seek(ch, 0, SEEK_END) > 0) {
-         totalFrames = ((int)Tcl_Tell(ch) - (offset + ID3Extra)) / Si->bytesPerFrame;
+      /*
+       * Now find the end of the last valid frame in the file, skipping
+       * the tag cruft that may throw off our length computations.
+       */
+      int tailsize=0;
+      unsigned char *tailbuf = 0;
+      int endpos = (int)Tcl_Seek(ch, 0, SEEK_END);
+      int tailpos = (int)Tcl_Seek(ch, -ENDCHECK, SEEK_END);
+      int indx = 0;
+      tailsize = endpos-tailpos;
+      if (debugLevel > 2) {
+         Snack_WriteLogInt ("  End Pos at",endpos);
+         Snack_WriteLogInt ("  Start Pos at",tailpos);
       }
-      S->length = (totalFrames * 18 * 32) * (Si->id ? 2:1);
+      if (tailsize > 0) {
+
+         tailbuf = Tcl_Alloc(tailsize);
+         tailsize = Tcl_Read(ch, tailbuf, tailsize);
+         /*
+          * Find the first header (verify that there are two in a row for false syncs
+          */
+         while (indx < tailsize) {
+            unsigned char tsr_index = (tailbuf[indx+2] & 0x0c) >> 2;
+            if (hasSync(&tailbuf[indx]) && (sr_index == tsr_index)) {
+               {
+                  int frameLength = locateNextFrame(&tailbuf[indx]);
+                  unsigned char tsr_index = (tailbuf[frameLength+indx+2] & 0x0c) >> 2;
+                  if (hasSync(&tailbuf[frameLength+indx]) && (sr_index == tsr_index)) {
+                     break;
+                  }  else {
+                     indx++;
+                  }
+               }
+            } else {
+               indx++;
+            }
+         }
+         /*
+          *  Now we know the first valid frame sync,
+          * Walk the frames until we don't see any more
+          */
+         while (indx < tailsize) {
+            unsigned char tsr_index = (tailbuf[indx+2] & 0x0c) >> 2;
+            if (hasSync(&tailbuf[indx]) && (sr_index == tsr_index)) {
+               int frameLength = locateNextFrame(&tailbuf[indx]);
+               indx += frameLength;
+               tailChecked++;
+               tailTotal+=frameLength;
+            } else {
+               break;
+            }
+         }
+
+         Tcl_Free(tailbuf);
+      }
+      /*
+       * Check if tailAverage is valid, if not use mean_frame_size (which is first one found)
+       */
+
+      if (tailChecked > 3)
+      {
+         tailAverage=(float)tailTotal/(float)tailChecked;
+      } else  {
+         tailAverage=(float)mean_frame_size;
+      }
+      totalFrames = (int)((float)(tailpos + indx - (offset + ID3Extra)) / tailAverage);
    }
    if (obj != NULL) {
       if (useOldObjAPI) {
          totalFrames = (obj->length - (offset + ID3Extra)) / Si->bytesPerFrame;
-      }
-      else {
+      } else {
 #ifdef TCL_81_API
          int length = 0;
          Tcl_GetByteArrayFromObj(obj, &length);
          totalFrames = (length - (offset + ID3Extra)) / Si->bytesPerFrame;
 #endif
       }
-      S->length = (totalFrames * 18 * 32) * (Si->id ? 2:1);
    }
 
-   S->headSize = offset + ID3Extra;
-   S->swap = 0;
+   /*
+    * If Xing header, then use this data instead (assume it is accurate)
+    */
+   if (xAvgBitrate)
+   {
+      bitrate = xAvgBitrate;
+      totalFrames = xFrames;
+      mean_frame_size = xAvgFrameSize;
+   } else {
+      mean_frame_size = (int)roundf(tailAverage);
+   }
+   Si->bytesPerFrame = mean_frame_size;
+   Si->bitrate = bitrate*1000;
    Si->bufind = offset + ID3Extra;
    Si->restlen = 0;
    Si->append = 0;
    Si->data = 0;
-  /* If Xing header, then use an average bitrate, otherwise use this frames bitrate */
-   Si->bitrate = 1000 * (xAvgBitrate ? xAvgBitrate : bitrate);
-
    Si->gotHeader = 1;
    memcpy((char *)&Si->headerInt, &buf[offset], 4);
    Si->lastByte = buf[offset+3];                 /* save for later, TFW: Can go away hopefully */
    Si->sr_index = sr_index;
 
+   S->length = (totalFrames * 576) * (Si->id ? 2:1);
+   S->headSize = offset + ID3Extra;
+   S->swap = 0;
    S->extHead = (char *) Si;                     /* redundant */
    S->extHeadType = SNACK_MP3_INT;
-
+   if (debugLevel > 0) {
+       Snack_WriteLogInt ("  Frame Length",Si->bytesPerFrame);
+      if (xAvgBitrate==0)
+          Snack_WriteLogInt ("  CBR Avg Len x1000",(int)(tailAverage*1000.));
+       Snack_WriteLogInt ("  Total Frames",totalFrames);
+       Snack_WriteLogInt ("  Bit Rate",Si->bitrate);
+  }
    if (S->debug > 2) Snack_WriteLogInt("    Exit GetMP3Header", S->length);
 
    return TCL_OK;
@@ -3424,7 +3507,7 @@ int
    /* Sync up to next valid frame, put file position at start of data following header */
    hInt = Si->headerInt;
    if (ch != NULL) {
-      int seekSize = max(Si->bytesPerFrame*50,20000);
+      int seekSize = max(Si->bytesPerFrame*25,20000);
       int index=0;
       tpos = (int)Tcl_Seek(ch, filepos, SEEK_SET);
       if (tpos < 0) {

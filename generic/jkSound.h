@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2005 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -26,7 +26,8 @@
 extern "C" {
 #endif
 
-#ifdef __WIN32__
+#ifdef _MSC_VER
+  /* Defines for VC++, not used for unix or mingw */
   typedef __int32 int32_t;
   typedef unsigned __int32 uint32_t;
 #else
@@ -212,7 +213,7 @@ extern void Snack_MixerDeleteCmd(ClientData clientData);
 #define SOUND_IN_CHANNEL  1
 #define SOUND_IN_FILE     2
 /* NFIRSTSAMPLES*/
-#define CHANNEL_HEADER_BUFFER 80000
+#define CHANNEL_HEADER_BUFFER 20000
 
 typedef int (soundCmd)(Sound *s, Tcl_Interp *interp, int objc,
 		     Tcl_Obj *CONST objv[]);

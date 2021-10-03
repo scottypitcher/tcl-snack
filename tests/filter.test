@@ -383,6 +383,127 @@ test filter-7.2 {iir filter, applied to stereo sound} {
   set res
 } {15820 16000 13222 -9616 Lin16 2 WAV 44}
 
+test filter-8.1 {fade filter, applied to sound} {
+  set s [snack::sound snd -rate 4000]
+  $s length 4
+  $s sample 0 100
+  $s sample 1 100
+  $s sample 2 100
+  $s sample 3 100
+  set f [snack::filter fade in linear 1]
+  $s filter $f
+  set res [$s sample 0],[$s sample 1],[$s sample 2],[$s sample 3]
+  $f destroy
+  $s destroy
+  set res
+} {0,33,66,100}
+
+test filter-8.2 {fade filter, applied to sound} {
+  set s [snack::sound snd -rate 4000]
+  $s length 4
+  $s sample 0 100
+  $s sample 1 100
+  $s sample 2 100
+  $s sample 3 100
+  set f [snack::filter fade out linear 1]
+  $s filter $f
+  set res [$s sample 0],[$s sample 1],[$s sample 2],[$s sample 3]
+  $f destroy
+  $s destroy
+  set res
+} {100,66,33,0}
+
+test filter-8.3 {fade filter, applied to sound} {
+  set s [snack::sound snd -rate 4000]
+  $s length 4
+  $s sample 0 100
+  $s sample 1 100
+  $s sample 2 100
+  $s sample 3 100
+  set f [snack::filter fade in linear 1 0.5]
+  $s filter $f
+  set res [$s sample 0],[$s sample 1],[$s sample 2],[$s sample 3]
+  $f destroy
+  $s destroy
+  set res
+} {50,66,83,100}
+
+test filter-8.4 {fade filter, applied to sound} {
+  set s [snack::sound snd -rate 4000]
+  $s length 4
+  $s sample 0 100
+  $s sample 1 100
+  $s sample 2 100
+  $s sample 3 100
+  set f [snack::filter fade out linear 1 0.5]
+  $s filter $f
+  set res [$s sample 0],[$s sample 1],[$s sample 2],[$s sample 3]
+  $f destroy
+  $s destroy
+  set res
+} {100,83,66,50}
+
+test filter-8.5 {fade filter, applied to sound} {
+  set s [snack::sound snd -rate 4000]
+  $s length 4
+  $s sample 0 10000
+  $s sample 1 10000
+  $s sample 2 10000
+  $s sample 3 10000
+  set f [snack::filter fade in exponential 1]
+  $s filter $f
+  set res [$s sample 0],[$s sample 1],[$s sample 2],[$s sample 3]
+  $f destroy
+  $s destroy
+  set res
+} {0,12,356,10000}
+
+test filter-8.6 {fade filter, applied to sound} {
+  set s [snack::sound snd -rate 4000]
+  $s length 4
+  $s sample 0 10000
+  $s sample 1 10000
+  $s sample 2 10000
+  $s sample 3 10000
+  set f [snack::filter fade out exponential 1]
+  $s filter $f
+  set res [$s sample 0],[$s sample 1],[$s sample 2],[$s sample 3]
+  $f destroy
+  $s destroy
+  set res
+} {10000,356,12,0}
+
+test filter-8.7 {fade filter, applied to sound} {
+  set s [snack::sound snd -rate 4000]
+  $s length 4
+  $s sample 0 10000
+  $s sample 1 10000
+  $s sample 2 10000
+  $s sample 3 10000
+  set f [snack::filter fade in exponential 1 0.5]
+  $s filter $f
+  set res [$s sample 0],[$s sample 1],[$s sample 2],[$s sample 3]
+  $f destroy
+  $s destroy
+  set res
+} {5000,5006,5178,10000}
+
+test filter-8.8 {fade filter, applied to sound} {
+  set s [snack::sound snd -rate 4000]
+  $s length 4
+  $s sample 0 10000
+  $s sample 1 10000
+  $s sample 2 10000
+  $s sample 3 10000
+  set f [snack::filter fade out exponential 1 0.5]
+  $s filter $f
+  set res [$s sample 0],[$s sample 1],[$s sample 2],[$s sample 3]
+  $f destroy
+  $s destroy
+  set res
+} {10000,5178,5006,5000}
+
+
 # cleanup
 ::tcltest::cleanupTests
 return

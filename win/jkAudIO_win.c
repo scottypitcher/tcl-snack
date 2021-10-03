@@ -36,6 +36,8 @@
 
 #define NBUFS 64
 
+extern int eround();
+
 static HWAVEOUT      hWaveOut;
 static HWAVEIN       hWaveIn;
 static HMIXER        hMixer;
@@ -1421,11 +1423,126 @@ SnackAudioFree()
   }
 }
 
+/* Get or Set the recording gain using the mixer API.
+ * If an error is encountered, -1 will be returned.
+ */
+
+static
+int AGetSetRecGain(int isset, int* value) {
+  HRESULT hr;
+  UINT mixerID, i;
+  HMIXER hMixer;
+
+  MIXERLINE mxl;
+  MIXERCONTROL mc;
+  MIXERLINECONTROLS mxlc;
+  DWORD count, m_dwChannels = 0, m_dwControlID = -1;
+  
+  MIXERCONTROLDETAILS mxcd;
+  MIXERCONTROLDETAILS_UNSIGNED mxdu;
+
+  /* numInDevs-1 is the device id as returned by waveInGetNumDevs() */
+  hr = mixerGetID((HMIXEROBJ) numInDevs-1,
+      &mixerID,
+      MIXER_OBJECTF_WAVEIN);
+  if (FAILED(hr)) {
+    return -1;
+  }
+
+  hr = mixerOpen(&hMixer, mixerID, 0, 0, MIXER_OBJECTF_MIXER);
+  if (FAILED(hr)) {
+    return -1;
+  }
+
+  /* Query for mixer line of voice input type */
+  mxl.cbStruct = sizeof(MIXERLINE);
+  mxl.dwComponentType = MIXERLINE_COMPONENTTYPE_DST_WAVEIN;
+
+  hr = mixerGetLineInfo((HMIXEROBJ)hMixer, &mxl, MIXER_GETLINEINFOF_COMPONENTTYPE);
+  if (FAILED(hr)) {
+    mixerClose(hMixer);
+    return -1;
+  }
+
+  /* Look for line of type MIXERLINE_COMPONENTTYPE_SRC_MICROPHONE */
+  count = mxl.dwSource;
+  for(i = 0; i < count; i++)
+  {
+    mxl.dwSource = i;
+    mixerGetLineInfo((HMIXEROBJ)hMixer, &mxl, MIXER_GETLINEINFOF_SOURCE);
+    if (mxl.dwComponentType == MIXERLINE_COMPONENTTYPE_SRC_MICROPHONE) {
+      m_dwChannels = mxl.cChannels;
+      mc.cbStruct = sizeof(MIXERCONTROL);
+      mxlc.cbStruct = sizeof(MIXERLINECONTROLS);
+      mxlc.dwLineID = mxl.dwLineID;
+      mxlc.dwControlType = MIXERCONTROL_CONTROLTYPE_VOLUME;
+      mxlc.cControls = 1;
+      mxlc.cbmxctrl = sizeof(MIXERCONTROL);
+      mxlc.pamxctrl = &mc;
+      hr = mixerGetLineControls((HMIXEROBJ)hMixer, &mxlc, MIXER_GETLINECONTROLSF_ONEBYTYPE);
+      m_dwControlID = mc.dwControlID;
+      break;
+    };
+  }
+
+  /* Now have hMixer, m_dwChannels, and m_dwControlID */
+  
+  if (isset) {
+    /* Convert recording gain range from [0,100] to [0,65536] */
+    mxdu.dwValue = (DWORD) ((65536/100.0) * (*value));
+
+    mxcd.cMultipleItems = 0;
+    mxcd.cChannels = m_dwChannels;
+    mxcd.cbStruct = sizeof(MIXERCONTROLDETAILS);
+    mxcd.dwControlID = m_dwControlID;
+    mxcd.cbDetails = sizeof(MIXERCONTROLDETAILS_UNSIGNED);
+    mxcd.paDetails = &mxdu;
+    hr = mixerSetControlDetails((HMIXEROBJ)hMixer, &mxcd, MIXER_SETCONTROLDETAILSF_VALUE);	
+  } else {
+    mxcd.cMultipleItems = 0;
+    mxcd.cChannels = m_dwChannels;
+    mxcd.cbStruct = sizeof(MIXERCONTROLDETAILS);
+    mxcd.dwControlID = m_dwControlID;
+    mxcd.cbDetails = sizeof(MIXERCONTROLDETAILS_UNSIGNED);
+    mxcd.paDetails = &mxdu;
+    hr = mixerGetControlDetails((HMIXEROBJ)hMixer, &mxcd, MIXER_GETCONTROLDETAILSF_VALUE);	
+  }
+  if (FAILED(hr)) {
+    mixerClose(hMixer);
+    return -1;
+  }
+
+  if (!isset) {
+    /* Convert recording gain range from [0,65536] to [1,100] */
+    *value = eround((100.0 / 65536) * mxdu.dwValue);
+  }
+
+  hr = mixerClose(hMixer);
+  if (FAILED(hr)) {
+    return -1;
+  }
+
+  return 0;
+}
+
+/* Query or Set the current recording gain. This is simmilar to the output
+ * volume except that it applies to the microphone input source.
+ */
+
 void
 ASetRecGain(int gain)
 {
-  unsigned long g = min(max(gain, 0), 100);
+  unsigned int g = min(max(gain, 0), 100);
+  AGetSetRecGain(1, &g);
+}
 
+int
+AGetRecGain()
+{
+  unsigned int g = 100;
+  if (AGetSetRecGain(0, &g) == -1)
+      return -1;
+  return(g);
 }
 
 void
@@ -1434,14 +1551,6 @@ ASetPlayGain(int gain)
   int g = min(max(gain, 0), 100);
 
   waveOutSetVolume((HWAVEOUT) WAVE_MAPPER, g * 655 + g * 65536 * 655);
-}
-
-int
-AGetRecGain()
-{
-  int g = 0;
-
-  return(g);
 }
 
 int

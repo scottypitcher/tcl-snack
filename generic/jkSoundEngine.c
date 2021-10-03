@@ -683,7 +683,7 @@ PlayCallback(ClientData clientData)
   }
 
   if (!blockingPlay) {
-    playgrain = 100;/*max(min(PLAYGRAIN, (int) (globalLatency * 500.0)), 1);*/
+    playgrain = 30;/*max(min(PLAYGRAIN, (int) (globalLatency * 500.0)), 1);*/
     
     ptoken = Tcl_CreateTimerHandler(playgrain, (Tcl_TimerProc *) PlayCallback,
 				    (int *) NULL);

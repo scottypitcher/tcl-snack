@@ -1625,7 +1625,7 @@ cGet_f0(Sound *sound, Tcl_Interp *interp, float **outlist, int *length)
   long sdstep = 0, total_samps;
   int ndone = 0;
   Tcl_Obj *list;
-  float *tmp = (float *)ckalloc(sizeof(float) * (5 + sound->length / 160));
+  float *tmp = (float *)ckalloc(sizeof(float) * (5 + sound->length / 80));
   int count = 0;
   int startpos = 0, endpos = -1;
 

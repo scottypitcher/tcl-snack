@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2005 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -1080,7 +1080,7 @@ WriteSound(writeSamplesProc *writeProc, Sound *s, Tcl_Interp *interp,
 
   return TCL_OK;
 }
-#define NFIRSTSAMPLES 80000
+#define NFIRSTSAMPLES 40000
 #define DEFAULT_MULAW_RATE 8000
 #define DEFAULT_ALAW_RATE 8000
 #define DEFAULT_LIN8OFFSET_RATE 11025
@@ -3117,7 +3117,7 @@ GetHeader(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj)
   Snack_FileFormat *ff;
   Tcl_Channel ch = NULL;
   int status = TCL_OK, openedOk = 0;
-  int buflen = max(HEADBUF, NFIRSTSAMPLES * 2), len = 0;
+  int buflen = max(HEADBUF, CHANNEL_HEADER_BUFFER), len = 0;
 
   if (s->guessEncoding) {
     s->swap = 0;
@@ -3419,6 +3419,7 @@ Snack_FileFormat snackWavFormat = {
 
 void
 SnackDefineFileFormats(Tcl_Interp *interp)
+/*
 {
   snackFileFormats        = &snackWavFormat;
   snackWavFormat.nextPtr  = &snackAiffFormat;
@@ -3428,6 +3429,18 @@ SnackDefineFileFormats(Tcl_Interp *interp)
   snackCslFormat.nextPtr  = &snackSdFormat;
   snackSdFormat.nextPtr   = &snackMp3Format;
   snackMp3Format.nextPtr  = &snackRawFormat;
+  snackRawFormat.nextPtr  = NULL;
+}
+*/
+{
+  snackFileFormats        = &snackWavFormat;
+  snackWavFormat.nextPtr  = &snackMp3Format;
+  snackMp3Format.nextPtr  = &snackAiffFormat;
+  snackAiffFormat.nextPtr = &snackAuFormat;
+  snackAuFormat.nextPtr   = &snackSmpFormat;
+  snackSmpFormat.nextPtr  = &snackCslFormat;
+  snackCslFormat.nextPtr  = &snackSdFormat;
+  snackSdFormat.nextPtr   = &snackRawFormat;
   snackRawFormat.nextPtr  = NULL;
 }
 

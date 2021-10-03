@@ -239,14 +239,26 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
       ij = (int) dj;
       f = dj - ij;
       pos = ij * 2 + c;
-      if (A->encoding == LIN24) {
+      switch (A->encoding) {
+      case LIN24:
+      case LIN24PACKED:
+	smp1 = (8388607.0*itmp[(A->rpos*2 + pos) % (BUFLEN)]);
+	smp2 = (8388607.0*itmp[(A->rpos*2 + pos + A->nChannels)%(BUFLEN)]);
+	((int *)buf)[i * A->nChannels + c] = smp1 * (1.0f - f) + smp2 * f;
+	break;
+      case LIN32:
+      case SNACK_FLOAT:
 	smp1 = (2147483647.0*itmp[(A->rpos*2 + pos) % (BUFLEN)]);
 	smp2 = (2147483647.0*itmp[(A->rpos*2 + pos + A->nChannels)%(BUFLEN)]);
 	((int *)buf)[i * A->nChannels + c] = smp1 * (1.0f - f) + smp2 * f;
-      } else {
+	break;
+      case LIN16:
+      case MULAW:
+      case ALAW:
 	smp1 = (short) (32767.0*itmp[(A->rpos*2 + pos) % (BUFLEN)]);
 	smp2 = (short) (32767.0*itmp[(A->rpos*2 + pos + A->nChannels)%(BUFLEN)]);
 	((short *)buf)[i * A->nChannels + c] = smp1 * (1.0f - f) + smp2 * f;
+	break;
       }
     }
   }
@@ -414,7 +426,7 @@ SnackAudioGetEncodings(char *device)
 void
 SnackAudioGetRates(char *device, char *buf, int n)
 {
-  strncpy(buf, "8000 11025 16000 22050 32000 44100 48000", n);
+  strncpy(buf, "8000 11025 16000 22050 32000 44100 48000 96000", n);
   buf[n-1] = '\0';
 }
 

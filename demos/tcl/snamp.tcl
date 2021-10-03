@@ -223,7 +223,11 @@ if [info exists argv] {
 
 wm protocol . WM_DELETE_WINDOW exit
 
-set filelist [glob -nocomplain *.mp3 *.wav *.MP3 *.WAV]
+if {$::tcl_platform(platform) == "windows"} {
+ set filelist [glob -nocomplain *.mp3 *.wav]
+} else {
+ set filelist [glob -nocomplain *.mp3 *.wav *.MP3 *.WAV]
+}
 if {[info exists snack::snackogg]} {
   set filelist [concat $filelist [glob -nocomplain *.ogg *.OGG]]
 }

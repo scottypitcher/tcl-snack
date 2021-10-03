@@ -47,7 +47,7 @@ HP-UX B.10.20/11.00
 IRIX 6.2, 6.3 & 6.4 (even runs under SoftWindows, although slowly)
 NetBSD-current/i386 using the OSS emulation library
 BSD/OS-4.1
-MacOS X, MacOS 8.6 and later
+Mac OS X, MacOS 8.6 and later
 
 Make sure you have the latest Snack version available at
 http://www.speech.kth.se/snack/ before proceeding with the installation.
@@ -61,7 +61,7 @@ You must have Tcl/Tk installed on your system. Both Tcl and Tk must have
 been configured with the "--enable-shared" flag at build time (this is 
 default for the 8.4 versions). Build them before Snack.
 
-Unpack Snack and change directory to the snack2.2.9/unix directory.
+Unpack Snack and change directory to the snack2.2.10/unix directory.
 
 Type "./configure".
 
@@ -92,7 +92,7 @@ cd tcl8.4.8/unix
 ./configure --enable-shared
 cd ../../tk8.4.8/unix
 ./configure --enable-shared
-cd ../../snack2.2.9/unix
+cd ../../snack2.2.10/unix
 ./configure
 make
 
@@ -104,9 +104,9 @@ When you have succesfully compiled Snack it's time to look at the demos.
 In order to run these you will have to set the environment variable 
 TCLLIBPATH to the directory containing the Snack library files (you don't 
 need this step if you install Snack as described below). If you have 
-compiled Snack in /u/kare/snack2.2.9/unix, this would be:
+compiled Snack in /u/kare/snack2.2.10/unix, this would be:
 
-setenv TCLLIBPATH /u/kare/snack2.2.9/unix
+setenv TCLLIBPATH /u/kare/snack2.2.10/unix
 
 Change to the demos/tcl/ directory and type ./widget.tcl:
 

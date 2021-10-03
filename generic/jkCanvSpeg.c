@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2005 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -571,10 +571,8 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
   Tk_Window tkwin = Tk_CanvasTkwin(canvas);
   XGCValues gcValues;
   int doCompute = 0;
-#if defined(MAC) || defined(MAC_OSX_TCL)
-  int i;
-#endif
-
+  int i, j;
+  
   if (argc == 0) return TCL_OK;
 
   /*  if (spegPtr->si.computing) return TCL_OK;*/
@@ -584,7 +582,16 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 			 (char *) spegPtr, flags) != TCL_OK) return TCL_ERROR;
 
   if (spegPtr->si.debug > 1) Snack_WriteLog("  Enter ConfigureSpeg\n");
-
+  
+  for (i = 0; configSpecs[i].type != TK_CONFIG_END; i++) {
+    for (j = 0; j < argc; j += 2) {
+      if (strncmp(argv[j], configSpecs[i].argvName, strlen(argv[j])) == 0) {
+	configSpecs[i].specFlags |= TK_CONFIG_OPTION_SPECIFIED;
+	break;
+      }
+    }
+  }
+  
 #if defined(MAC) || defined(MAC_OSX_TCL)
   for (i = 0; i < argc; i++) {
     int l = strlen(argv[i]);
@@ -863,6 +870,10 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 	   spegPtr->width, spegPtr->height, 0, spegPtr->width, 0);
   ComputeSpectrogramBbox(canvas, spegPtr);
 
+  for (i = 0; configSpecs[i].type != TK_CONFIG_END; i++) {
+    configSpecs[i].specFlags &= ~TK_CONFIG_OPTION_SPECIFIED;
+  }
+  
   if (spegPtr->si.debug > 1) Snack_WriteLog("  Exit ConfigureSpeg\n");
 
   return TCL_OK;

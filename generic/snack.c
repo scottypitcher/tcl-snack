@@ -262,6 +262,7 @@ Snack_Init(Tcl_Interp *interp)
       return TCL_ERROR;
     }
 #endif
+	
     if (initialized == 0) {
       Tk_CreateItemType(&snackWaveType);
       Tk_CreateItemType(&snackSpectrogramType);

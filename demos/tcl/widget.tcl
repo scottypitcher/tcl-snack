@@ -4,6 +4,10 @@ exec wish8.4 "$0" "$@"
 
 package require -exact snack 2.2
 package require http
+if {[catch {package require tile} msg]} {
+} else {
+ namespace import -force ttk::button
+}
 
 option add *font {Helvetica 10 bold}
 set home http://www.speech.kth.se/snack/
@@ -30,7 +34,7 @@ snack::menuCommand File Mixer... snack::mixerDialog
 snack::menuCommand File Quit exit
 
 proc CheckV token {
-  set ::version "Your version of Snack was released December 1, 2004. \
+  set ::version "Your version of Snack was released December 14, 2005. \
       Latest version released [::http::data $token]."
 }
 
@@ -46,12 +50,12 @@ snack::createIcons
 pack [frame .f0] -pady 5
 pack [label .f0.l -text "Basic sound handling:"] -anchor w
 label  .f0.time -text "0.00 sec" -width 10
-button .f0.bp -bitmap snackPlay -command {s2 play}
-button .f0.bu -bitmap snackPause -command {s2 pause}
-button .f0.bs -bitmap snackStop -command {s2 stop ; after cancel Timer}
-button .f0.br -bitmap snackRecord -command {s2 record ; Timer} -fg red
-button .f0.bl -image snackOpen -command OpenSound
-button .f0.ba -image snackSave -command SaveSound
+button .f0.bp -image snackPlay -command {s2 play}
+button .f0.bu -image snackPause -command {s2 pause}
+button .f0.bs -image snackStop -command {s2 stop ; after cancel Timer}
+button .f0.br -image snackRecord -command {s2 record ; Timer}
+button .f0.bl -image snackOpen -command OpenSound -width 21 -height 21
+button .f0.ba -image snackSave -command SaveSound -width 21 -height 21
 pack .f0.bp .f0.bu .f0.bs .f0.br .f0.bl	.f0.ba .f0.time -side left
 
 proc OpenSound {} {

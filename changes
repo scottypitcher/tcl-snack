@@ -1018,3 +1018,12 @@ build Snack on the Macintosh.
 11/30/04 (new feature) Support for more than 2 channels on Macintosh OS X.
 
 ----------------- Released 2.2.9, 12/1/04 -----------------------
+
+1/26/05 (new feature) Added implementation for snack::audio record_gain command on Windows (DeJong)
+
+1/26/05 (enhancement) Several improvements regarding MP3 format handling. (Wilkason)
+
+14/12/05 (bug fix) Fixed canvas items to work with later ActiveTcl releases.
+
+----------------- Released 2.2.10, 14/12/05 -----------------------
+
