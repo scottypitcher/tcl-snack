@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -19,10 +19,10 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "snack.h"
-#include "tk.h"
-#include "jkCanvItems.h"
 #include <string.h>
+#include "tk.h"
+#include "snack.h"
+#include "jkCanvItems.h"
 
 #if defined(__WIN32__)
 #  define WIN32_LEAN_AND_MEAN
@@ -33,8 +33,8 @@
 extern "C" {
 #endif
 
-int Snack_Init(Tcl_Interp *interp);
-int Snack_SafeInit(Tcl_Interp *interp);
+EXTERN int Snack_Init(Tcl_Interp *interp);
+EXTERN int Snack_SafeInit(Tcl_Interp *interp);
 
 #ifdef __cplusplus
 }
@@ -140,7 +140,7 @@ Snack_DebugCmd(ClientData cdata, Tcl_Interp *interp, int objc,
   int len;
   char *str;
   CONST84 char *patchLevelStr;
-
+  
   if (objc > 1) {
     if (Tcl_GetIntFromObj(interp, objv[1], &debugLevel) != TCL_OK)
       return TCL_ERROR;
@@ -188,6 +188,17 @@ extern int toCSLUshWaveCmd(Sound *s, Tcl_Interp *interp, int objc,
 #endif
 
 int useOldObjAPI = 0;
+
+int
+Snack_setUseOldObjAPI(ClientData cdata, Tcl_Interp *interp, int objc,
+		      Tcl_Obj *CONST objv[])
+{
+  useOldObjAPI = 1;
+
+  return TCL_OK;
+}
+
+
 static int initialized = 0;
 int littleEndian = 0;
 
@@ -314,9 +325,19 @@ Snack_Init(Tcl_Interp *interp)
 
   Tcl_CreateObjCommand(interp, "snack::ca", Snack_arCmd,
 		       (ClientData) arHashTable, Snack_arDeleteCmd);
+
+  Tcl_CreateObjCommand(interp, "snack::isyn", isynCmd,
+		       NULL, (Tcl_CmdDeleteProc *)NULL);
+
+  Tcl_CreateObjCommand(interp, "snack::osyn", osynCmd,
+		       NULL, (Tcl_CmdDeleteProc *)NULL);
    
   Tcl_CreateObjCommand(interp, "snack::debug",
 		       (Tcl_ObjCmdProc*) Snack_DebugCmd,
+		       NULL, (Tcl_CmdDeleteProc *)NULL);
+
+  Tcl_CreateObjCommand(interp, "snack::setUseOldObjAPI",
+		       (Tcl_ObjCmdProc*) Snack_setUseOldObjAPI,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
 
   snackDebugChannel = Tcl_GetStdChannel(TCL_STDERR);

@@ -30,7 +30,7 @@ snack::menuCommand File Mixer... snack::mixerDialog
 snack::menuCommand File Quit exit
 
 proc CheckV token {
-  set ::version "Your version of Snack was released May 9, 2003. \
+  set ::version "Your version of Snack was released December 1, 2004. \
       Latest version released [::http::data $token]."
 }
 

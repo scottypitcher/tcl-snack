@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -183,7 +183,10 @@ CleanPlayQueue()
   do {
     q = p->next;
     p->sound->writeStatus = IDLE;
-    if (p->cmdPtr != NULL) Tcl_DecrRefCount(p->cmdPtr);
+    if (p->cmdPtr != NULL) {
+      Tcl_DecrRefCount(p->cmdPtr);
+      p->cmdPtr = NULL;
+    }
     if (p->sound->destroy) {
       Snack_DeleteSound(p->sound);
     }
@@ -484,6 +487,7 @@ AssembleSoundChunk(int inSize)
 	  floatBuffer[i] += (fff[j] - 128.0f) * 256.0f;
 	  break;
 	case LIN24:
+	case LIN24PACKED:
 	  floatBuffer[i] += fff[j] / 256.0f;
 	  break;
 	case SNACK_FLOAT:
@@ -539,7 +543,7 @@ PlayCallback(ClientData clientData)
   long currPlayed, writeable, totPlayed = 0;
   int closedDown = 0, size;
   int playgrain, blockingPlay = sCurr->blockingPlay, lastid;
-  jkQueuedSound *p, *last;
+  jkQueuedSound *p, *last, *q;
   Tcl_Interp *interp = sCurr->interp;
 
   if (debugLevel > 1) Snack_WriteLog("  Enter PlayCallback\n");
@@ -603,11 +607,18 @@ PlayCallback(ClientData clientData)
 		ExecSoundCmd(p->sound, p->cmdPtr);
 		if (debugLevel > 0)
 		  Snack_WriteLogInt("   a ExecSoundCmd", (int)stCheck);
-		if (p->cmdPtr != NULL)
-		  Tcl_DecrRefCount(p->cmdPtr);
-		p->cmdPtr = NULL;
-		if (soundQueue == NULL)
+                /*
+                 * The soundQueue can be removed by the -command, so check it
+                 * otherwise p is garbage
+                 */
+                if (soundQueue == NULL) {
+		  oplayed = currPlayed; /* close it down */
 		  break;
+                }
+		if (p->cmdPtr != NULL) {
+		  Tcl_DecrRefCount(p->cmdPtr);
+		  p->cmdPtr = NULL;
+		}
 	      }
 	    }
 	  } else {
@@ -644,10 +655,17 @@ PlayCallback(ClientData clientData)
 		 (SnackCurrentTime() - startDevTime)*globalRate);*/
     if (p->status == SNACK_QS_DONE && p->sound->destroy == 0 &&
 	p->cmdPtr == NULL) {
+      int count = 0;
+      
+      for (q = soundQueue; q != NULL; q = q->next) {
+	if (p->sound == q->sound) count++;
+      }
+      
       /*      printf("deleted %d\n", p->id);*/
       last->next = p->next;
       if (p == soundQueue) soundQueue = p->next;
-      p->sound->writeStatus = IDLE;
+      
+      if (count == 1) p->sound->writeStatus = IDLE;
       if (p->filterName != NULL) {
 	ckfree((char *)p->filterName);
       }
@@ -912,15 +930,16 @@ int
 playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
 {
   int startPos = 0, endPos = -1, block = 0, arg, startTime = 0, duration = 0;
-  int devChannels = -1, rate = -1;
+  int devChannels = -1, rate = -1, noPeeping = 0;
   double dStart = 0.0, dDuration = 0.0;
   static CONST84 char *subOptionStrings[] = {
     "-output", "-start", "-end", "-command", "-blocking", "-device", "-filter",
-    "-starttime", "-duration", "-devicechannels", "-devicerate", NULL
+    "-starttime", "-duration", "-devicechannels", "-devicerate", "-nopeeping",
+    NULL
   };
   enum subOptions {
     OUTPUT, STARTPOS, END, COMMAND, BLOCKING, DEVICE, FILTER, STARTTIME,
-    DURATION, DEVCHANNELS, DEVRATE
+    DURATION, DEVCHANNELS, DEVRATE, NOPEEPING
   };
   jkQueuedSound *qs, *p;
   Snack_FileFormat *ff;
@@ -1068,9 +1087,15 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
 	}
 	break;
       }
+    case NOPEEPING:
+      {
+ 	if (Tcl_GetBooleanFromObj(interp, objv[arg+1], &noPeeping) != TCL_OK)
+ 	  return TCL_ERROR;
+ 	break;
+      }
     }
   }
-  if (s->storeType == SOUND_IN_CHANNEL) {
+  if (s->storeType == SOUND_IN_CHANNEL && !noPeeping) {
     int tlen = 0, rlen = 0;
 
     s->buffersize = CHANNEL_HEADER_BUFFER;

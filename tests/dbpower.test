@@ -24,7 +24,7 @@ test dbpower-1.2 {dBPowerSpectrum command, -end option} {
 	-windowlength 32]
   $s destroy
   set res
-} {-44.959 -52.004 -84.505 -93.468 -98.013 -100.0 -99.64 -102.35 -102.39 -102.32 -104.67 -104.66 -105.31 -106.86 -107.17 -112.66}
+} {-44.938 -51.981 -83.818 -91.582 -95.218 -97.588 -97.686 -99.849 -99.143 -100.16 -102.67 -102.81 -102.91 -104.24 -104.26 -107.86}
 
 test dbpower-1.3 {dBPowerSpectrum command, -end and -skip options} {
   set s [snack::sound snd -load ex1.wav]
@@ -33,7 +33,7 @@ test dbpower-1.3 {dBPowerSpectrum command, -end and -skip options} {
 	-windowlength 32]
   $s destroy
   set res
-} {-44.96 -52.016 -85.245 -92.607 -97.372 -99.939 -100.97 -102.55 -101.93 -101.45 -104.44 -105.91 -107.07 -107.84 -107.57 -110.55}
+} {-44.939 -51.993 -84.497 -91.109 -94.957 -97.564 -98.45 -99.985 -99.593 -99.321 -102.01 -103.28 -104.12 -105.15 -104.44 -106.91}
 
 test dbpower-1.4 {dBPowerSpectrum command, -channel -1} {
   set s [snack::sound snd -load ex1.wav]
@@ -49,7 +49,7 @@ test dbpower-2.1 {dBPowerSpectrum command, bad -fftlength option} {
   catch {$s dBPowerSpectrum -fftlength 33} msg
   $s destroy
   set msg
-} {-fftlength must be one of { 8 16 32 64 128 256 512 1024 2048 4096 8192 16384 }}
+} {-fftlength must be one of { 8 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 }}
 
 test dbpower-2.2 {dBPowerSpectrum command, bad -windowlength option} {
   set s [snack::sound snd -load ex1.wav]
@@ -86,7 +86,7 @@ test dbpower-3.1 {dBPowerSpectrum command, -windowtype option} {
 	-windowlength 32 -windowtype hanning]
   $s destroy
   set res
-} {-45.67 -51.291 -84.481 -92.034 -97.201 -99.898 -101.07 -102.59 -102.13 -101.8 -104.24 -106.03 -107.43 -108.14 -108.13 -110.85}
+} {-45.649 -51.27 -83.822 -90.784 -94.893 -97.554 -98.568 -100.2 -99.748 -99.653 -102.17 -103.53 -104.44 -105.31 -104.91 -107.19}
 
 test dbpower-4.1 {dBPowerSpectrum command, bad -end option} {
   set s [snack::sound snd -load ex1.wav]

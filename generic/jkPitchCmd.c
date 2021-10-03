@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2000-2003 Kåre Sjölander <kare@speech.kth.se>
+ * Copyright (C) 2000-2004 Kåre Sjölander <kare@speech.kth.se>
  * Copyright (C) 1997 Philippe Langlais <felipe@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
@@ -57,8 +57,12 @@ extern int Get_f0(Sound *s, Tcl_Interp *interp, int objc,
 #define minimum(a,b) (((a)>(b))? (b) : (a))
 #define maximum(a,b) (((a)>(b))? (a) : (b))
 
+#ifndef SEEK_SET
 #define SEEK_SET 0
+#endif
+#ifndef SEEK_END
 #define SEEK_END 2
+#endif
 
 #define PI_2 6.28318530717958
 #define MAX_ENTIER            2147483
@@ -821,7 +825,7 @@ if (moy) for (i=0; i<longueur; Signal[i++] -= (short) moy);
 int
 pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  int longueur, nb_trames, To_Moyen;
+  int longueur, nb_trames, nb_trames_alloc, To_Moyen;
   int *Hammer;
   int i;
   int fmin = 60, fmax = 400, lquick = 1/*, adjust = 0*/, nbframes;
@@ -838,6 +842,12 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 
   if (s->debug > 0) { Snack_WriteLog("Enter pitchCmd\n"); }
 
+  if (s->nchannels != 1) {
+    Tcl_AppendResult(interp, "pitch only works with Mono sounds",
+		     (char *) NULL);
+    return TCL_ERROR;
+  }
+
   for (arg = 2; arg < objc; arg += 2) {
     char *opt = Tcl_GetStringFromObj(objv[arg], NULL);
     char *val = Tcl_GetStringFromObj(objv[arg+1], NULL);
@@ -846,12 +856,6 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       Get_f0(s, interp, objc, objv);
       return TCL_OK;
     }
-  }
-
-  if (s->nchannels != 1) {
-    Tcl_AppendResult(interp, "pitch only works with Mono sounds",
-		     (char *) NULL);
-    return TCL_ERROR;
   }
 
   if (s->cmdPtr != NULL) {
@@ -944,8 +948,12 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 
   start = startpos - (cst_length_hamming / 2);
   if (start < 0) start = 0;
+  if (endpos - start + 1 < cst_length_hamming) {
+    endpos = cst_length_hamming + start - 1;
+    if (endpos >= s->length) return TCL_OK;
+  }
   longueur = endpos - start + 1;
-
+  
   if ((Signal = (float *) ckalloc(cst_length_hamming * sizeof(float))) == NULL) {
     Tcl_AppendResult(interp, "Couldn't allocate buffer!", NULL);
     return TCL_ERROR;
@@ -963,7 +971,7 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   for (i = 0; i < nb_trames; i++) {
     Resultat[i] = (int *) ckalloc(sizeof(int) * (cst_step_max-cst_step_min+1));
   }
-
+  nb_trames_alloc = nb_trames;
   nb_trames = nbframes = calcul_nrj_dpz(s, interp, start, longueur);
 
   Hamming = (double *) ckalloc(sizeof(double)*cst_length_hamming);
@@ -990,12 +998,12 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     maxnrj = (short) max_nrj;
     mindpz = (short) min_dpz;
     maxdpz = (short) max_dpz;
-  
+
     if (debug && quick) 
       printf("%d trames coupees sur %d -> %d %% (seuil nrj = %d, seuil dpz = %d) \n",
 	     nb_coupe,nbframes,POURCENT(nb_coupe,nbframes),seuil_nrj,seuil_dpz);
     libere_zone(zone);
-    for (i=0;i<nbframes;i++) 
+    for (i=0;i<nb_trames_alloc;i++) 
       if (Resultat[i]) ckfree((char *) Resultat[i]);
   }
   ckfree((char *) Hamming);

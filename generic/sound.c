@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -19,9 +19,9 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "snack.h"
 #include "tcl.h"
 #include <string.h>
+#include "snack.h"
 
 #if defined(__WIN32__)
 #  define WIN32_LEAN_AND_MEAN
@@ -32,8 +32,8 @@
 extern "C" {
 #endif
 
-int Sound_Init(Tcl_Interp *interp);
-int Sound_SafeInit(Tcl_Interp *interp);
+EXTERN int Sound_Init(Tcl_Interp *interp);
+EXTERN int Sound_SafeInit(Tcl_Interp *interp);
 
 #ifdef __cplusplus
 }
@@ -126,6 +126,8 @@ extern SnackStubs *snackStubs;
 #endif
 
 extern Tcl_HashTable *filterHashTable;
+extern Tcl_HashTable *hsetHashTable;
+extern Tcl_HashTable *arHashTable;
 
 #if defined(Tcl_InitHashTable) && defined(USE_TCL_STUBS)
 #undef Tcl_InitHashTable
@@ -172,6 +174,8 @@ Sound_Init(Tcl_Interp *interp)
 
   soundHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
   filterHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
+  hsetHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
+  arHashTable = (Tcl_HashTable *) ckalloc(sizeof(Tcl_HashTable));
 
   Tcl_CreateObjCommand(interp, "sound", Snack_SoundCmd,
 		       (ClientData) soundHashTable, (Tcl_CmdDeleteProc *)NULL);
@@ -200,6 +204,15 @@ Sound_Init(Tcl_Interp *interp)
   Tcl_CreateObjCommand(interp, "snack::filter", Snack_FilterCmd,
 		       (ClientData) filterHashTable, Snack_FilterDeleteCmd);
   
+  Tcl_CreateObjCommand(interp, "snack::hset", Snack_HSetCmd,
+		       (ClientData) hsetHashTable, Snack_HSetDeleteCmd);
+
+  Tcl_CreateObjCommand(interp, "snack::ca", Snack_arCmd,
+		       (ClientData) arHashTable, Snack_arDeleteCmd);
+  
+  Tcl_CreateObjCommand(interp, "snack::isyn", isynCmd,
+		       NULL, (Tcl_CmdDeleteProc *)NULL);
+  
   Tcl_CreateObjCommand(interp, "snack::debug",
 		       (Tcl_ObjCmdProc*) Snack_DebugCmd,
 		       NULL, (Tcl_CmdDeleteProc *)NULL);
@@ -214,6 +227,8 @@ Sound_Init(Tcl_Interp *interp)
 
   Tcl_InitHashTable(soundHashTable, TCL_STRING_KEYS);
   Tcl_InitHashTable(filterHashTable, TCL_STRING_KEYS);
+  Tcl_InitHashTable(hsetHashTable, TCL_STRING_KEYS);
+  Tcl_InitHashTable(arHashTable, TCL_STRING_KEYS);
 
   if (initialized == 0) {
     SnackDefineFileFormats(interp);

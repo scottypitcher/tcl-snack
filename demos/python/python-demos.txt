@@ -33,3 +33,10 @@ Example of on-the-fly beep generation.
 
 playnotes.py
 Another example of on-the-fly beep generation.
+
+mixplay.py
+An example of how to play two sounds at the same time with independent
+volume control.
+
+dataCmd.py
+An example of how to use the data command to transfer binary data into a sound object

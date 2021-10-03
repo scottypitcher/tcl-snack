@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-#define NDEFCOLS 32
+#define NDEFCOLS 256
 #define FRAMESIZE 262144
 
 typedef struct SnackItemInfo {

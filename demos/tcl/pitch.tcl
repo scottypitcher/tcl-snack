@@ -44,9 +44,9 @@ proc Start {} {
 
 proc Draw {} {
   set length [s length]  
-  while {$::samplePos < $length - 666-0*320} {
-    t copy s -start $::samplePos -end [expr {$::samplePos+665+0*320}]
-    set pitch [lindex [t pitch] 2]
+  while {$::samplePos < $length - 666-1*320} {
+    t copy s -start $::samplePos -end [expr {$::samplePos+665+1*320}]
+   set pitch [lindex [lindex [t pitch -method esps] 2] 0]
     set x [expr {$::ox + 0.01 * $::pixpsec}]
     set y [expr {[winfo height .f.c]*((300-$pitch)/300.0)}]
     if {$::oy == 0} { set ::oy $y }

@@ -587,7 +587,8 @@ ConfigureSpectrogram(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
 
 #if defined(MAC) || defined(MAC_OSX_TCL)
   for (i = 0; i < argc; i++) {
-    if (strncmp(argv[i], "-anchor", strlen(argv[i])) == 0) {
+    int l = strlen(argv[i]);
+    if (l && strncmp(argv[i], "-anchor", l) == 0) {
       i++;
       if (strcmp(argv[i], "ne") == 0) {
 	spegPtr->anchor = 1;

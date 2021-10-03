@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -35,23 +35,10 @@ ParseSoundCmd(ClientData cdata, Tcl_Interp *interp, int objc,
 
 extern int littleEndian;
 
-void *
-Snack_Alloc(int size) {
-  void *tmp = ckalloc(size);
-  /*  printf("Alloced %d at %d\n", size, (int) tmp);*/
-  return tmp;
-}
-
-void
-Snack_Free(void *handle) {
-  /*  printf("Freed at %d\n", (int) handle);*/
-  ckfree(handle);
-}
-
 int
 Snack_AddCallback(Sound *s, updateProc *proc, ClientData cd)
 {
-  jkCallback *cb = (jkCallback *) Snack_Alloc(sizeof(jkCallback));
+  jkCallback *cb = (jkCallback *) ckalloc(sizeof(jkCallback));
 
   if (cb == NULL) return(-1);
   cb->proc = proc;
@@ -83,7 +70,7 @@ Snack_RemoveCallback(Sound *s, int id)
       cbGoner = cb;
       cb = cb->next;
       *pp = cb;
-      Snack_Free((char *)cbGoner);
+      ckfree((char *)cbGoner);
       return;
     } else {
       pp = &cb->next;
@@ -351,7 +338,7 @@ Snack_DeleteSound(Sound *s)
   }
 
   Snack_ResizeSoundStorage(s, 0);
-  Snack_Free((char *) s->blocks);
+  ckfree((char *) s->blocks);
   if (s->storeType == SOUND_IN_FILE && s->linkInfo.linkCh != NULL) {
     CloseLinkedFile(&s->linkInfo);
   }
@@ -365,17 +352,17 @@ Snack_DeleteSound(Sound *s)
   }
 
   if (s->fcname != NULL) {
-    Snack_Free((char *)s->fcname);
+    ckfree((char *)s->fcname);
   }
   if (s->filterName != NULL) {
-    Snack_Free(s->filterName);
+    ckfree(s->filterName);
   }
 
   Snack_ExecCallbacks(s, SNACK_DESTROY_SOUND);
   currCB = s->firstCB;
   while (currCB != NULL) {
     if (s->debug > 1) Snack_WriteLogInt("  Freed callback", currCB->id);
-    Snack_Free((char *)currCB);
+    ckfree((char *)currCB);
     currCB = currCB->next;
   }
 
@@ -391,7 +378,7 @@ Snack_DeleteSound(Sound *s)
     Snack_WriteLog("  Sound object freed\n");
   }
 
-  Snack_Free((char *) s);
+  ckfree((char *) s);
 }
 
 int
@@ -409,14 +396,14 @@ Snack_ResizeSoundStorage(Sound *s, int len)
     sampSize = sizeof(double);
   }
   neededblks = 1 + (len * s->nchannels - 1) / blockSize;
-
+  
   if (len == 0) {
     neededblks = 0;
     s->exact = 0;
   }
 
   if (neededblks > s->maxblks) {
-    void *tmp = realloc(s->blocks, neededblks * sizeof(float*));
+    void *tmp = ckrealloc((char *)s->blocks, neededblks * sizeof(float*));
 
     if (tmp == NULL) {
       if (s->debug > 2) Snack_WriteLogInt("    realloc failed", neededblks);
@@ -425,16 +412,16 @@ Snack_ResizeSoundStorage(Sound *s, int len)
     s->maxblks = neededblks;
     s->blocks = (float **)tmp;
   }
-
+  
   if (s->maxlength == 0 && len * s->nchannels < blockSize) {
-
-  /* Allocate exactly as much as needed. */
+    
+    /* Allocate exactly as much as needed. */
 
     if (s->debug > 2) Snack_WriteLogInt("    Allocating minimal block",
 					len*s->nchannels * sizeof(float));
 
     s->exact = len * s->nchannels * sampSize;
-    if ((s->blocks[0] = (float *) Snack_Alloc(s->exact)) == NULL) {
+    if ((s->blocks[0] = (float *) ckalloc(s->exact)) == NULL) {
       return TCL_ERROR;
     }
     i = 1;
@@ -452,14 +439,14 @@ Snack_ResizeSoundStorage(Sound *s, int len)
     }
 
     for (i = s->nblks; i < neededblks; i++) {
-      if ((s->blocks[i] = (float *) Snack_Alloc(CBLKSIZE)) == NULL) {
+      if ((s->blocks[i] = (float *) ckalloc(CBLKSIZE)) == NULL) {
 	break;
       }
     }
     if (i < neededblks) {
       if (s->debug > 2) Snack_WriteLogInt("    block alloc failed", i);
       for (--i; i >= s->nblks; i--) {
-	Snack_Free((char *) s->blocks[i]);
+	ckfree((char *) s->blocks[i]);
       }
       return TCL_ERROR;
     }
@@ -467,7 +454,7 @@ Snack_ResizeSoundStorage(Sound *s, int len)
     /* Copy and de-allocate any exact block */
     if (s->exact > 0) {
       memcpy(s->blocks[0], tmp, s->exact);
-      Snack_Free((char *) tmp);
+      ckfree((char *) tmp);
       s->exact = 0;
     }
 
@@ -476,7 +463,7 @@ Snack_ResizeSoundStorage(Sound *s, int len)
 
     /* Reallocate to one full block */
 
-    float *tmp = (float *) Snack_Alloc(CBLKSIZE);
+    float *tmp = (float *) ckalloc(CBLKSIZE);
 
     if (s->debug > 2) {
       Snack_WriteLogInt("    Reallocating full block", CBLKSIZE);
@@ -484,16 +471,16 @@ Snack_ResizeSoundStorage(Sound *s, int len)
 
     if (tmp != NULL) {
       memcpy(tmp, s->blocks[0], s->exact);
-      Snack_Free((char *) s->blocks[0]);
+      ckfree((char *) s->blocks[0]);
       s->blocks[0] = tmp;
       s->maxlength = blockSize / s->nchannels;
     }
     s->exact = 0;
   }
-
+  
   if (neededblks < s->nblks) {
     for (i = neededblks; i < s->nblks; i++) {
-      Snack_Free((char *) s->blocks[i]);
+      ckfree((char *) s->blocks[i]);
     }
     s->maxlength = neededblks * blockSize / s->nchannels;
   }
@@ -903,7 +890,7 @@ configureCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   for (arg = 0; arg <newobjc; arg++) {
     Tcl_DecrRefCount(newobjv[arg]);
   }
-  Snack_Free((char *)newobjv);
+  ckfree((char *)newobjv);
 
   if (objc == 2) { /* get all options */
     Tcl_Obj *objs[6];
@@ -1395,7 +1382,7 @@ cgetCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 int filterSndCmd(Sound *s, Tcl_Interp *interp, int objc,
 		 Tcl_Obj *CONST objv[]);
 
-#define NSOUNDCOMMANDS   39
+#define NSOUNDCOMMANDS   45
 #define MAXSOUNDCOMMANDS 100
 
 static int nSoundCommands   = NSOUNDCOMMANDS;
@@ -1444,10 +1431,18 @@ CONST84 char *sndCmdNames[MAXSOUNDCOMMANDS] = {
   "formant",
   "speatures",
 
-  "al",
+  "an",
   "mix",
-  "xo",
-  "oc",
+  "stretch",
+  "co",
+  "powerSpectrum",
+
+  "vp",
+  "join",
+  "lastIndex",
+  "fit",
+  "ina",
+
   NULL
 };
 
@@ -1491,11 +1486,23 @@ soundCmd *sndCmdProcs[MAXSOUNDCOMMANDS] = {
   speaturesCmd,
   alCmd,
   mixCmd,
-  xoCmd,
-  ocCmd
+  stretchCmd,
+  ocCmd,
+  powerSpectrumCmd,
+  vpCmd,
+  joinCmd,
+  lastIndexCmd,
+  fitCmd,
+  inaCmd
 };
 
 soundDelCmd *sndDelCmdProcs[MAXSOUNDCOMMANDS] = {
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
   NULL,
   NULL,
   NULL,
@@ -1566,7 +1573,7 @@ SoundCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 Sound *
 Snack_NewSound(int rate, int encoding, int nchannels)
 {
-  Sound *s = (Sound *) Snack_Alloc(sizeof(Sound));
+  Sound *s = (Sound *) ckalloc(sizeof(Sound));
 
   if (s == NULL) {
     return NULL;
@@ -1581,6 +1588,8 @@ Snack_NewSound(int rate, int encoding, int nchannels)
   } else if (s->encoding == LIN24 || s->encoding == LIN32
 	     || s->encoding == SNACK_FLOAT) {
     s->sampsize = 4;
+  } else if (s->encoding == LIN24PACKED) {
+    s->sampsize = 3;
   } else {
     s->sampsize = 1;
   }
@@ -1607,9 +1616,9 @@ Snack_NewSound(int rate, int encoding, int nchannels)
   s->fcname    = NULL;
   s->interp    = NULL;
   s->cmdPtr    = NULL;
-  s->blocks    = (float **) Snack_Alloc(MAXNBLKS * sizeof(float*));
+  s->blocks    = (float **) ckalloc(MAXNBLKS * sizeof(float*));
   if (s->blocks == NULL) {
-    Snack_Free((char *) s);
+    ckfree((char *) s);
     return NULL;
   }
   s->blocks[0] = NULL;
@@ -2025,7 +2034,7 @@ Snack_SoundDeleteCmd(ClientData clientData)
 {
   if (clientData != NULL) {
     Tcl_DeleteHashTable((Tcl_HashTable *) clientData);
-    Snack_Free((char *) clientData);
+    ckfree((char *) clientData);
   }
 }
 
@@ -2093,9 +2102,9 @@ SetFcname(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj)
   char *str = Tcl_GetStringFromObj(obj, &length);
 
   if (s->fcname != NULL) {
-    Snack_Free((char *)s->fcname);
+    ckfree((char *)s->fcname);
   }
-  if ((s->fcname = (char *) Snack_Alloc((unsigned) (length + 1))) == NULL) {
+  if ((s->fcname = (char *) ckalloc((unsigned) (length + 1))) == NULL) {
     Tcl_AppendResult(interp, "Could not allocate name buffer!", NULL);
     return TCL_ERROR;
   }

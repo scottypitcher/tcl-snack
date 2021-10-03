@@ -8,6 +8,9 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
+#include "snack.h"
+
 
 static double *pxl,*pa,*py,*pyl,*pa1,*px;
 void dlwrtrn(a,n,x,y)
@@ -264,7 +267,9 @@ return(m);
 #include <stdlib.h>
 #include <math.h>
 #include <fcntl.h>
+#ifndef DBL_MAX
 #define DBL_MAX 1.7976931348623157E+308  
+#endif
 /*#include <esps/limits.h>*/
     /* for definition of DBL_MAX */
 
@@ -374,8 +379,8 @@ void cwindow(din, dout, n, preemp)
   if(wsize != n) {		/* Need to create a new cos**4 window? */
     register double arg, half=0.5;
     
-    if(wind) wind = (double*)realloc(wind,n*sizeof(double));
-    else wind = (double*)malloc(n*sizeof(double));
+    if(wind) wind = (double*)ckrealloc((void *)wind,n*sizeof(double));
+    else wind = (double*)ckalloc(n*sizeof(double));
     wsize = n;
     for(i=0, arg=3.1415927*2.0/(wsize), q=wind; i < n; ) {
       co = half*(1.0 - cos((half + (double)i++) * arg));
@@ -409,8 +414,8 @@ void hwindow(din, dout, n, preemp)
   if(wsize != n) {		/* Need to create a new Hamming window? */
     register double arg, half=0.5;
     
-    if(wind) wind = (double*)realloc(wind,n*sizeof(double));
-    else wind = (double*)malloc(n*sizeof(double));
+    if(wind) wind = (double*)ckrealloc((void *)wind,n*sizeof(double));
+    else wind = (double*)ckalloc(n*sizeof(double));
     wsize = n;
     for(i=0, arg=3.1415927*2.0/(wsize), q=wind; i < n; )
       *q++ = (.54 - .46 * cos((half + (double)i++) * arg));
@@ -442,8 +447,8 @@ void hnwindow(din, dout, n, preemp)
   if(wsize != n) {		/* Need to create a new Hamming window? */
     register double arg, half=0.5;
     
-    if(wind) wind = (double*)realloc(wind,n*sizeof(double));
-    else wind = (double*)malloc(n*sizeof(double));
+    if(wind) wind = (double*)ckrealloc((void *)wind,n*sizeof(double));
+    else wind = (double*)ckalloc(n*sizeof(double));
     wsize = n;
     for(i=0, arg=3.1415927*2.0/(wsize), q=wind; i < n; )
       *q++ = (half - half * cos((half + (double)i++) * arg));
@@ -472,9 +477,9 @@ int get_window(dout, n, type)
     register short *p;
     register int i;
     
-    if(din) free(din);
+    if(din) ckfree((void *)din);
     din = NULL;
-    if(!(din = (short*)malloc(sizeof(short)*n))) {
+    if(!(din = (short*)ckalloc(sizeof(short)*n))) {
       printf("Allocation problems in get_window()\n");
       return(FALSE);
     }
@@ -509,9 +514,9 @@ int get_float_window(fout, n, type)
   static double *dout = NULL;
 
   if(n > n0) {
-    if(dout)free(dout);
+    if(dout)ckfree((void *)dout);
     dout = NULL;
-    if(!(dout = (double*)malloc(sizeof(double)*n))) {
+    if(!(dout = (double*)ckalloc(sizeof(double)*n))) {
       printf("Allocation problems in get_window()\n");
       return(FALSE);
     }
@@ -540,8 +545,8 @@ int fwindow(din, dout, n, preemp, type)
   register short *p;
 
   if(size != n) {
-    if(fwind) fwind = (float*)realloc(fwind,sizeof(float)*(n+1));
-    else fwind =  (float*)malloc(sizeof(float)*(n+1));
+    if(fwind) fwind = (float*)ckrealloc((void *)fwind,sizeof(float)*(n+1));
+    else fwind =  (float*)ckalloc(sizeof(float)*(n+1));
     if(!fwind) {
       printf("Allocation problems in fwindow\n");
       return(FALSE);
@@ -579,8 +584,8 @@ int fwindow_f(din, dout, n, preemp, type)
   register float *p;
 
   if(size != n) {
-    if(fwind) fwind = (float*)realloc(fwind,sizeof(float)*(n+1));
-    else fwind =  (float*)malloc(sizeof(float)*(n+1));
+    if(fwind) fwind = (float*)ckrealloc((void *)fwind,sizeof(float)*(n+1));
+    else fwind =  (float*)ckalloc(sizeof(float)*(n+1));
     if(!fwind) {
       printf("Allocation problems in fwindow\n");
       return(FALSE);
@@ -618,8 +623,8 @@ int fwindow_d(din, dout, n, preemp, type)
   register double *p;
 
   if(size != n) {
-    if(fwind) fwind = (float*)realloc(fwind,sizeof(float)*(n+1));
-    else fwind =  (float*)malloc(sizeof(float)*(n+1));
+    if(fwind) fwind = (float*)ckrealloc((void *)fwind,sizeof(float)*(n+1));
+    else fwind =  (float*)ckalloc(sizeof(float)*(n+1));
     if(!fwind) {
       printf("Allocation problems in fwindow\n");
       return(FALSE);
@@ -820,8 +825,8 @@ int lpc(lpc_ord,lpc_stabl,wsize,data,lpca,ar,lpck,normerr,rms,preemp,type)
   if((wsize <= 0) || (!data) || (lpc_ord > MAXORDER)) return(FALSE);
   
   if(nwind != wsize) {
-    if(dwind) dwind = (double*)realloc(dwind,wsize*sizeof(double));
-    else dwind = (double*)malloc(wsize*sizeof(double));
+    if(dwind) dwind = (double*)ckrealloc((void *)dwind,wsize*sizeof(double));
+    else dwind = (double*)ckalloc(wsize*sizeof(double));
     if(!dwind) {
       printf("Can't allocate scratch memory in lpc()\n");
       return(FALSE);
@@ -901,24 +906,25 @@ int w_covar(xx,m,n,istrt,y,alpha,r0,preemp,w_type)
   int mnew = 0;
 
   if((n+1) > nold) {
-    if(x) free(x);
+    if(x) ckfree((void *)x);
     x = NULL;
-    if(!(x = (double*)calloc((n+1), sizeof(double)))) {
+    if(!(x = (double*)ckalloc((n+1)*sizeof(double)))) {
       printf("Allocation failure in w_covar()\n");
       return(FALSE);
     }
+    memset(x, 0, (n+1) * sizeof(double));
     nold = n+1;
   }
 
   if(*m > mold) {
-    if(b) free(b); if(beta) free(beta); if (grc) free(grc); if (cc) free(cc);
+    if(b) ckfree((void *)b); if(beta) ckfree((void *)beta); if (grc) ckfree((void *)grc); if (cc) ckfree((void *)cc);
     b = beta = grc = cc = NULL;
     mnew = *m;
     
-    if(!((b = (double*)malloc(sizeof(double)*((mnew+1)*(mnew+1)/2))) && 
-       (beta = (double*)malloc(sizeof(double)*(mnew+3)))  &&
-       (grc = (double*)malloc(sizeof(double)*(mnew+3)))  &&
-       (cc = (double*)malloc(sizeof(double)*(mnew+3)))))   {
+    if(!((b = (double*)ckalloc(sizeof(double)*((mnew+1)*(mnew+1)/2))) && 
+       (beta = (double*)ckalloc(sizeof(double)*(mnew+3)))  &&
+       (grc = (double*)ckalloc(sizeof(double)*(mnew+3)))  &&
+       (cc = (double*)ckalloc(sizeof(double)*(mnew+3)))))   {
       printf("Allocation failure in w_covar()\n");
       return(FALSE);
     }
@@ -1023,9 +1029,9 @@ int covar2(xx,m,n,istrt,y,alpha,r0,preemp)
      mp, i, j, minc, n1, n2, n3, npb, msub, mm1, isub, m2;
 
   if((n+1) > nold) {
-    if(x) free(x);
+    if(x) ckfree((void*)x);
     x = NULL;
-    if(!(x = (double*)malloc(sizeof(double)*(n+1)))) {
+    if(!(x = (double*)ckalloc(sizeof(double)*(n+1)))) {
       printf("Allocation failure in covar2()\n");
       return(FALSE);
     }

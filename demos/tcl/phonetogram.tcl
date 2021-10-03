@@ -37,10 +37,10 @@ proc Start {} {
 proc Draw {} {
   if {$::erase} { .f.c delete all }
   set length [s length]  
-  while {$::samplePos < $length - 666} {
-    t copy s -start $::samplePos -end [expr {$::samplePos+665}]
+  while {$::samplePos < $length - 666-1*320} {
+    t copy s -start $::samplePos -end [expr {$::samplePos+665+1*320}]
     t changed new
-    set pitch [lindex [t pitch] 2]
+    set pitch [lindex [lindex [t pitch -method esps] 2] 0]
     set amplitude [t max]
     if {$amplitude < 1} { set amplitude 1 }
     set y [expr {[winfo height .f.c]*(2.0-log10($amplitude)/2.26)}]

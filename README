@@ -1,7 +1,16 @@
 Snack v2.2 - a sound toolkit for scripting languages
 
-Kåre Sjölander <kare@speech.kth.se>
+Kåre Sjölander
 
+Email address:
+There are several anti-spam methods between me and anybody trying to contact
+me by e-mail. If you don't hear anything try to contact me again. One option
+is also to use this forum
+http://www1.speech.kth.se/prod/wavesurferforum/phpBB2/index.php
+which can be used to discuss Snack issues.
+Also, please start the subject line with the word "snack" in any e-mail
+correspondence in order to clearly indicate that it is an important message.
+<kare@speech.kth.se>
 
 
 Introduction
@@ -23,16 +32,16 @@ Tcl/Tk: http://tcl.activestate.com/
 Python: http://www.python.org/
 
 In order to use Snack you must have Tcl and Tk version 8.0 or later. Always 
-use the latest stable release, currently 8.4.1, which can be downloaded from 
+use the latest stable release, currently 8.4.8, which can be downloaded from 
 ftp.activestate.com/ActiveTcl/html/.
 
 Tcl/Tk is often included with Python distributions. Snack has been tested
-with Python 1.5.2 - 2.2 on Linux and Windows. See the Python
+with Python 1.5.2 - 2.3 on Linux and Windows. See the Python
 section below.
 
 The Snack package has been tested on the following platforms:
 Windows 95/98/NT/2000/XP
-Linux 2.0.35 (OSS 3.5) - 2.4.18-4 (OSS 3.8.2/ALSA 0.9.0) (x86 & PowerPC)
+Linux 2.0.35 (OSS 3.5) - 2.4.20-31.9 (OSS 3.8.2/ALSA 0.9.0) (x86 & PowerPC)
 SunOS 5.5.1 (Sparc and x86), Solaris 8 (Sparc)
 HP-UX B.10.20/11.00
 IRIX 6.2, 6.3 & 6.4 (even runs under SoftWindows, although slowly)
@@ -52,7 +61,7 @@ You must have Tcl/Tk installed on your system. Both Tcl and Tk must have
 been configured with the "--enable-shared" flag at build time (this is 
 default for the 8.4 versions). Build them before Snack.
 
-Unpack Snack and change directory to the snack2.2.2/unix directory.
+Unpack Snack and change directory to the snack2.2.9/unix directory.
 
 Type "./configure".
 
@@ -60,7 +69,7 @@ If you get this error message "Can't find Tcl configuration definitions",
 you have to specify their locations using the options "--with-tcl" and
 "--with-tk" when running configure. For example, use 
 "--with-tcl=/usr/lib --with-tk=/usr/lib" if Tcl/Tk was
-installed in "/usr/lib", or "--with-tcl=../tcl8.4.1/unix" if you use that
+installed in "/usr/lib", or "--with-tcl=../tcl8.4.8/unix" if you use that
 version.
 
 Linux users who have the ALSA sound driver installed should specify the configure flag --enable-alsa in order to enable native ALSA support.
@@ -79,11 +88,11 @@ If you use Tcl/Tk 8.0 to 8.0.5 you will have to use the flag
 Summary in case you download Tcl, Tk, and Snack and build from scratch:
 You should place the distributions in the same directory and unpack them.
 Build Snack using the following commands:
-cd tcl8.4.1/unix
+cd tcl8.4.8/unix
 ./configure --enable-shared
-cd ../../tk8.4.1/unix
+cd ../../tk8.4.8/unix
 ./configure --enable-shared
-cd ../../snack2.2.2/unix
+cd ../../snack2.2.9/unix
 ./configure
 make
 
@@ -95,9 +104,9 @@ When you have succesfully compiled Snack it's time to look at the demos.
 In order to run these you will have to set the environment variable 
 TCLLIBPATH to the directory containing the Snack library files (you don't 
 need this step if you install Snack as described below). If you have 
-compiled Snack in /u/kare/snack2.2.2/unix, this would be:
+compiled Snack in /u/kare/snack2.2.9/unix, this would be:
 
-setenv TCLLIBPATH /u/kare/snack2.2.2/unix
+setenv TCLLIBPATH /u/kare/snack2.2.9/unix
 
 Change to the demos/tcl/ directory and type ./widget.tcl:
 
@@ -150,13 +159,44 @@ Don't forget to copy the files snack.tcl and pkgIndex.tcl.dll from the
 unix directory to C:\Tcl\lib\snack2.2\ and rename the last file pkgIndex.tcl
 
 
+Compilation instructions for Snack on Windows using Mingw
+-------------------------------------------------------------------
+
+Mingw users (gcc for Windows) can now compile Snack under Windows.
+
+The win subdirectory contains a configure script that can be
+used to compile snack with Mingw compiled versions of Tcl and Tk.
+Users will first need to download Tcl and Tk sources along with
+the msys_mingw package from the following URL:
+
+http://sourceforge.net/project/showfiles.php?group_id=10894
+
+At this point, the DirectX 6 headers and lib files will need
+to be downloaded and installed into /mingw/dx6. If you change
+the location of the DirectX install, the Makefile will need
+to be updated after configure is run.
+
+http://people.montana.com/%7Ebowman/Software/ming.zip
+
+To build, run the configure script and pass the --with-tcl=DIR and
+--with-tk=DIR arguments that correspond to the build directories
+for Tcl and Tk. Tcl/Tk 8.4 or newer is required, OGG and NIST
+format options are not currently supported with the Mingw build.
+
+The typical configure-make cycle looks like:
+./configure --with-tcl=$TCL_DIR --with-tk=$TK_DIR --prefix=$INST_DIR
+make
+make install
+
+The above will create a snack directory in $INST_DIR/lib, which should
+be the same --prefix that you passed to the Tcl and Tk configure scripts.
 
 Using Snack with Python
 -------------------------------------------------------------------
 
 Snack must currently be used in conjunction with Tkinter. You need to have a
 matching installation of Snack and Tcl. For example, Python 1.5.2 uses
-Tcl8.0.5 and Python 1.6-2.2 uses Tcl8.3 on Windows. For Unix you have to
+Tcl8.0.5 and Python 1.6-2.3 uses Tcl8.3 on Windows. For Unix you have to
 edit Modules/Setup before building Python to specify which Tcl version to use.
 The default is Tcl8.0. You can check this by typing the following lines
 at the Python prompt:
@@ -311,3 +351,15 @@ Daniel A. Steffen
 Hans Werner Strube
 David McClosky
 Russell Owen
+Benjamin Baudoux
+Steve Renals
+Michel Scheffers
+Reinhard Max
+Brian Theado
+Håkan Melin
+Scott T. Silliman
+Mo DeJong
+Richard Dobson
+Alan Schnarr
+Lorenzo Seno
+Edouard Hinard

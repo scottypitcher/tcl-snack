@@ -30,7 +30,7 @@ $m.audio add command -label "Mixer..." -command snack::mixerDialog
 # Initialize some global variables
 
 set needsave 0
-set replay 1
+set replay 0
 set feedback 1
 set fontsize 20
 set prompt "Please load a recording script and start a new session"

@@ -85,3 +85,9 @@ Two channel real-time tone generator.
 vowelspace.tcl
 Draws formant tracks of speech recorded from the microphone.
 
+playlist.tcl
+Play all files in directory with short beep between files.
+
+mixplay.py
+An example of how to play two sounds at the same time with independent
+volume control.

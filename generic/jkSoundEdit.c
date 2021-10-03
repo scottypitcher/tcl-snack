@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -62,6 +62,14 @@ SnackCopySamples(Sound *dest, int to, Sound *src, int from, int len)
 	    di = FBLKSIZE + di;
 	    dn--;
 	  }
+          if (sn >= src->nblks) {
+	    /* Reached end of allocated blocks for src */
+	    return;
+          }
+          if (dn >= dest->nblks) {
+	    /* Reached end of allocated blocks for dest */
+	    return;
+          }
 	  memmove(&dest->blocks[dn][di],
 		  &src->blocks[sn][si], 
 		  blklen*sizeof(float));
@@ -94,6 +102,14 @@ SnackCopySamples(Sound *dest, int to, Sound *src, int from, int len)
 	    di = DBLKSIZE + di;
 	    dn--;
 	  }
+          if (sn >= src->nblks) {
+	    /* Reached end of allocated blocks for src */
+	    return;
+          }
+          if (dn >= dest->nblks) {
+	    /* Reached end of allocated blocks for dest */
+	    return;
+          }
 	  memmove(&((double **)dest->blocks)[dn][di],
 		  &((double **)src->blocks)[sn][si], 
 		  blklen*sizeof(double));
@@ -109,6 +125,14 @@ SnackCopySamples(Sound *dest, int to, Sound *src, int from, int len)
 	  di = (to   + tot) - (dn << FEXP);
 	  blklen = min(FBLKSIZE - si, FBLKSIZE - di);
 	  blklen = min(blklen, len - tot);
+          if (sn >= src->nblks) {
+	    /* Reached end of allocated blocks for src */
+	    return;
+          }
+          if (dn >= dest->nblks) {
+	    /* Reached end of allocated blocks for dest */
+	    return;
+          }
 	  memmove(&dest->blocks[dn][di],
 		  &src->blocks[sn][si], 
 		  blklen*sizeof(float));
@@ -122,6 +146,14 @@ SnackCopySamples(Sound *dest, int to, Sound *src, int from, int len)
 	  di = (to   + tot) - (dn << DEXP);
 	  blklen = min(DBLKSIZE - si, DBLKSIZE - di);
 	  blklen = min(blklen, len - tot);
+          if (sn >= src->nblks) {
+	    /* Reached end of allocated blocks for src */
+	    return;
+          }
+          if (dn >= dest->nblks) {
+	    /* Reached end of allocated blocks for dest */
+	    return;
+          }
 	  memmove(&((double **)dest->blocks)[dn][di],
 		  &((double **)src->blocks)[sn][si], 
 		  blklen*sizeof(double));
@@ -170,6 +202,10 @@ Snack_PutSoundData(Sound *s, int pos, void *buf, int nSamples)
       dn = (pos + tot) >> FEXP;
       di = (pos + tot) - (dn << FEXP);
       blklen = min(FBLKSIZE - di, nSamples - tot);
+      if (dn >= s->nblks) {
+	/* Reached end of allocated blocks for s */
+	return;
+      }
       memmove(&s->blocks[dn][di], &((float *)buf)[tot],
 	      blklen * sizeof(float));
       tot += blklen;
@@ -179,6 +215,10 @@ Snack_PutSoundData(Sound *s, int pos, void *buf, int nSamples)
       dn = (pos + tot) >> DEXP;
       di = (pos + tot) - (dn << DEXP);
       blklen = min(DBLKSIZE - di, nSamples - tot);
+      if (dn >= s->nblks) {
+	/* Reached end of allocated blocks for s */
+	return;
+      }
       memmove(&((double **)s->blocks)[dn][di], &((double *)buf)[tot],
 	      blklen * sizeof(double));
       tot += blklen;
@@ -197,6 +237,10 @@ Snack_GetSoundData(Sound *s, int pos, void *buf, int nSamples)
 	sn = (pos + tot) >> FEXP;
 	si = (pos + tot) - (sn << FEXP);
 	blklen = min(FBLKSIZE - si, nSamples - tot);
+        if (sn >= s->nblks) {
+	  /* Reached end of allocated blocks for s */
+	  return;
+        }
 	memmove(&((float *)buf)[tot], &s->blocks[sn][si],
 		blklen * sizeof(float));
 	tot += blklen;
@@ -206,6 +250,10 @@ Snack_GetSoundData(Sound *s, int pos, void *buf, int nSamples)
 	sn = (pos + tot) >> DEXP;
 	si = (pos + tot) - (sn << DEXP);
 	blklen = min(DBLKSIZE - si, nSamples - tot);
+        if (sn >= s->nblks) {
+	  /* Reached end of allocated blocks for s */
+	  return;
+        }
 	memmove(&((double *)buf)[tot], &((double **)s->blocks)[sn][si],
 		blklen * sizeof(double));
 	tot += blklen;
@@ -301,6 +349,23 @@ lengthCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   }
 
   if (s->debug > 0) { Snack_WriteLog("Exit lengthCmd\n"); }
+
+  return TCL_OK;
+}
+
+int
+lastIndexCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  if (s->debug > 0) { Snack_WriteLog("Enter lastIndexCmd\n"); }
+
+  if (objc != 2) {
+    Tcl_WrongNumArgs(interp, 1, objv, "lastIndex");
+    return TCL_ERROR;
+  }
+
+  Tcl_SetObjResult(interp, Tcl_NewIntObj(s->length - 1));
+
+  if (s->debug > 0) { Snack_WriteLog("Exit lastIndexCmd\n"); }
 
   return TCL_OK;
 }
@@ -417,6 +482,7 @@ cropCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   if ((endpos >= s->length - 1) || endpos < 0)
     endpos = s->length - 1;
   if (startpos >= endpos) return TCL_OK;
+  if (startpos < 0) startpos = 0;
   totlen = endpos - startpos + 1;
 
   SnackCopySamples(s, 0, s, startpos, totlen);
@@ -653,9 +719,9 @@ mixCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 int
 appendCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  Sound *t;
-  int arg, startpos = 0, endpos = -1;
-  char *filetype;
+  Sound *t, *dummy;
+  int arg, startpos = 0, endpos = -1, length = 0;
+  char *filetype, *str;
   static CONST84 char *subOptionStrings[] = {
     "-rate", "-frequency", "-skiphead", "-byteorder", "-channels",
     "-encoding", "-format", "-start", "-end", "-fileformat",
@@ -787,6 +853,14 @@ appendCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   if (startpos < 0) startpos = 0;
   if (startpos > endpos && endpos != -1) return TCL_OK;
 
+  str = Tcl_GetStringFromObj(objv[2], &length);
+  if (length < 10 && (dummy = Snack_GetSound(interp, str)) != NULL) {
+    Tcl_AppendResult(interp, "You must use the concatenate command instead",
+		     NULL);
+    return TCL_ERROR;
+  }
+
+
   filetype = LoadSound(t, interp, objv[2], startpos, endpos);
   if (filetype == NULL) {
     Snack_DeleteSound(t);
@@ -815,8 +889,7 @@ concatenateCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   Sound *app;
   char *string;
-  int i, /*j,*/ arg, offset = 0, smoothjoin = 0;
-  /*  float min = 1.0e20f;*/
+  int i, arg, offset = 0, smoothjoin = 0;
   static CONST84 char *subOptionStrings[] = {
     "-smoothjoin", NULL
   };
@@ -879,34 +952,16 @@ concatenateCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     Tcl_AppendResult(interp, "Second sound is too short", NULL);
     return TCL_ERROR;
   }
-  /*
-  for (i = 0; i < smoothjoin; i++) {
-    float sum = 0.0f;
-    int k = i;
-    for (j = s->length - smoothjoin; j < s->length; j++) {
-      sum += (float) fabs((float)(FSAMPLE(s, j)-(float)(FSAMPLE(app, k++))));
-    }
-    if (sum < min) {
-      min = sum;
-      offset = i;
-      }*/
-    /*    if (i == 78 || i == 155) printf("%f %d\n",sum,i);*/
-    /*printf("%d  %f\n",i, sum);*/
-  /*}*/
-  /*  printf("%d\n",offset);*/
-
   if (smoothjoin > 0) {
     offset = 80;
-    /*printf("   *** %d",s->length-offset);*/
+    if (s->length < offset) offset = s->length-1;
     for (i = 0; i < offset; i++) {
       float z = (float) ((0.5 + 160.0 / 2 - 1 - i) * 3.141592653589793 / 160);
       float win = (float) exp(-3.0 * z * z);
-      /*printf("A %f\n",win);*/
       
       FSAMPLE(s, s->length-offset+i) = (float) ((1.0-win) *
 	FSAMPLE(s, s->length-offset+i) + win * FSAMPLE(app, i));
     }
-    /*printf(" %d\n",s->length-1);*/
   } else {
     offset = 0;
   }
@@ -1402,6 +1457,10 @@ sampleCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     Tcl_AppendResult(interp, "Index out of bounds", NULL);
     return TCL_ERROR;
   }
+  if (objc > 3 && objc > s->nchannels + 3) {
+    Tcl_AppendResult(interp, "Too many samples given", NULL);
+    return TCL_ERROR;
+  }
 
   i *= s->nchannels;
 
@@ -1471,18 +1530,23 @@ sampleCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 	*/
       } else {
 	if (Tcl_GetIntFromObj(interp, objv[n], &val) != TCL_OK) return TCL_ERROR;
-	if (val < -32768 || val > 32767) {
-	  Tcl_AppendResult(interp, "Sample value not in range -32768, 32767",
-			   NULL);
-	  return TCL_ERROR;
-	}
       }
       switch (s->encoding) {
       case LIN16:
       case ALAW:
       case MULAW:
+	if (val < -32768 || val > 32767) {
+	  Tcl_AppendResult(interp, "Sample value not in range -32768, 32767",
+			   NULL);
+	  return TCL_ERROR;
+	}
       case LIN32:
       case LIN24:
+	if (val < -8388608 || val > 8388607) {
+	  Tcl_AppendResult(interp, "Sample value not in range -8388608, 8388607",
+			   NULL);
+	  return TCL_ERROR;
+	}
 	if (s->precision == SNACK_SINGLE_PREC) {
 	  FSAMPLE(s, i) = (float) val;
 	} else {

@@ -24,6 +24,7 @@
 # define FALSE 0
 #endif
 #include "jkGetF0.h"
+#include "snack.h"
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 /* Return a time-weighting window of type type and length n in dout.
@@ -42,9 +43,9 @@ int xget_window(dout, n, type)
     register float *p;
     register int i;
     
-    if(din) free(din);
+    if(din) ckfree((void *)din);
     din = NULL;
-    if(!(din = (float*)malloc(sizeof(float)*n))) {
+    if(!(din = (float*)ckalloc(sizeof(float)*n))) {
       Fprintf(stderr,"Allocation problems in xget_window()\n");
       return(FALSE);
     }
@@ -90,8 +91,8 @@ void xcwindow(din, dout, n, preemp)
   if(wsize != n) {		/* Need to create a new cos**4 window? */
     register double arg, half=0.5;
     
-    if(wind) wind = (float*)realloc(wind,n*sizeof(float));
-    else wind = (float*)malloc(n*sizeof(float));
+    if(wind) wind = (float*)ckrealloc((void *)wind,n*sizeof(float));
+    else wind = (float*)ckalloc(n*sizeof(float));
     wsize = n;
     for(i=0, arg=3.1415927*2.0/(wsize), q=wind; i < n; ) {
       co = (float) (half*(1.0 - cos((half + (double)i++) * arg)));
@@ -125,8 +126,8 @@ void xhwindow(din, dout, n, preemp)
   if(wsize != n) {		/* Need to create a new Hamming window? */
     register double arg, half=0.5;
     
-    if(wind) wind = (float*)realloc(wind,n*sizeof(float));
-    else wind = (float*)malloc(n*sizeof(float));
+    if(wind) wind = (float*)ckrealloc((void *)wind,n*sizeof(float));
+    else wind = (float*)ckalloc(n*sizeof(float));
     wsize = n;
     for(i=0, arg=3.1415927*2.0/(wsize), q=wind; i < n; )
       *q++ = (float) (.54 - .46 * cos((half + (double)i++) * arg));
@@ -158,8 +159,8 @@ void xhnwindow(din, dout, n, preemp)
   if(wsize != n) {		/* Need to create a new Hanning window? */
     register double arg, half=0.5;
     
-    if(wind) wind = (float*)realloc(wind,n*sizeof(float));
-    else wind = (float*)malloc(n*sizeof(float));
+    if(wind) wind = (float*)ckrealloc((void *)wind,n*sizeof(float));
+    else wind = (float*)ckalloc(n*sizeof(float));
     wsize = n;
     for(i=0, arg=3.1415927*2.0/(wsize), q=wind; i < n; )
       *q++ = (float) (half - half * cos((half + (double)i++) * arg));
@@ -340,8 +341,8 @@ float wind_energy(data,size,w_type)
   register int i;
 
   if(nwind < size) {
-    if(dwind) dwind = (float*)realloc(dwind,size*sizeof(float));
-    else dwind = (float*)malloc(size*sizeof(float));
+    if(dwind) dwind = (float*)ckrealloc((void *)dwind,size*sizeof(float));
+    else dwind = (float*)ckalloc(size*sizeof(float));
     if(!dwind) {
       Fprintf(stderr,"Can't allocate scratch memory in wind_energy()\n");
       return(0.0);
@@ -382,8 +383,8 @@ int xlpc(lpc_ord,lpc_stabl,wsize,data,lpca,ar,lpck,normerr,rms,preemp,type)
   if((wsize <= 0) || (!data) || (lpc_ord > BIGSORD)) return(FALSE);
   
   if(nwind != wsize) {
-    if(dwind) dwind = (float*)realloc(dwind,wsize*sizeof(float));
-    else dwind = (float*)malloc(wsize*sizeof(float));
+    if(dwind) dwind = (float*)ckrealloc((void *)dwind,wsize*sizeof(float));
+    else dwind = (float*)ckalloc(wsize*sizeof(float));
     if(!dwind) {
       Fprintf(stderr,"Can't allocate scratch memory in lpc()\n");
       return(FALSE);
@@ -462,10 +463,10 @@ void crossf(data, size, start, nlags, engref, maxloc, maxval, correl)
      more principled (and costly) low-cut filtering. */
   if((total = size+start+nlags) > dbsize) {
     if(dbdata)
-      free(dbdata);
+      ckfree((void *)dbdata);
     dbdata = NULL;
     dbsize = 0;
-    if(!(dbdata = (float*)malloc(sizeof(float)*total))) {
+    if(!(dbdata = (float*)ckalloc(sizeof(float)*total))) {
       Fprintf(stderr,"Allocation failure in crossf()\n");
       return;/*exit(-1);*/
     }
@@ -556,10 +557,10 @@ void crossfi(data, size, start0, nlags0, nlags, engref, maxloc, maxval, correl, 
      entire sequence. */
   if((total = size+start0+nlags0) > dbsize) {
     if(dbdata)
-      free(dbdata);
+      ckfree((void *)dbdata);
     dbdata = NULL;
     dbsize = 0;
-    if(!(dbdata = (float*)malloc(sizeof(float)*total))) {
+    if(!(dbdata = (float*)ckalloc(sizeof(float)*total))) {
       Fprintf(stderr,"Allocation failure in crossfi()\n");
       return;/*exit(-1);*/
     }

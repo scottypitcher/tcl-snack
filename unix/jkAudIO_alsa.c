@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -30,9 +30,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <glob.h>
-#define DEVICE_NAME "/dev/dsp"
-#define MIXER_NAME  "/dev/mixer"
+#define DEVICE_NAME "default"
+
 static char *defaultDeviceName = DEVICE_NAME;
 extern void Snack_WriteLog(char *s);
 extern void Snack_WriteLogInt(char *s, int n);
@@ -74,14 +73,14 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   A->mode = mode;
   switch (mode) {
   case RECORD:
-    if (snd_pcm_open(&A->handle, "default", SND_PCM_STREAM_CAPTURE, 0) < 0) {
+    if (snd_pcm_open(&A->handle, device, SND_PCM_STREAM_CAPTURE, 0) < 0) {
       Tcl_AppendResult(interp, "Could not open ", device, " for read.",
 		       NULL);
       return TCL_ERROR;
     }
     break;
   case PLAY:
-    if (snd_pcm_open(&A->handle, "default", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
+    if (snd_pcm_open(&A->handle, device, SND_PCM_STREAM_PLAYBACK, 0) < 0) {
       Tcl_AppendResult(interp, "Could not open ", device, " for write.",
 		       NULL);
       return TCL_ERROR;
@@ -129,7 +128,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   snd_pcm_hw_params_set_access(A->handle, hw_params,
 			       SND_PCM_ACCESS_RW_INTERLEAVED);
   snd_pcm_hw_params_set_format(A->handle, hw_params, format);
-  snd_pcm_hw_params_set_rate_near(A->handle, hw_params, freq, 0);
+  snd_pcm_hw_params_set_rate_near(A->handle, hw_params, &freq, 0);
   snd_pcm_hw_params_set_channels(A->handle, hw_params, nchannels);
 
   if (snd_pcm_hw_params(A->handle, hw_params) < 0) {
@@ -818,35 +817,34 @@ SnackGetOutputDevices(char **arr, int n)
 int
 SnackGetInputDevices(char **arr, int n)
 {
-  int i, j = 0;
-  glob_t globt;
+  int i = -1, j = 0;
+  char devicename[20];
   
-  glob("/dev/snd/pcm*", 0, NULL, &globt);
-
-  for (i = 0; i < globt.gl_pathc; i++) {
+  arr[j++] = (char *) SnackStrDup("default");
+  while (snd_card_next(&i) == 0 && i > -1) {
     if (j < n) {
-      arr[j++] = (char *) SnackStrDup(globt.gl_pathv[i]);
+      snprintf(devicename, 20, "plughw:%d", i);
+      arr[j++] = (char *) SnackStrDup(devicename);
+    } else {
+      break;
     }
   }
-  globfree(&globt);
-
   return(j);
 }
 
 int
 SnackGetMixerDevices(char **arr, int n)
 {
-  int i, j = 0;
-  glob_t globt;
+  int i = -1, j = 0;
+  char devicename[20];
   
-  glob("/dev/snd/mixer*", 0, NULL, &globt);
-  
-  for (i = 0; i < globt.gl_pathc; i++) {
+  while (snd_card_next(&i) == 0 && i > -1) {
+    snprintf(devicename, 20, "hw:%d", i);
     if (j < n) {
-      arr[j++] = (char *) SnackStrDup(globt.gl_pathv[i]);
+      arr[j++] = (char *) SnackStrDup(devicename);
+    } else {
+      break;
     }
   }
-  globfree(&globt);
-
   return(j);
 }

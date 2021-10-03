@@ -187,7 +187,8 @@ precision internally.</dd>
 <h3> Methods</h3>
   
 <h4> append (<i>binary-string</i>)</h4>
- Not yet implemented. 
+Appends binary string data to the end of this sound. The same
+options apply as for the <i>read()</i> command.
 <h4> cget (<i>option</i>)</h4>
  Retrieves the value of an option for the sound. The possible options are 
 listed <a href="#soundoptions">above</a>. It is also possible to access the
@@ -225,8 +226,8 @@ sounds only.
  Crops the sound to the given range [start..end], i.e., all samples before 
 and after these limits will be removed. This command applies to in-memory 
 sounds only. 
-<h4> data (<i>variable=tclVariable</i>)</h4>
- Not yet implemented. 
+<h4> data (<i>variable</i>)</h4>
+ Loads sound data from a binary string. The same options apply as for the <i>read()</i> command.
 <h4> destroy( )</h4>
  Removes the Tcl command associated with this sound and frees its storage. 
 <h4> dBPowerSpectrum ( )</h4>

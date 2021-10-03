@@ -64,17 +64,6 @@ static int	maxp,	/* number of poles to consider */
 
 static short **pc;
 
-char *localloc(n)
-     int n;
-{
-  char *p;
-
-  if((p = malloc(n))) return p;
-
-  printf("\nCan't allocate %d more bytes of memory in localloc()\n",n);
-  exit(-1);
-}
-
 static int canbe(pnumb, fnumb) /* can this pole be this freq.? */
 int	pnumb, fnumb;
 {
@@ -201,10 +190,10 @@ Sound *dpform(ps, nform, nom_f1)
     if(debug & DEB_ENTRY){
       printf("Allocating formant and bandwidth arrays in dpform()\n");
     }
-    fr = (double**)localloc(sizeof(double*) * nform * 2);
+    fr = (double**)ckalloc(sizeof(double*) * nform * 2);
     ba = fr + nform;
     for(i=0;i < nform*2; i++){
-      fr[i] = (double*)localloc(sizeof(double) * ps->length);
+      fr[i] = (double*)ckalloc(sizeof(double) * ps->length);
     }
     /*    cp = new_ext(ps->name,"fb");*/
     /*    if((fbs=new_signal(cp,SIG_UNKNOWN,dup_header(ps->header),fr,ps->length,		       ps->samprate, nform * 2))) {*/
@@ -213,16 +202,16 @@ Sound *dpform(ps, nform, nom_f1)
       if(debug & DEB_ENTRY){
 	printf("Allocating raw candidate array in dpform()\n");
       }
-      pcan = (short**)localloc(sizeof(short*) * MAXCAN);
-      for(i=0;i<MAXCAN;i++) pcan[i] = (short*)localloc(sizeof(short) * nform);
+      pcan = (short**)ckalloc(sizeof(short*) * MAXCAN);
+      for(i=0;i<MAXCAN;i++) pcan[i] = (short*)ckalloc(sizeof(short) * nform);
 
       /* Allocate space for the dp lattice */
       if(debug & DEB_ENTRY){
 	printf("Allocating DP lattice structure in dpform()\n");
       }
-      fl = (FORM**)localloc(sizeof(FORM*) * ps->length);
+      fl = (FORM**)ckalloc(sizeof(FORM*) * ps->length);
       for(i=0;i < ps->length; i++)
-	fl[i] = (FORM*)localloc(sizeof(FORM));
+	fl[i] = (FORM*)ckalloc(sizeof(FORM));
 
       /*******************************************************************/
       /* main formant tracking loop */
@@ -244,11 +233,11 @@ Sound *dpform(ps, nform, nom_f1)
 	  get_fcand(pole[i]->npoles,pole[i]->freq,pole[i]->band,nform,pcan);
 
 	  /* Allocate space for this frame's candidates in the dp lattice. */
-	  fl[i]->prept =  (short*)localloc(sizeof(short) * ncan);
-	  fl[i]->cumerr = (double*)localloc(sizeof(double) * ncan);
-	  fl[i]->cand =   (short**)localloc(sizeof(short*) * ncan);
+	  fl[i]->prept =  (short*)ckalloc(sizeof(short) * ncan);
+	  fl[i]->cumerr = (double*)ckalloc(sizeof(double) * ncan);
+	  fl[i]->cand =   (short**)ckalloc(sizeof(short*) * ncan);
 	  for(j=0;j<ncan;j++){	/* allocate cand. slots and install candidates */
-	    fl[i]->cand[j] = (short*)localloc(sizeof(short) * nform);
+	    fl[i]->cand[j] = (short*)ckalloc(sizeof(short) * nform);
 	    for(k=0; k<nform; k++)
 	      fl[i]->cand[j][k] = pcan[j][k];
 	  }
@@ -399,27 +388,27 @@ Sound *dpform(ps, nform, nom_f1)
       for(i=ps->length - 1; i>=0; i--){
 	if(fl[i]->ncand){
 	  if(fl[i]->cand) {
-	    for(j=0; j<fl[i]->ncand; j++) free(fl[i]->cand[j]);
-	    free(fl[i]->cand);
-	    free(fl[i]->cumerr);
-	    free(fl[i]->prept);
+	    for(j=0; j<fl[i]->ncand; j++) ckfree((void *)fl[i]->cand[j]);
+	    ckfree((void *)fl[i]->cand);
+	    ckfree((void *)fl[i]->cumerr);
+	    ckfree((void *)fl[i]->prept);
 	  }
 	}
       }
-      for(i=0; i<ps->length; i++)	free(fl[i]);
-      free(fl);
+      for(i=0; i<ps->length; i++)	ckfree((void *)fl[i]);
+      ckfree((void *)fl);
       fl = 0;
       
       for(i=0; i<ps->length; i++) {
-	free(pole[i]->freq);
-	free(pole[i]->band);
-	free(pole[i]);
+	ckfree((void *)pole[i]->freq);
+	ckfree((void *)pole[i]->band);
+	ckfree((void *)pole[i]);
       }
-      free(pole);
+      ckfree((void *)pole);
 
       /* Deallocate space for the raw candidate aray. */
-      for(i=0;i<MAXCAN;i++) free(pcan[i]);
-      free(pcan);
+      for(i=0;i<MAXCAN;i++) ckfree((void *)pcan[i]);
+      ckfree((void *)pcan);
 
       fbs = Snack_NewSound(ps->samprate, SNACK_FLOAT, nform * 2);
       Snack_ResizeSoundStorage(fbs, ps->length);
@@ -430,8 +419,8 @@ Sound *dpform(ps, nform, nom_f1)
       }
       fbs->length = ps->length;
 
-      for(i = 0; i < nform*2; i++) free(fr[i]);
-      free(fr);
+      for(i = 0; i < nform*2; i++) ckfree((void *)fr[i]);
+      ckfree((void *)fr);
 
       return(fbs);
     } else
@@ -492,15 +481,15 @@ Sound *lpc_poles(sp,wdur,frame_int,lpc_ord,preemp,lpc_type,w_type)
   if(nfrm >= 1/*lp->buff_size >= 1*/) {
     size = (int) (.5 + (wdur * sp->samprate));
     step = (int) (.5 + (frame_int * sp->samprate));
-    pole = (POLE**)localloc(nfrm/*lp->buff_size*/ * sizeof(POLE*));
-    datap = dporg = (short *) malloc(sizeof(short) * sp->length);
+    pole = (POLE**)ckalloc(nfrm/*lp->buff_size*/ * sizeof(POLE*));
+    datap = dporg = (short *) ckalloc(sizeof(short) * sp->length);
     for (i = 0; i < Snack_GetLength(sp); i++) {
       datap[i] = (short) Snack_GetSample(sp, 0, i);
     }
     for(j=0, init=TRUE/*, datap=((short**)sp->data)[0]*/; j < nfrm/*lp->buff_size*/;j++, datap += step){
-      pole[j] = (POLE*)localloc(sizeof(POLE));
-      pole[j]->freq = frp = (double*)localloc(sizeof(double)*lpc_ord);
-      pole[j]->band = bap = (double*)localloc(sizeof(double)*lpc_ord);
+      pole[j] = (POLE*)ckalloc(sizeof(POLE));
+      pole[j]->freq = frp = (double*)ckalloc(sizeof(double)*lpc_ord);
+      pole[j]->band = bap = (double*)ckalloc(sizeof(double)*lpc_ord);
 
       switch(lpc_type) {
       case 0:
@@ -550,7 +539,7 @@ Sound *lpc_poles(sp,wdur,frame_int,lpc_ord,preemp,lpc_type,w_type)
 	 }*/
      } /* end LPC pole computation for all lp->buff_size frames */
     /*     lp->data = (caddr_t)pole;*/
-    free(dporg);
+    ckfree((void *)dporg);
     lp = Snack_NewSound((int)(1.0/frame_int), LIN16, lpc_ord);
     Snack_ResizeSoundStorage(lp, nfrm);
     for (i = 0; i < nfrm; i++) {
@@ -747,8 +736,8 @@ int dwnsamp(buf,in_samps,buf2,out_samps,insert,decimate,ncoef,ic,smin,smax)
   register int i, j, k, l, m;
   int imax, imin;
 
-  if(!(*buf2 = buft = (short*)malloc(sizeof(short)*insert*in_samps))) {
-    perror("malloc() in dwnsamp()");
+  if(!(*buf2 = buft = (short*)ckalloc(sizeof(short)*insert*in_samps))) {
+    perror("ckalloc() in dwnsamp()");
     return(FALSE);
   } 
 
@@ -780,7 +769,7 @@ int dwnsamp(buf,in_samps,buf2,out_samps,insert,decimate,ncoef,ic,smin,smax)
   }
   *smin = imin;
   *smax = imax;
-  *buf2 = (short*)realloc(*buf2,sizeof(short) * (*out_samps));
+  *buf2 = (short*)ckrealloc((void *) *buf2,sizeof(short) * (*out_samps));
   return(TRUE);
 }
 
@@ -836,8 +825,8 @@ Sound *Fdownsample(s,freq2,start,end)
 
   freq1 = s->samprate;
   
-  if((bufout = (short**)malloc(sizeof(short*)))) {
-    bufin = (short *) malloc(sizeof(short) * (end - start + 1));
+  if((bufout = (short**)ckalloc(sizeof(short*)))) {
+    bufin = (short *) ckalloc(sizeof(short) * (end - start + 1));
     for (i = start; i <= end; i++) {
       bufin[i-start] = (short) Snack_GetSample(s, 0, i);
     }
@@ -875,9 +864,9 @@ Sound *Fdownsample(s,freq2,start,end)
       }
       so->length = out_samps;
       so->samprate = (int)freq2;
-      free(*bufout);
-      free(bufout);
-      free(bufin);
+      ckfree((void *)*bufout);
+      ckfree((void *)bufout);
+      ckfree((void *)bufin);
       return(so);
     } else
       printf("Problems in dwnsamp() in downsample()\n");
@@ -907,14 +896,14 @@ Sound
   /* This assumes the sampling frequency is 10kHz and that the FIR
      is a Hanning function of (LCSIZ/10)ms duration. */
 
-  datain = (short *) malloc(sizeof(short) * s->length);
-  dataout = (short *) malloc(sizeof(short) * s->length);
+  datain = (short *) ckalloc(sizeof(short) * s->length);
+  dataout = (short *) ckalloc(sizeof(short) * s->length);
   for (i = 0; i < Snack_GetLength(s); i++) {
     datain[i] = (short) Snack_GetSample(s, 0, i);
   }
 
   if(!len) {		/* need to create a Hanning FIR? */
-    lcf = (short*)localloc(sizeof(short) * LCSIZ);
+    lcf = (short*)ckalloc(sizeof(short) * LCSIZ);
     len = 1 + (LCSIZ/2);
     fn = PI * 2.0 / (LCSIZ - 1);
     scale = 32767.0/(.5 * LCSIZ);
@@ -929,8 +918,8 @@ Sound
     Snack_SetSample(so, 0, i, (float)dataout[i]);
   }
   so->length = s->length;
-  free(dataout);
-  free(datain);
+  ckfree((void *)dataout);
+  ckfree((void *)datain);
   return(so);
 }
 
@@ -939,6 +928,7 @@ formantCmd(Sound *s, Tcl_Interp *interp, int objc,
 	   Tcl_Obj *CONST objv[])
 {
   int nform, i,j, lpc_ord, lpc_type, w_type;
+  char *w_type_str = NULL;
   double frame_int, wdur, 
   ds_freq, nom_f1 = -10.0, preemp;
   double cor_wdur;
@@ -1039,8 +1029,7 @@ formantCmd(Sound *s, Tcl_Interp *interp, int objc,
       }
     case WINTYPE:
       {
-	if (Tcl_GetIntFromObj(interp, objv[arg+1], &w_type) != TCL_OK)
-	  return TCL_ERROR;
+	w_type_str = Tcl_GetStringFromObj(objv[arg+1], NULL);
 	break;
       }
     case LPCTYPE:
@@ -1075,12 +1064,12 @@ formantCmd(Sound *s, Tcl_Interp *interp, int objc,
    */
 
   if(nform > (lpc_ord-4)/2){
-    Tcl_AppendResult(interp, "Number of formants must be <= (lpc order - 4)/2 - exiting.", NULL);
+    Tcl_AppendResult(interp, "Number of formants must be <= (lpc order - 4)/2", NULL);
     return TCL_ERROR;
   }
   
   if(nform > MAXFORMANTS){
-    Tcl_AppendResult(interp, "A maximum of 7 formants are supported at this time - exiting.", NULL);
+    Tcl_AppendResult(interp, "A maximum of 7 formants are supported at this time", NULL);
     return TCL_ERROR;
   }
 
@@ -1088,6 +1077,27 @@ formantCmd(Sound *s, Tcl_Interp *interp, int objc,
     Tcl_AppendResult(interp, "formant only works with in-memory sounds",
 		     (char *) NULL);
     return TCL_ERROR;
+  }
+
+  if (w_type_str != NULL) {
+    int len = strlen(w_type_str);
+    if (strncasecmp(w_type_str, "rectangular", len) == 0 ||
+	strncasecmp(w_type_str, "0", len) == 0) {
+      w_type = 0;
+    } else if (strncasecmp(w_type_str, "hamming", len) == 0 ||
+	       strncasecmp(w_type_str, "1", len) == 0) {
+      w_type = 1;
+    } else if (strncasecmp(w_type_str, "cos^4", len) == 0 ||
+	       strncasecmp(w_type_str, "2", len) == 0) {
+      w_type = 2;
+    } else if (strncasecmp(w_type_str, "hanning", len) == 0 ||
+	       strncasecmp(w_type_str, "3", len) == 0) {
+      w_type = 3;
+    } else {
+      Tcl_AppendResult(interp, "unknown window type: ", w_type_str, 
+		       (char *) NULL);
+      return TCL_ERROR;
+    }
   }
 
   Snack_ProgressCallback(s->cmdPtr, interp,"Computing formants",0.05);

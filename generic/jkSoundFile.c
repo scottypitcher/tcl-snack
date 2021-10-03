@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -243,12 +243,12 @@ ReadLEShort(Tcl_Channel ch)
   return(ts);
 }
 
-static long
+static int32_t
 ReadBELong(Tcl_Channel ch)
 {
-  long tl;
+  int32_t tl;
 
-  Tcl_Read(ch, (char *) &tl, sizeof(long));
+  Tcl_Read(ch, (char *) &tl, sizeof(int32_t));
 
   if (littleEndian) {
     tl = Snack_SwapLong(tl);
@@ -257,12 +257,12 @@ ReadBELong(Tcl_Channel ch)
   return(tl);
 }
 
-static long
+static int32_t
 ReadLELong(Tcl_Channel ch)
 {
-  long tl;
+  int32_t tl;
 
-  Tcl_Read(ch, (char *) &tl, sizeof(long));
+  Tcl_Read(ch, (char *) &tl, sizeof(int32_t));
 
   if (!littleEndian) {
     tl = Snack_SwapLong(tl);
@@ -284,15 +284,15 @@ WriteLEShort(Tcl_Channel ch, short s)
 }
 
 int
-WriteLELong(Tcl_Channel ch, long l)
+WriteLELong(Tcl_Channel ch, int32_t l)
 {
-  long tl = l;
+  int32_t tl = l;
 
   if (!littleEndian) {
     tl = Snack_SwapLong(tl);
   }
 
-  return(Tcl_Write(ch, (char *) &tl, sizeof(long)));
+  return(Tcl_Write(ch, (char *) &tl, sizeof(int32_t)));
 }
 
 static int
@@ -308,23 +308,23 @@ WriteBEShort(Tcl_Channel ch, short s)
 }
 
 int
-WriteBELong(Tcl_Channel ch, long l)
+WriteBELong(Tcl_Channel ch, int32_t l)
 {
-  long tl = l;
+  int32_t tl = l;
 
   if (littleEndian) {
     tl = Snack_SwapLong(tl);
   }
 
-  return(Tcl_Write(ch, (char *) &tl, sizeof(long)));
+  return(Tcl_Write(ch, (char *) &tl, sizeof(int32_t)));
 }
   
-static long
+static int32_t
 GetLELong(char *buf, int pos)
 {
-  long tl;
+  int32_t tl;
 
-  memcpy(&tl, &buf[pos], sizeof(long));
+  memcpy(&tl, &buf[pos], sizeof(int32_t));
 
   if (!littleEndian) {
     tl = Snack_SwapLong(tl);
@@ -351,12 +351,12 @@ GetLEShort(char *buf, int pos)
   return(ts);
 }
 
-static long
+static int32_t
 GetBELong(char *buf, int pos)
 {
-  long tl;
+  int32_t tl;
 
-  memcpy(&tl, &buf[pos], sizeof(long));
+  memcpy(&tl, &buf[pos], sizeof(int32_t));
 
   if (littleEndian) {
     tl = Snack_SwapLong(tl);
@@ -384,15 +384,15 @@ GetBEShort(char *buf, int pos)
 }
 
 static void
-PutBELong(char *buf, int pos, long l)
+PutBELong(char *buf, int pos, int32_t l)
 {
-  long tl = l;
+  int32_t tl = l;
 
   if (littleEndian) {
     tl = Snack_SwapLong(tl);
   }
 
-  memcpy(&buf[pos], &tl, sizeof(long));
+  memcpy(&buf[pos], &tl, sizeof(int32_t));
 }
 
 static void
@@ -415,14 +415,14 @@ PutBEShort(char *buf, int pos, short s)
 /* Note: pos must be a multiple of 4 */
 
 static void
-PutLELong(char *buf, int pos, long l)
+PutLELong(char *buf, int pos, int32_t l)
 {
-  long tl = l;
+  int32_t tl = l;
   char *p;
-  long *q;
+  int32_t *q;
 
   p = &buf[pos];
-  q = (long *) p;
+  q = (int32_t *) p;
 
   if (!littleEndian) {
     tl = Snack_SwapLong(tl);
@@ -563,6 +563,11 @@ ReadSound(readSamplesProc *readProc, Sound *s, Tcl_Interp *interp,
 
       if (s->precision == SNACK_SINGLE_PREC) {
 	for (i = 0; i < size / s->sampsize; i++, j++) {
+          int writeblock = (j >> FEXP);
+          if (writeblock >= s->nblks) {
+	    /* Reached end of allocated blocks for s */
+	    break;
+          }
 	  switch (s->encoding) {
 	  case LIN16:
 	    if (s->swap) *r = Snack_SwapShort(*r);
@@ -593,6 +598,7 @@ ReadSound(readSamplesProc *readProc, Sound *s, Tcl_Interp *interp,
 	    FSAMPLE(s, j) = (float) *q++;
 	    break;
 	  case LIN24:
+	  case LIN24PACKED:
 	    {
 	      int ee;
 	      if (s->swap) {
@@ -631,6 +637,11 @@ ReadSound(readSamplesProc *readProc, Sound *s, Tcl_Interp *interp,
 	}
       } else {   /*s->precision == SNACK_DOUBLE_PREC */
 	for (i = 0; i < size / s->sampsize; i++, j++) {
+          int writeblock = (j >> DEXP);
+          if (writeblock >= s->nblks) {
+	    /* Reached end of allocated blocks for s */
+	    break;
+          }
 	  switch (s->encoding) {
 	  case LIN16:
 	    DSAMPLE(s, j) = (float) *r++;
@@ -654,6 +665,7 @@ ReadSound(readSamplesProc *readProc, Sound *s, Tcl_Interp *interp,
 	    DSAMPLE(s, j) = (float) *q++;
 	    break;
 	  case LIN24:
+	  case LIN24PACKED:
 	    {
 	      if (littleEndian) {
 		int t = *q++;
@@ -847,6 +859,7 @@ WriteSound(writeSamplesProc *writeProc, Sound *s, Tcl_Interp *interp,
 	    break;
 	  }
 	case LIN24:
+	case LIN24PACKED:
 	  {
 	    int offset = 0;
 	    union {
@@ -1024,6 +1037,7 @@ WriteSound(writeSamplesProc *writeProc, Sound *s, Tcl_Interp *interp,
 	  break;
 	}
       case LIN24:
+      case LIN24PACKED:
 	{
 	  int offset = 0;
 	  union {
@@ -2009,14 +2023,14 @@ PutWavHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 
 /* See http://www.borg.com/~jglatt/tech/aiff.htm */
 
-static unsigned long
+static uint32_t
 ConvertFloat(unsigned char *buffer)
 {
-  unsigned long mantissa;
-  unsigned long last = 0;
+  uint32_t mantissa;
+  uint32_t last = 0;
   unsigned char exp;
   
-  memcpy(&mantissa, buffer + 2, sizeof(long));
+  memcpy(&mantissa, buffer + 2, sizeof(int32_t));
   if (littleEndian) {
     mantissa = Snack_SwapLong(mantissa);
   }
@@ -2030,9 +2044,9 @@ ConvertFloat(unsigned char *buffer)
 }
 
 static void
-StoreFloat(unsigned char * buffer, unsigned long value)
+StoreFloat(unsigned char * buffer, uint32_t value)
 {
-  unsigned long exp;
+  uint32_t exp;
   unsigned char i;
   
   memset(buffer, 0, 10);
@@ -2054,7 +2068,7 @@ StoreFloat(unsigned char * buffer, unsigned long value)
     value = Snack_SwapLong(value);
   }
   buffer[0] = 0x40;
-  memcpy(buffer + 2, &value, sizeof(long));
+  memcpy(buffer + 2, &value, sizeof(int32_t));
 }
 
 #define ICEILV(n,m)	(((n) + ((m) - 1)) / (m))	/* int n,m >= 0 */
@@ -2121,10 +2135,19 @@ GetAiffHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
       }
       break;
     } else {
-      chunkLen = 4;
       if (i > HEADBUF - 4) {
 	Tcl_AppendResult(interp, "Missing chunk in AIFF header", NULL);
 	return TCL_ERROR;
+      } else {
+	if (s->debug > 3) {
+	  char chunkStr[5];
+	
+	  strncpy(chunkStr, &buf[i], 4);
+	  chunkStr[4] = '\0';
+	  Snack_WriteLog(chunkStr);
+	  Snack_WriteLog(" chunk skipped\n");
+	}
+	chunkLen = GetBELong(buf, i + 4) + 8;
       }
     }
     i += chunkLen;
@@ -2166,7 +2189,7 @@ PutAiffHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   PutBEShort(buf, 20, (short) s->nchannels);
   PutBELong(buf, 22, s->length);
   PutBEShort(buf, 26, (short) (s->sampsize * 8));
-  StoreFloat((unsigned char *) &buf[28], (long) s->samprate);
+  StoreFloat((unsigned char *) &buf[28], (int32_t) s->samprate);
   sprintf(&buf[38], "SSND");
   if (len != -1) {
     PutBELong(buf, 42, 8 + s->length * s->sampsize * s->nchannels);
@@ -3471,7 +3494,7 @@ GetSample(SnackLinkedFileInfo *infoPtr, int index)
 {
   Sound *s = infoPtr->sound;
   Snack_FileFormat *ff;
-  int nRead, size = ITEMBUFFERSIZE / sizeof(float), i;
+  int nRead = 0, size = ITEMBUFFERSIZE / sizeof(float), i;
 
   if (s->itemRefCnt && s->readStatus == READ) {
     return FSAMPLE(s, index);
@@ -3573,6 +3596,7 @@ GetSample(SnackLinkedFileInfo *infoPtr, int index)
 	      *f++ = (float) *q++;
 	      break;
 	    case LIN24:
+	    case LIN24PACKED:
 	      {
 		int ee;
 		if (s->swap) {

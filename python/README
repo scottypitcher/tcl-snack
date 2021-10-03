@@ -1,6 +1,13 @@
-The file tkSnack.py is the module which interfaces Snack and Python.
-You need to put this in your Python path. See the main README file for
-installation instructions.
+tkSnack is the Python interface to Snack
+
+To install tkSnack:
+- Install tcl/tk Snack (see ../README).
+- Install the python interface as follows
+  (from the root account or using sudo
+  for a system-wide installation):
+    python setup.py install
+	
+tkSnack also requires tcl/tk and Tkinter.
 
 Some demonstrations can be found in demos/python
 

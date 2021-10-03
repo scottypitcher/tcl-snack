@@ -92,7 +92,13 @@ case $system in
 	AFLAG="-DHPUX"
 	ALIB="-L/opt/audio/lib -lAlib"
 	AOBJ="jkAudIO_hp.o"
-	SHLIB_LD="$SHLIB_LD +s"
+        if test "$SHLIB_LD" = "ld -b" ; then
+            # this will not work if gcc is used as "linker"
+            SHLIB_LD="$SHLIB_LD +s"
+        else
+            # gcc requires the prefix -Xlinker for each linker option
+            SHLIB_LD="$SHLIB_LD -Xlinker +s"
+        fi
 	;;
     IRIX*)
 	AFLAG="-DIRIX"
@@ -127,6 +133,7 @@ case $system in
 	AFLAG="-DOS_X_CORE_AUDIO -DMA${HACK}C_OSX_TCL -DMA${HACK}C_OSX_TK"
 	ALIB="-framework CoreFoundation -framework CoreAudio"
 	AOBJ="jkAudIO_osx.o"
+	CFLAGS="-Os -fno-common"
         ;;
     *)
 	AFLAG="-DOTHER"
@@ -216,6 +223,9 @@ else
     AC_MSG_RESULT(will use OSS)
 fi
 #--------------------------------------------------------------------
+
+# Checks for header files.
+_AC_INCLUDES_DEFAULT_REQUIREMENTS
 
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)

@@ -573,7 +573,8 @@ namespace eval snack {
 	if {$pps <= 0.004} return
 
         switch -- $a(-format) {
-	 time {
+	 time -
+	 seconds {
 	  set deltalist [list .0001 .0002 .0005 .001 .002 .005 \
 			     .01 .02 .05 .1 .2 .5 1 2 5 \
 			     10 20 30 60 120 240 360 600 900 1800 3600 7200 14400]
@@ -692,6 +693,9 @@ namespace eval snack {
 	     }
 	     "10ms frames" {
 	      set t [expr {int($j * $dt * 100.0 + $ft)}]
+	     }
+	     seconds {
+	      set t [expr {double($j * $dt * 1.0 + $ft)}]
 	     }
 	    }
 	    if {$a(-draw0) == 1 || $j > 0 || $a(-starttime) > 0.0} {
@@ -1080,9 +1084,13 @@ namespace eval snack {
 	# 6. Create a binding for <Return> on the dialog
 	
 	bind $w <Return> {
-	    if {0 == [string compare Button [winfo class %W]]} {
-		tkButtonInvoke %W
-	    }
+	 if {0 == [string compare Button [winfo class %W]]} {
+	  if {$::tcl_version <= 8.3} {
+	   tkButtonInvoke %W
+	  } else {
+	   tk::ButtonInvoke %W
+	  }
+	 }
 	}
 	
 	# 7. Withdraw the window, then update all the geometry information

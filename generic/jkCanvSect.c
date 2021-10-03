@@ -462,6 +462,8 @@ GetFloatMonoSigSect(SnackItemInfo *siPtr,SnackLinkedFileInfo *info,
   }
 }
 
+extern void Snack_PowerSpectrum(float *z);
+
 void
 ComputeSection(Tk_Item *itemPtr)
 {
@@ -601,7 +603,7 @@ ComputeSection(Tk_Item *itemPtr)
 	}
       }
       
-      Snack_DBPowerSpectrum(sectPtr->xfft);
+      Snack_PowerSpectrum(sectPtr->xfft);
       
       for (i = 0; i < fftlen/2; i++) {
 	sectPtr->ffts[i] += sectPtr->xfft[i];
@@ -611,6 +613,15 @@ ComputeSection(Tk_Item *itemPtr)
     for (i = 0; i < fftlen/2; i++) {
       sectPtr->ffts[i] = sectPtr->ffts[i] / (float) n;
     }
+    
+    for (i = 1; i < fftlen/2; i++) {
+      if (sectPtr->ffts[i] < SNACK_INTLOGARGMIN)
+	sectPtr->ffts[i] = SNACK_INTLOGARGMIN;
+      sectPtr->ffts[i] = (float)(SNACK_DB*log(sectPtr->ffts[i]) - SNACK_CORRN);
+    }
+    if (sectPtr->ffts[0] < SNACK_INTLOGARGMIN)
+      sectPtr->ffts[0] = SNACK_INTLOGARGMIN;
+    sectPtr->ffts[0] = (float)(SNACK_DB*log(sectPtr->ffts[0]) - SNACK_CORR0);
   }
   if (storeType != SOUND_IN_MEMORY) {
     CloseLinkedFile(&info);
@@ -918,7 +929,7 @@ ConfigureSection(Tcl_Interp *interp, Tk_Canvas canvas, Tk_Item *itemPtr,
     doCompute = 1;
   }
   sectPtr->si.windowType = sectPtr->si.windowTypeSet;
-
+  
   if (doCompute) {
     sectPtr->nPoints = sectPtr->si.fftlen / 2;
     sectPtr->si.RestartPos = sectPtr->ssmp;

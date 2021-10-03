@@ -39,6 +39,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h> 
+#include "snack.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,8 +59,9 @@ static void r8tx(int nxtlt, int nthpo, int lengt,
 		 float *ci2, float *ci3, float *ci4, float *ci5, float *ci6,
 		 float *ci7);
 
-static unsigned short Pow2[16] =
-{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768};
+static unsigned int Pow2[17] =
+  {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
+   65536};
 static float *sint, *cost, *x, *y;
 static int sint_init = 0;
 static int n2pow,nthpo;
@@ -67,10 +70,6 @@ static double theta, wpr, wpi;
 #define  SNACK_PI2  6.283185307179586
 #define  P7   0.707106781186548
 #define  LN2  0.6931471805599453
-#define  DB   4.34294481903251830000000 /*  = 10 / ln(10)  */
-#define  WMIN 1.0
-#define  CORRN (float) 138.308998699
-#define  CORR0 (float) 132.288396199
 
 int
 Snack_InitFFT(int n)
@@ -83,15 +82,20 @@ Snack_InitFFT(int n)
   l = Pow2[m];
   p = SNACK_PI2 / l;
   if (sint_init != 0) {
-    free ((char *) sint);
-    free ((char *) cost);
-    free ((char *) x);
-    free ((char *) y);
+    ckfree ((char *) sint);
+    ckfree ((char *) cost);
+    ckfree ((char *) x);
+    ckfree ((char *) y);
   }
-  sint = (float *) calloc (l, sizeof (float));
-  cost = (float *) calloc (l, sizeof (float));
-  x    = (float *) calloc (l, sizeof (float));
-  y    = (float *) calloc (l, sizeof (float));
+  sint = (float *) ckalloc (l * sizeof(float));
+  cost = (float *) ckalloc (l * sizeof(float));
+  x    = (float *) ckalloc (l * sizeof(float));
+  y    = (float *) ckalloc (l * sizeof(float));
+  memset(sint, 0, l * sizeof(float));
+  memset(cost, 0, l * sizeof(float));
+  memset(x, 0, l * sizeof(float));
+  memset(y, 0, l * sizeof(float));
+
   sint_init = 1;
   for (k = 0; k < l; k++) {
     a = k * p;
@@ -112,7 +116,7 @@ Snack_InitFFT(int n)
 void
 Snack_DBPowerSpectrum(float *z)
 {
-  int l[15];
+  int l[17];
   int i, in, n8pow, fn;
   int lengt;
   register int ij, ji, nxtlt;
@@ -154,7 +158,7 @@ Snack_DBPowerSpectrum(float *z)
     /*    fprintf (stderr, "-- Algorithm Error Snack_DBPowerSpectrum\n");*/
     exit (1);
   }
-  for (i = 0; i < 15; i++) {
+  for (i = 0; i < 17; i++) {
     if (i < n2pow) {
       l[i] = Pow2[n2pow - i];
     } else {
@@ -213,16 +217,16 @@ Snack_DBPowerSpectrum(float *z)
     x[in] = (float) (h1r+wr*h2r-wi*h2i);
     y[in] = (float) (h1i+wr*h2i+wi*h2r);
     wtemp =  x[in]*x[in]+y[in]*y[in];
-    if (wtemp < WMIN)
-      wtemp = WMIN;
-    z[in] = (float) (DB * log(wtemp) - CORRN);
+    if (wtemp < SNACK_INTLOGARGMIN)
+      wtemp = SNACK_INTLOGARGMIN;
+    z[in] = (float) (SNACK_DB * log(wtemp) - SNACK_CORRN);
  
     x[i]  = (float) (h1r-wr*h2r+wi*h2i);
     y[i]  = (float) (-h1i+wr*h2i+wi*h2r);
     wtemp = x[i]*x[i]+y[i]*y[i];
-    if (wtemp < WMIN)
-      wtemp = WMIN;
-    z[i] = (float) (DB * log(wtemp) - CORRN);
+    if (wtemp < SNACK_INTLOGARGMIN)
+      wtemp = SNACK_INTLOGARGMIN;
+    z[i] = (float) (SNACK_DB * log(wtemp) - SNACK_CORRN);
 
     wtemp = wr;
     wr = wr*wpr-wi*wpi+wr;
@@ -230,9 +234,9 @@ Snack_DBPowerSpectrum(float *z)
   }
   wtemp = x[0]-y[0];
   wtemp = wtemp*wtemp;
-  if (wtemp < WMIN)
-    wtemp = WMIN;
-  z[0] = (float) (DB * log(wtemp) - CORR0);
+  if (wtemp < SNACK_INTLOGARGMIN)
+    wtemp = SNACK_INTLOGARGMIN;
+  z[0] = (float) (SNACK_DB * log(wtemp) - SNACK_CORR0);
 }
 
 /*--------------------------------------------------------------------*
@@ -402,7 +406,7 @@ r8tx(int nxtlt, int nthpo, int lengt,
 void
 Snack_PowerSpectrum(float *z)
 {
-  int l[15];
+  int l[17];
   int i, in, n8pow, fn;
   int lengt;
   register int ij, ji, nxtlt;
@@ -444,7 +448,7 @@ Snack_PowerSpectrum(float *z)
     /*    fprintf (stderr, "-- Algorithm Error Snack_DBPowerSpectrum\n");*/
     exit (1);
   }
-  for (i = 0; i < 15; i++) {
+  for (i = 0; i < 17; i++) {
     if (i < n2pow) {
       l[i] = Pow2[n2pow - i];
     } else {

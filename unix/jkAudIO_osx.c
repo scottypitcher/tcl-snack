@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 2003-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -113,7 +113,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
     return TCL_OK;
   }
 
-  err = AudioHardwareGetProperty(kAudioHardwarePropertyDefaultInputDevice,
+  err = AudioHardwareGetProperty(kAudioHardwarePropertyDefaultOutputDevice,
 				 &count, (void *) &A->device);
 
   count = sizeof(bufferSize);
@@ -210,6 +210,12 @@ SnackAudioFlush(ADesc *A)
 void
 SnackAudioPost(ADesc *A)
 {
+  if (A->mode == PLAY) {
+    int i;
+    
+    for (i = A->wpos*A->nChannels; i < BUFLEN; i++) otmp[i] = 0;
+    for (i = 0; i < A->rpos*A->nChannels; i++) otmp[i] = 0;
+  }
 }
 
 int
@@ -415,7 +421,7 @@ SnackAudioGetRates(char *device, char *buf, int n)
 int
 SnackAudioMaxNumberChannels(char *device)
 {
-  return(2);
+  return(64);
 }
 
 int

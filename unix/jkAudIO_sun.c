@@ -25,9 +25,11 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 
-#define DEVICE_NAME     "/dev/audio"
-#define CTL_DEVICE_NAME "/dev/audioctl"
+static char *audioDev;
+#define DEF_AUDIO "/dev/audio"
+#define ENV_AUDIO "AUDIODEV"
 
 extern void Snack_WriteLog(char *s);
 extern void Snack_WriteLogInt(char *s, int n);
@@ -54,16 +56,16 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   A->mode = mode;
   switch (mode) {
   case RECORD:
-    if ((A->afd = open(DEVICE_NAME, O_RDONLY, 0)) < 0) {
-      Tcl_AppendResult(interp, "Couldn't open ", DEVICE_NAME, " for read.",
+    if ((A->afd = open(audioDev, O_RDONLY, 0)) < 0) {
+      Tcl_AppendResult(interp, "Couldn't open ", audioDev, " for read.",
 		       NULL);
       return TCL_ERROR;
     }
     break;
     
   case PLAY:
-    if ((A->afd = open(DEVICE_NAME, O_WRONLY, 0)) < 0) {
-      Tcl_AppendResult(interp, "Couldn't open ", DEVICE_NAME, " for write.",
+    if ((A->afd = open(audioDev, O_WRONLY, 0)) < 0) {
+      Tcl_AppendResult(interp, "Couldn't open ", audioDev, " for write.",
 		       NULL);
       return TCL_ERROR;
     }
@@ -146,7 +148,7 @@ int
 SnackAudioClose(ADesc *A)
 {
   close(A->afd);
-  free(A->convBuf);
+  ckfree(A->convBuf);
 
   return(0);
 }
@@ -155,7 +157,7 @@ long
 SnackAudioPause(ADesc *A)
 {
   /*  int count;*/
-  int long = SnackAudioPlayed(A);
+  long res = SnackAudioPlayed(A);
 
   AUDIO_INITINFO(&A->ainfo);
 
@@ -250,7 +252,7 @@ SnackAudioWrite(ADesc *A, void *buf, int nFrames)
 
     if (nFrames * A->bytesPerSample * A->nChannels > A->convSize) {
       A->convSize = nFrames * A->bytesPerSample * A->nChannels;
-      if ((A->convBuf = (short *) realloc(A->convBuf, A->convSize)) == NULL) {
+      if ((A->convBuf = (short *) ckrealloc(A->convBuf, A->convSize)) == NULL) {
 	return(-1);
       }
     }
@@ -304,8 +306,20 @@ SnackAudioPlayed(ADesc *A)
 void
 SnackAudioInit()
 {
-  if ((ctlfd = open(CTL_DEVICE_NAME, O_RDWR)) < 0) {
-    fprintf(stderr, "Unable to open %s\n", CTL_DEVICE_NAME);
+  char *audioCtl;
+  
+  audioDev = getenv(ENV_AUDIO);  /* try environment variable first */
+  if (!audioDev)
+    audioDev = DEF_AUDIO;        /* take default */
+  
+  audioCtl = ckalloc(strlen(audioDev) + 4);
+  if (audioCtl) {
+    strcpy(audioCtl, audioDev);
+    strcat(audioCtl, "ctl");
+    if ((ctlfd = open(audioCtl, O_RDWR)) < 0) {
+      fprintf(stderr, "Unable to open %s\n", audioCtl);
+    }
+    ckfree(audioCtl);
   }
 }
 

@@ -1,6 +1,6 @@
 Building Snack for MacOS X
 
-In order to use Snack you will have to install Tcl/Tk 8.4.2 or later first.
+In order to use Snack you will have to install Tcl/Tk 8.4.5 or later first.
 Download from
 http://www.maths.mq.edu.au/~steffen/tcltk/TclTkAqua/
 
@@ -13,11 +13,11 @@ Change directory to unix/ and type
 
 Edit the Makefile and specify the Tcl include file directory as
 
-/Library/Frameworks/Tcl.framework/Version/8.4/Headers
+/Library/Frameworks/Tcl.framework/Headers
 
 and for the Tk include files
 
-/Library/Frameworks/Tk.framework/Version/8.4/Headers
+/Library/Frameworks/Tk.framework/Headers
 
 now type
 
@@ -26,7 +26,7 @@ make
 
 Install using:
 
-make install
+sudo make install
 
 
 -------------------------------------------------------------------

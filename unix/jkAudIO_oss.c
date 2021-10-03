@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -73,6 +73,17 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   if (strlen(device) == 0) {
     device = defaultDeviceName;
   }
+
+  /* Test if the device is not locked by another process. This is
+   * just a crude workaround to avoid complete lockup of snack. It is
+   * not perfect since it is theoretically possible that another program
+   * locks the device between the close() and open() calls below. */
+  A->afd = open(device, O_WRONLY|O_NONBLOCK);
+  if(A->afd == -1) {
+    Tcl_AppendResult(interp, "Could not gain access to ", device, " for writing.",NULL);
+    return TCL_ERROR;
+  }
+  close(A->afd);
 
   A->mode = mode;
   switch (mode) {

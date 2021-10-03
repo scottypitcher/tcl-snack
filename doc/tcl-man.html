@@ -14,7 +14,7 @@
 <hr></h1>
 
 <h1>
-<b>Snack v2.2.2 manual</b></h1>
+<b>Snack v2.2.9 manual</b></h1>
 <font color="#FF6600">Last updated </font><!--#config timefmt="%B %d, %Y" --><!--#flastmod file="tcl-man.html"-->
 
 <dl>
@@ -66,15 +66,20 @@ SYNOPSIS</h3>
 DESCRIPTION</h3>
 The audio command is used to get properties of audio devices such as supported
 sample encoding formats and sample rates.
-<p><b>snack::audio encodings</b>
+<p>
+<b>snack::audio active</b>
+<ul>Returns 1 or 0 depending on whether there is any current activity on the audio device.</ul>
+<b>snack::audio currentSound</b>
+<ul>Returns the name of any sound object currently used for playback or record.</ul>
+<b>snack::audio elapsedTime</b>
+<ul>Returns the time in seconds since playback or recording started on the audio device.</ul>
+<b>snack::audio encodings</b>
 <ul>Returns a list of supported sample encoding formats for the current
 selected device.</ul>
-<b>snack::audio rates</b>
-<ul>Returns a list of supported sample rates for the current selected device.</ul>
 <b>snack::audio inputDevices</b>
-<blockquote>Returns a list of available audio input devices.</blockquote>
+<ul>Returns a list of available audio input devices.</ul>
 <a NAME="latency"></a><b>snack::audio playLatency</b>
-<blockquote>Sets/queries (in ms) how much sound will be queued up at any
+<ul>Sets/queries (in ms) how much sound will be queued up at any
 time to the audio device for playback. A low value makes new sound samples
 reach the loudspeakers quickly at the risk of gaps in the output stream.
 An appropriate value should be chosen with regard to processor speed and
@@ -82,7 +87,7 @@ load. The default value has been choosen to give adequate performance for
 a mix of tasks and might be to low for simple playback in some cases. If
 spurious gaps in the playback stream occur, try using a latency of a couple
 of thousand milliseconds. On UNIX systems, the environment variable PLAYLATENCY
-can also be used to control this property.</blockquote>
+can also be used to control this property.</ul>
 <b>snack::audio pause</b>
 <ul>Toggles between pause/play for all playback on the audio device.</ul>
 <b>snack::audio play</b>
@@ -92,19 +97,21 @@ can also be used to control this property.</blockquote>
 If a an integer value is given play gain is set to the given value. Valid
 values are in the range 0-100.</ul>
 <b>snack::audio outputDevices</b>
-<blockquote>Returns a list of available audio output devices.</blockquote>
+<ul>Returns a list of available audio output devices.</ul>
+<b>snack::audio rates</b>
+<ul>Returns a list of supported sample rates for the current selected device.</ul>
 <b>snack::audio record_gain</b><i> ?value?</i>
 <ul>Returns the current record gain value if invoked without a parameter.
 If a an integer value is given record gain is set to the given value. Valid
 values are in the range 0-100.</ul>
 <b>snack::audio selectOutput</b> <i>device</i>
-<blockquote>Selects an audio output device to be used as default.</blockquote>
+<ul>Selects an audio output device to be used as default.</ul>
 <b>snack::audio scaling</b><i> ?factor?</i>
-<blockquote>Scale the global output stream by multiplying with <i>factor</i>.
+<ul>Scale the global output stream by multiplying with <i>factor</i>.
 Useful to prevent clipping when playing many simultaneous sounds. If no
-value is specified the current factor is returned, default is 1.0.</blockquote>
+value is specified the current factor is returned, default is 1.0.</ul>
 <b>snack::audio selectInput</b> <i>device</i>
-<blockquote>Selects an audio input device to be used as default.</blockquote>
+<ul>Selects an audio input device to be used as default.</ul>
 <b>snack::audio stop</b>
 <ul>Stops all playback on the audio device.</ul>
 
@@ -140,54 +147,64 @@ When a filter object is created, Snack returns the name of a newly created
 object command. This command may be used to invoke various operations on
 the filter.
 <p><i>filterCmd</i> <b>configure ?arg ...?</b>
-<blockquote>Configures the filter command, see the filter types for their
-respective options.</blockquote>
+<ul>Configures the filter command, see the filter types for their
+respective options.</ul>
 <i>filterCmd</i> <b>destroy</b>
-<blockquote>Removes the filter command and frees the storage associated
+<ul>Removes the filter command and frees the storage associated
 with it. If the filter is currently used for playback an unfiltered stream
-will be output as soon as the internal buffer has been played.</blockquote>
+will be output as soon as the internal buffer has been played.</ul>
 
 <h3>
-FILTERS TYPES</h3>
+FILTER TYPES</h3>
 Current filter types.
+
 <p><b>compose</b><i> filter filter ...</i>
-<blockquote>Creates a new filter which is a linear combination of two or
+<ul>Creates a new filter which is a linear combination of two or
 more other filters. The output of the first is fed into the input of the
-next and so on.</blockquote>
+next and so on.</ul>
+
 <b>echo</b><i> inGain outGain delay decay ?delay decay ...?</i>
-<blockquote>Creates an echo effect. <i>inGain</i> is a multiplicative factor
+<ul>Creates an echo effect. <i>inGain</i> is a multiplicative factor
 applied on the input stream. <i>outGain</i> is applied on the output. Both
-factors should be between 0.0 and 1.0.&nbsp; For each echo a delay/decay
+factors should be between 0.0 and 1.0. For each echo a delay/decay
 pair should be specified. The <i>delay</i> is specified in milliseconds
-and <i>decay</i> is a factor relative to <i>inGain</i>.</blockquote>
-<b>formant</b> <i>frequency</i> <i>bandwidth</i>
-<blockquote>A formant filter with given <i>frequency</i> and <i>bandwidth</i>.</blockquote>
-<b>generator</b> <i>frequency</i> <i>?amplitude? ?shape? ?type? ?ntot?</i>
-<blockquote>A signal generator with given <i>frequency</i> and <i>amplitude</i>.
-<i>shape</i>
-is a value between 0.0 and 1.0 used to influence the shape of the signal.
+and <i>decay</i> is a factor relative to <i>inGain</i>.</ul>
+
+<b>fade</b> <i>direction type length ?floor?</i>
+<ul>An envelope filter for creating fades. The option <i>direction</i> should be either <b>in</b> or <b>out</b>. The option <i>type</i> one of <b>linear</b>, <b>exponential</b>, or <b>logarithmic</b>. <i>length</i> should be given in milliseconds. If needed a minimum fade level (value between 0 and 1.0) can be given as parameter four.</ul>
+
+<b>formant</b> <i>frequency bandwidth</i>
+<ul>A formant filter with given <i>frequency</i> and <i>bandwidth</i>.</ul>
+
+<b>generator</b> <i>frequency ?amplitude? ?shape? ?type? ?ntot?</i>
+<ul>A signal generator with given <i>frequency</i> and <i>amplitude</i>.
 <i>type</i>
 can be any of rectangle, triangle, sine, noise, or sampled. In the case
 of sampled the generator will repeatedly get data from the sound it is
-applied on. <i>ntot</i> specifies how many samples to generate. The default,
--1, will generate forever.</blockquote>
+applied on.
+<i>shape</i>
+is a value between 0.0 and 1.0 used to influence the shape of the signal. It is only useful for rectangle, triangle, or sine types. Use a value of 0.5 with rectangle to get a square wave or with triangle to get a triangle wave. Use a value of 0.0 with sine to get a sine wave and with triangle to get a sawtooth wave. See the demo formant.tcl for an interactive demonstration.
+<i>ntot</i> specifies how many samples to generate. The default,
+-1, will generate forever.</ul>
+
 <b>iir</b><i> ?-denominator list? ?-dither value? ?-impulse list? ?-noise value? ?-numerator list?</i>
-<blockquote>Creates an IIR or FIR filter. For FIR filters the coefficients are given as a list using the -impulse option. For IIR filters the coefficients are given as lists using the options -numerator and -denominator. The option -dither specifies the amount of triangular dithering to add to the output. The option -noise  specifies the amount of additive gaussian noise to add to the output.</blockquote>
+<ul>Creates an IIR or FIR filter. For FIR filters the coefficients are given as a list using the -impulse option. For IIR filters the coefficients are given as lists using the options -numerator and -denominator. The option -dither specifies the amount of triangular dithering to add to the output. The option -noise  specifies the amount of additive gaussian noise to add to the output.</ul>
+
 <b>map</b><i> val ?val val val ...?</i>
-<blockquote>Applies a linear transformation on each sample frame. For one
+<ul>Applies a linear transformation on each sample frame. For one
 channel sounds this is simply a multiplication. For multi-channel sounds,
 a transformation matrix can be specified with values row by row. One column
 per channel is needed. If mono output is used, only one row needs to be
 specified. If stereo output is used, only two rows needs to be specified.
 If only one value is specified and the filter is used for multi-channel
-data, each channel is multiplied with the given value.</blockquote>
+data, each channel is multiplied with the given value.</ul>
 <b>reverb</b> <i>outGain time delay ?delay ...?</i>
-<blockquote>A reverb effect. <i>outGain</i> is a value between 0.0 and
-1.0. <i>time</i> and <i>delay</i> are given in milliseconds.</blockquote>
+<ul>A reverb effect. <i>outGain</i> is a value between 0.0 and
+1.0. <i>time</i> and <i>delay</i> are given in milliseconds.</ul>
 
 <h3>
 BUGS</h3>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; This command is under development.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; This command still needs work.
 <h3>
 
 <hr WIDTH="100%"></h3>
@@ -206,7 +223,7 @@ as current input/output jack, supported ports, mixer lines, and gain.
 <p><b>snack::mixer channels </b><i>line</i>
 <ul>Returns a list with the names of the channels for the specified <i>line</i>.</ul>
 <b>snack::mixer devices</b>
-<blockquote>Returns a list of available mixer devices.</blockquote>
+<ul>Returns a list of available mixer devices.</ul>
 <b>snack::mixer input </b><i>?jack? ?varName?</i>
 <ul>Gets/sets the current input jack. Optionally link a boolean Tcl variable.</ul>
 <a NAME="inputs"></a><b>snack::mixer inputs</b>
@@ -224,7 +241,7 @@ as current input/output jack, supported ports, mixer lines, and gain.
 a Tcl variable to the value. If two variable names are specified they are
 used for the left and right channels respectively.</ul>
 <b>snack::mixer select</b><i> ?device?</i>
-<blockquote>Selects a mixer device to be used as default.</blockquote>
+<ul>Selects a mixer device to be used as default.</ul>
 
 <hr WIDTH="100%">
 <br>NAME
@@ -301,17 +318,20 @@ sample? ?-framelength t? ?-numformants n? ?-windowlength length?
 ?-nom_f1_freq? ?-progress callback?</b></a></dd>
 
 <dd>
-<a href="#sinfo"><i>soundName </i><b>info</b></a></dd>
+<a href="#sinfo"><i>soundName</i> <b>info</b></a></dd>
 
 <dd>
-<a href="#sins"><i>soundName </i><b>insert sound position ?-start start?
+<a href="#sins"><i>soundName</i> <b>insert sound position ?-start start?
 ?-end end?</b></a></dd>
 
 <dd>
-<a href="#slen"><i>soundName </i><b>length ?n? ?-unit u?</b></a></dd>
+<a href="#slast"><i>soundName</i> <b>lastIndex</b></a></dd>
 
 <dd>
-<a href="#smax"><i>soundName </i><b>max ?-start start? ?-end end?
+<a href="#slen"><i>soundName</i> <b>length ?n? ?-unit u?</b></a></dd>
+
+<dd>
+<a href="#smax"><i>soundName</i> <b>max ?-start start? ?-end end?
 ?-channel channel?</b></a></dd>
 
 <dd>
@@ -339,10 +359,14 @@ jack? ?-blocking boolean? -command ?callback? ?-device outputDevice? ?-devicerat
 sample? ?-framelength length? ?-windowlength length? ?-windowtype type? ?-preemphasisfactor factor? ?-channel channel? ?-progress callback?</b></a></dd>
 
 <dd>
+<a href="#spowspect"><i>soundName </i><b>powerSpectrum ?-start sample? ?-end
+sample? ?-skip samples? ?-fftlength length? ?-windowlength length? ?-channel
+channel? ?-preemphasisfactor factor? ?-windowtype type? ?-analysistype type? ?-lpcorder n?</b></a></dd>
+
+<dd>
 <a href="#sread"><i>soundName </i><b>read </b><i>filename</i><b> ?-rate
 f? ?-channels n? ?-encoding fmt? ?-skiphead n? ?-byteorder endianess??-start
-start? ?-end end? ?-guessproperties boolea</b></a><b><a href="#srec">n?
-?-progress callback?</a></b></dd>
+start? ?-end end? ?-guessproperties boolean ?-progress callback?</b></a></dd>
 
 <dd>
 <a href="#srec"><i>soundName </i><b>record ?-input jack? ?-append boolean?
@@ -353,6 +377,15 @@ start? ?-end end? ?-guessproperties boolea</b></a><b><a href="#srec">n?
 
 <dd>
 <a href="#ssamp"><i>soundName </i><b>sample n ?value? ...</b></a></dd>
+
+<dd>
+<a href="#sspeat"><i>soundName </i><b>speatures ?-start start? 
+?-end end? ?-channel channel? ?-framelength length? 
+?-windowlength length? ?-preemphasisfactor factor?
+ ?-windowtype type? ?-nchannels n? ?-ncoeff n?
+?-cepstrallifter boolean? ?-energy boolean? ?-zeromean boolean?
+?-zerothcepstralcoeff boolean? ?-lowcutoff freq?
+?-highcutoff freq?</b></a></dd>
 
 <dd>
 <a href="#sstop"><i>soundName </i><b>stop</b></a></dd>
@@ -434,7 +467,7 @@ more information on these.</ul>
 <a NAME="schanged"></a><i>soundName </i><b>changed flag</b>
 <ul>This command is used to inform Snack that the sound object has been
 modified. Normally Snack tracks changes to sound objects automatically,
-but in a few cases this must be performed explicitly. For example, if individual samples are changed using the sample command these will not be tracked for preformance reasons.
+but in a few cases this must be performed explicitly. For example, if individual samples are changed using the sample command these will not be tracked for performance reasons.
 Here a <b>changed</b> command might be necessary. <b>flag</b> can be either
 <i>New</i>
 or <i>More</i>. <i>New</i> is used for any type of change while
@@ -535,6 +568,8 @@ rate "maximum sample" "minimum sample" "sample encoding" "number of channels"
 ?-end end?</b>
 <ul>Inserts sound at position. Optionally a range of samples to insert
 can be specified. This command applies to in-memory sounds only.</ul>
+<a NAME="slast"></a><i>soundName</i> <b>lastIndex</b>
+<ul>Returns the last sample index of the sound object.</ul>
 <a NAME="slen"></a><i>soundName</i> <b>length ?n? ?-unit u?</b>
 <ul>Gets or sets the length of the sound in number of samples (default),
 or seconds, by setting <b>u</b> to either SAMPLES or SECONDS. If the new
@@ -599,6 +634,17 @@ sample? ?-framelength length? ?-windowlength length? ?-windowtype type? ?-preemp
 <ul>Returns a list of windowed log power values. The <b>-framelength</b> option specifies the intervals between the values. The option <b>-windowtype</b> is used to select windowing function, (valid values are Hamming, Hanning, Bartlett, Blackman, or Rectangle). <b>-windowlength</b> specifies the size
 of the window in points. -<b>preemphasisfactor</b> is used to specify the amount of preemphasis applied to the signal prior to windowing. A range of samples can be given using
 <b>-start</b> and <b>-end</b>. See the <a href="#sread">read</a> command for a description on how to use the <b>-progress</b> option and the <a href="#section">section item</a> for the <b>-channel</b> option.</ul>
+<a NAME="spowspect"></a><i>soundName </i><b>powerSpectrum</b> <b>?-start sample?
+?-end sample? ?-fftlength length? ?-windowlength length? ?-windowtype
+type? ?-skip samples? ?-channel channel? ?-preemphasisfactor
+factor? ?-analysistype type? ?-lpcorder n?</b>
+<ul>Computes the FFT power spectrum of the sound at <b>-start</b> and
+returns a list of magnitude values. Optionally an end point can be given, using
+<b>-end</b>.
+In this case the result is the average of consecutive FFT's in the specified
+range. Their default spacing is taken from <b>-fftlength</b> but this can
+be changed using the <b>-skip</b> option which specifies how many points
+to move the FFT window forward at each step. See the <a href="#section">section item</a> for the rest of the options. </ul>
 <a NAME="sread"></a><i>soundName </i><b>read </b><i>filename</i><b> ?-fileformat
 fmt?</b> <b>?-rate f? ?-channels n? ?-encoding fmt? ?-skiphead n? ?-byteorder
 endianess? ?-start start? ?-end end?</b> <b>?-guessproperties boolean?
@@ -672,6 +718,16 @@ that a certain value should not be affected, i. e. "snd sample 10000 ?
 999", would set the right channel of sample number 10000 of sound snd to
 the value of 999 without influencing the left channel. Samples can be read
 for all sound types but can only be set for in-memory sounds.</ul>
+
+<a NAME="sspeat"></a><i>soundName</i> <b>speatures sound ?-start start? 
+?-end end? ?-channel channel? ?-framelength length? 
+?-windowlength length? ?-preemphasisfactor factor?
+ ?-windowtype type? ?-nchannels n? ?-ncoeff n?
+?-cepstrallifter boolean? ?-energy boolean? ?-zeromean boolean?
+?-zerothcepstralcoeff boolean? ?-lowcutoff freq?
+?-highcutoff freq?</b>
+<ul>Compute speech recognition feature vectors. The resulting parameters will be stored in <b>sound</b>. Parameterization and options are compatible with the ones used by the <a href="http://htk.eng.cam.ac.uk">The Hidden Markov Model Toolkit (HTK)</a>.</ul>
+
 <a NAME="sstop"></a><i>soundName </i><b>stop</b>
 <ul>Stops current play or record operation. If there is a queue of sounds
 to play, each of them can stop playback using <b>stop</b>. Any callbacks

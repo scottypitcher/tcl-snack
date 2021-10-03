@@ -70,7 +70,7 @@ Get_f0(Sound *sound, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     sound->cmdPtr = NULL;
   }
 
-  par = (F0_params *) malloc(sizeof(F0_params));
+  par = (F0_params *) ckalloc(sizeof(F0_params));
   par->cand_thresh = 0.3f;
   par->lag_weight = 0.3f;
   par->freq_weight = 0.02f;
@@ -198,7 +198,7 @@ Get_f0(Sound *sound, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     buff_size = total_samps;
 
   actsize = min(buff_size, sound->length);
-  fdata = (float *) malloc(sizeof(float) * buff_size);
+  fdata = (float *) ckalloc(sizeof(float) * max(buff_size, sdstep));
   list = Tcl_NewListObj(0, NULL);
   Snack_ProgressCallback(sound->cmdPtr, interp, "Computing pitch", 0.0);
   ndone = startpos;
@@ -206,12 +206,13 @@ Get_f0(Sound *sound, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   while (TRUE) {
     done = (actsize < buff_size) || (total_samps == buff_size);
     Snack_GetSoundData(sound, ndone, fdata, actsize);
+    /*if (sound->debug > 0) Snack_WriteLog("dp_f0...\n");*/
     if (dp_f0(fdata, (int) actsize, (int) sdstep, sf, par,
 	      &f0p, &vuvp, &rms_speech, &acpkp, &vecsize, done)) {
       Tcl_AppendResult(interp, "problem in dp_f0().", NULL);
       return TCL_ERROR;
     }
-
+    /*if (sound->debug > 0) Snack_WriteLogInt("done dp_f0",vecsize);*/
     for (i = vecsize - 1; i >= 0; i--) {
       Tcl_Obj *frameList;
       frameList = Tcl_NewListObj(0, NULL);
@@ -242,12 +243,15 @@ Get_f0(Sound *sound, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       }
     }
   }
+
   Snack_ProgressCallback(sound->cmdPtr, interp, "Computing pitch", 1.0);
 
-  free(fdata);
-  free(par);
-  free_dp_f0();
+  ckfree((void *)fdata);
 
+  ckfree((void *)par);
+
+  free_dp_f0();
+  
   Tcl_SetObjResult(interp, list);
 
   return TCL_OK;
@@ -394,7 +398,7 @@ float *downsample(input,samsin,state_idx,freq,samsout,decimate, first_time, last
       int samsin, *samsout, decimate, state_idx, first_time, last_time;
 {
   static float	b[2048];
-  static float *foutput;
+  static float *foutput = NULL;
   float	beta = 0.0f;
   static int	ncoeff = 127, ncoefft = 0;
   int init;
@@ -409,14 +413,14 @@ float *downsample(input,samsin,state_idx,freq,samsout,decimate, first_time, last
 
       ncoeff = ((int)(freq * .005)) | 1;
       beta = .5f/decimate;
-      foutput = (float*)malloc(sizeof(float) * nbuff);
+      foutput = (float*)ckrealloc((void *)foutput, sizeof(float) * nbuff);
       /*      spsassert(foutput, "Can't allocate foutput in downsample");*/
       for( ; nbuff > 0 ;)
 	foutput[--nbuff] = 0.0;
 
       if( !lc_lin_fir(beta,&ncoeff,b)) {
 	fprintf(stderr,"\nProblems computing interpolation filter\n");
-	free(foutput);
+	ckfree((void *)foutput);
 	return(NULL);
       }
       ncoefft = (ncoeff/2) + 1;
@@ -520,15 +524,10 @@ int idx;
   register float *buf1;
 
   buf1 = buf;
-  if(ncoef > fsize) {/*allocate memory for full coeff. array and filter memory */
-    if(co)
-      free(co);
-    if(mem)
-      free(mem);
-    fsize = 0;
+  if(ncoef > fsize) {/*allocate memory for full coeff. array and filter memory */    fsize = 0;
     i = (ncoef+1)*2;
-    if(!((co = (float *)malloc(sizeof(float)*i)) &&
-	 (mem = (float *)malloc(sizeof(float)*i)))) {
+    if(!((co = (float *)ckrealloc((void *)co, sizeof(float)*i)) &&
+	 (mem = (float *)ckrealloc((void *)mem, sizeof(float)*i)))) {
       fprintf(stderr,"allocation problems in do_fir()\n");
       return;
     }
@@ -752,7 +751,7 @@ static int step, size, nlags, start, stop, ncomp, *locs = NULL;
 static short maxpeaks;
 
 static int wReuse = 0;  /* number of windows seen before resued */
-static Windstat *windstat;
+static Windstat *windstat = NULL;
 
 static float *f0p = NULL, *vuvp = NULL, *rms_speech = NULL, 
              *acpkp = NULL, *peaks = NULL;
@@ -876,7 +875,7 @@ init_dp_f0(freq, par, buffsize, sdstep)
 
   /* Allocate sscratch array to use during backtrack convergence test. */
   if( ! pcands ) {
-    pcands = (int *) malloc( par->n_cands * sizeof(int));
+    pcands = (int *) ckalloc( par->n_cands * sizeof(int));
     /*    spsassert(pcands,"can't allocate pathcands");*/
   }
 
@@ -885,26 +884,26 @@ init_dp_f0(freq, par, buffsize, sdstep)
   /* Note: remember to compare *vecsize with size_frame_out, because
      size_cir_buffer is not constant */
   output_buf_size = size_cir_buffer;
-  rms_speech = (float*)malloc(sizeof(float) * output_buf_size);
-  /*  spsassert(rms_speech,"rms_speech malloc failed");*/
-  f0p = (float*)malloc(sizeof(float) * output_buf_size);
-  /*  spsassert(f0p,"f0p malloc failed");*/
-  vuvp = (float*)malloc(sizeof(float)* output_buf_size);
-  /*  spsassert(vuvp,"vuvp malloc failed");*/
-  acpkp = (float*)malloc(sizeof(float) * output_buf_size);
-  /*  spsassert(acpkp,"acpkp malloc failed");*/
+  rms_speech = (float*)ckalloc(sizeof(float) * output_buf_size);
+  /*  spsassert(rms_speech,"rms_speech ckalloc failed");*/
+  f0p = (float*)ckalloc(sizeof(float) * output_buf_size);
+  /*  spsassert(f0p,"f0p ckalloc failed");*/
+  vuvp = (float*)ckalloc(sizeof(float)* output_buf_size);
+  /*  spsassert(vuvp,"vuvp ckalloc failed");*/
+  acpkp = (float*)ckalloc(sizeof(float) * output_buf_size);
+  /*  spsassert(acpkp,"acpkp ckalloc failed");*/
 
   /* Allocate space for peak location and amplitude scratch arrays. */
-  peaks = (float*)malloc(sizeof(float) * maxpeaks);
-  /*  spsassert(peaks,"peaks malloc failed");*/
-  locs = (int*)malloc(sizeof(int) * maxpeaks);
-  /*  spsassert(locs, "locs malloc failed");*/
+  peaks = (float*)ckalloc(sizeof(float) * maxpeaks);
+  /*  spsassert(peaks,"peaks ckalloc failed");*/
+  locs = (int*)ckalloc(sizeof(int) * maxpeaks);
+  /*  spsassert(locs, "locs ckalloc failed");*/
   
   /* Initialise the retrieval/saving scheme of window statistic measures */
   wReuse = agap / step;
   if (wReuse){
-      windstat = (Windstat *) malloc( wReuse * sizeof(Windstat));
-      /*      spsassert(windstat, "windstat malloc failed");*/
+      windstat = (Windstat *) ckalloc( wReuse * sizeof(Windstat));
+      /*      spsassert(windstat, "windstat ckalloc failed");*/
       for(i=0; i<wReuse; i++){
 	  windstat[i].err = 0;
 	  windstat[i].rms = 0;
@@ -1016,7 +1015,6 @@ dp_f0(fdata, buff_size, sdstep, freq,
 		   nlags, &engref, &maxloc,
 		   &maxval, headF->cp, peaks, locs, &ncand, par);
     
-
     /*    Move the peak value and location arrays into the dp structure */
     {
       register float *ftp1, *ftp2;
@@ -1198,15 +1196,15 @@ num_active_frames);
 	  Fprintf(stderr,
 		  "reallocating space for output frames: %d\n",
 		  output_buf_size);
-	rms_speech = (float *) realloc((char *) rms_speech,
+	rms_speech = (float *) ckrealloc((void *) rms_speech,
 				       sizeof(float) * output_buf_size);
 	/*	spsassert(rms_speech, "rms_speech realloc failed in dp_f0()");*/
-	f0p = (float *) realloc((char *) f0p,
+	f0p = (float *) ckrealloc((void *) f0p,
 				sizeof(float) * output_buf_size);
 	/*	spsassert(f0p, "f0p realloc failed in dp_f0()");*/
-	vuvp = (float *) realloc(vuvp, sizeof(float) * output_buf_size);
+	vuvp = (float *) ckrealloc((void *) vuvp, sizeof(float) * output_buf_size);
 	/*	spsassert(vuvp, "vuvp realloc failed in dp_f0()");*/
-	acpkp = (float *) realloc(acpkp, sizeof(float) * output_buf_size);
+	acpkp = (float *) ckrealloc((void *) acpkp, sizeof(float) * output_buf_size);
 	/*	spsassert(acpkp, "acpkp realloc failed in dp_f0()");*/
       }
       rms_speech[i] = frm->rms;
@@ -1274,25 +1272,25 @@ alloc_frame(nlags, ncands)
   Frame *frm;
   int j;
 
-  frm = (Frame*)malloc(sizeof(Frame));
-  frm->dp = (Dprec *) malloc(sizeof(Dprec));
-  /*  spsassert(frm->dp,"frm->dp malloc failed in alloc_frame");*/
+  frm = (Frame*)ckalloc(sizeof(Frame));
+  frm->dp = (Dprec *) ckalloc(sizeof(Dprec));
+  /*  spsassert(frm->dp,"frm->dp ckalloc failed in alloc_frame");*/
   frm->dp->ncands = 0;
-  frm->cp = (Cross *) malloc(sizeof(Cross));
-  /*  spsassert(frm->cp,"frm->cp malloc failed in alloc_frame");*/
-  frm->cp->correl = (float *) malloc(sizeof(float) * nlags);
-  /*  spsassert(frm->cp->correl, "frm->cp->correl malloc failed");*/
+  frm->cp = (Cross *) ckalloc(sizeof(Cross));
+  /*  spsassert(frm->cp,"frm->cp ckalloc failed in alloc_frame");*/
+  frm->cp->correl = (float *) ckalloc(sizeof(float) * nlags);
+  /*  spsassert(frm->cp->correl, "frm->cp->correl ckalloc failed");*/
   /* Allocate space for candidates and working arrays. */
-  frm->dp->locs = (short*)malloc(sizeof(short) * ncands);
-  /*  spsassert(frm->dp->locs,"frm->dp->locs malloc failed in alloc_frame()");*/
-  frm->dp->pvals = (float*)malloc(sizeof(float) * ncands);
-/*  spsassert(frm->dp->pvals,"frm->dp->pvals malloc failed in alloc_frame()");*/
-  frm->dp->mpvals = (float*)malloc(sizeof(float) * ncands);
-  /*  spsassert(frm->dp->mpvals,"frm->dp->mpvals malloc failed in alloc_frame()");*/
-  frm->dp->prept = (short*)malloc(sizeof(short) * ncands);
-  /*  spsassert(frm->dp->prept,"frm->dp->prept malloc failed in alloc_frame()");*/
-  frm->dp->dpvals = (float*)malloc(sizeof(float) * ncands);
-  /*  spsassert(frm->dp->dpvals,"frm->dp->dpvals malloc failed in alloc_frame()");*/
+  frm->dp->locs = (short*)ckalloc(sizeof(short) * ncands);
+  /*  spsassert(frm->dp->locs,"frm->dp->locs ckalloc failed in alloc_frame()");*/
+  frm->dp->pvals = (float*)ckalloc(sizeof(float) * ncands);
+/*  spsassert(frm->dp->pvals,"frm->dp->pvals ckalloc failed in alloc_frame()");*/
+  frm->dp->mpvals = (float*)ckalloc(sizeof(float) * ncands);
+  /*  spsassert(frm->dp->mpvals,"frm->dp->mpvals ckalloc failed in alloc_frame()");*/
+  frm->dp->prept = (short*)ckalloc(sizeof(short) * ncands);
+  /*  spsassert(frm->dp->prept,"frm->dp->prept ckalloc failed in alloc_frame()");*/
+  frm->dp->dpvals = (float*)ckalloc(sizeof(float) * ncands);
+  /*  spsassert(frm->dp->dpvals,"frm->dp->dpvals ckalloc failed in alloc_frame()");*/
     
   /*  Initialize the cumulative DP costs to zero */
   for(j = ncands-1; j >= 0; j--)
@@ -1460,23 +1458,23 @@ get_stationarity(fdata, freq, buff_size, nframes, frame_step, first_time)
     /* move this to init_dp_f0() later */
     nframes_old = nframes;
     if(stat){
-      free((char *) stat->stat);
-      free((char *) stat->rms);
-      free((char *) stat->rms_ratio);
-      free((char *) stat);
+      ckfree((char *) stat->stat);
+      ckfree((char *) stat->rms);
+      ckfree((char *) stat->rms_ratio);
+      ckfree((char *) stat);
     }
-    if (mem) free(mem); 
-    stat = (Stat *) malloc(nframes *sizeof(Stat));
-    /*    spsassert(stat,"stat malloc failed in get_stationarity");*/
-    stat->stat = (float*)malloc(sizeof(float)*nframes);
-    /*    spsassert(stat->stat,"stat->stat malloc failed in get_stationarity");*/
-    stat->rms = (float*)malloc(sizeof(float)*nframes);
-    /*    spsassert(stat->rms,"stat->rms malloc failed in get_stationarity");*/
-    stat->rms_ratio = (float*)malloc(sizeof(float)*nframes);
-    /*    spsassert(stat->rms_ratio,"stat->ratio malloc failed in get_stationarity");*/
+    if (mem) ckfree((void *)mem); 
+    stat = (Stat *) ckalloc(sizeof(Stat));
+    /*    spsassert(stat,"stat ckalloc failed in get_stationarity");*/
+    stat->stat = (float*)ckalloc(sizeof(float)*nframes);
+    /*    spsassert(stat->stat,"stat->stat ckalloc failed in get_stationarity");*/
+    stat->rms = (float*)ckalloc(sizeof(float)*nframes);
+    /*    spsassert(stat->rms,"stat->rms ckalloc failed in get_stationarity");*/
+    stat->rms_ratio = (float*)ckalloc(sizeof(float)*nframes);
+    /*    spsassert(stat->rms_ratio,"stat->ratio ckalloc failed in get_stationarity");*/
     memsize = (int) (STAT_WSIZE * freq) + (int) (STAT_AINT * freq);
-    mem = (float *) malloc( sizeof(float) * memsize);
-    /*    spsassert(mem, "mem malloc failed in get_stationarity()");*/
+    mem = (float *) ckalloc( sizeof(float) * memsize);
+    /*    spsassert(mem, "mem ckalloc failed in get_stationarity()");*/
     for(j=0; j<memsize; j++) mem[j] = 0;
   }
   
@@ -1557,37 +1555,188 @@ void free_dp_f0()
   int i;
   Frame *frm, *next;
   
-  free(pcands);
+  ckfree((void *)pcands);
   pcands = NULL;
-  free(rms_speech);
-  free(f0p);
-  free(vuvp);
-  free(acpkp);
-  free(peaks);
-  free(locs);
-  if (wReuse) free(windstat);
-
-  frm = headF;
-
-  for(i = 0; i < size_cir_buffer; i++) {
-    next = frm->next;
-    free(frm->cp->correl);
-    free(frm->dp->locs);
-    free(frm->dp->pvals);
-    free(frm->dp->mpvals);
-    free(frm->dp->prept);
-    free(frm->dp->dpvals);
-    free(frm->cp);
-    free(frm->dp);
-    frm = next;
+  
+  ckfree((void *)rms_speech);
+  rms_speech = NULL;
+  
+  ckfree((void *)f0p);
+  f0p = NULL;
+  
+  ckfree((void *)vuvp);
+  vuvp = NULL;
+  
+  ckfree((void *)acpkp);
+  acpkp = NULL;
+  
+  ckfree((void *)peaks);
+  peaks = NULL;
+  
+  ckfree((void *)locs);
+  locs = NULL;
+  
+  if (wReuse) {
+    ckfree((void *)windstat);
+    windstat = NULL;
   }
   
-  free(stat->stat);
-  free(stat->rms);
-  free(stat->rms_ratio);
-  free(stat);
+  frm = headF;
+  
+  for(i = 0; i < size_cir_buffer; i++) {
+    next = frm->next;
+    ckfree((void *)frm->cp->correl);
+    ckfree((void *)frm->dp->locs);
+    ckfree((void *)frm->dp->pvals);
+    ckfree((void *)frm->dp->mpvals);
+    ckfree((void *)frm->dp->prept);
+    ckfree((void *)frm->dp->dpvals);
+    ckfree((void *)frm->cp);
+    ckfree((void *)frm->dp);
+    ckfree((void *)frm);
+    frm = next;
+  }
+  headF = NULL;
+  tailF = NULL;
+  
+  ckfree((void *)stat->stat);
+  ckfree((void *)stat->rms);
+  ckfree((void *)stat->rms_ratio);
+
+  ckfree((void *)stat);
   stat = NULL;
-  free(mem);
+
+  ckfree((void *)mem);
   mem = NULL;
 }
 
+int
+cGet_f0(Sound *sound, Tcl_Interp *interp, float **outlist, int *length)
+{
+  float *fdata;
+  int done;
+  long buff_size, actsize;
+  double sf, start_time;
+  F0_params *par, *read_f0_params();
+  float *f0p, *vuvp, *rms_speech, *acpkp;
+  int i, vecsize;
+  int init_dp_f0(), dp_f0();
+  static int framestep = -1;
+  long sdstep = 0, total_samps;
+  int ndone = 0;
+  Tcl_Obj *list;
+  float *tmp = (float *)ckalloc(sizeof(float) * (5 + sound->length / 160));
+  int count = 0;
+  int startpos = 0, endpos = -1;
+
+  if (sound->cmdPtr != NULL) {
+    Tcl_DecrRefCount(sound->cmdPtr);
+    sound->cmdPtr = NULL;
+  }
+
+  par = (F0_params *) ckalloc(sizeof(F0_params));
+  par->cand_thresh = 0.3f;
+  par->lag_weight = 0.3f;
+  par->freq_weight = 0.02f;
+  par->trans_cost = 0.005f;
+  par->trans_amp = 0.5f;
+  par->trans_spec = 0.5f;
+  par->voice_bias = 0.0f;
+  par->double_cost = 0.35f;
+  par->min_f0 = 50;
+  par->max_f0 = 550;
+  par->frame_step = 0.01f;
+  par->wind_dur = 0.0075f;
+  par->n_cands = 20;
+  par->mean_f0 = 200;          /* unused */
+  par->mean_f0_weight = 0.0f;  /* unused */
+  par->conditioning = 0;       /* unused */
+
+  if (startpos < 0) startpos = 0;
+  if (endpos >= (sound->length - 1) || endpos == -1)
+    endpos = sound->length - 1;
+  if (startpos > endpos) return TCL_OK;
+
+  sf = (double) sound->samprate;
+
+  if (framestep > 0)  /* If a value was specified with -S, use it. */
+    par->frame_step = (float) (framestep / sf);
+  start_time = 0.0f;
+  if(check_f0_params(interp, par, sf)){
+    Tcl_AppendResult(interp, "invalid/inconsistent parameters -- exiting.", NULL);
+    return TCL_ERROR;
+  }
+
+  total_samps = endpos - startpos + 1;
+  if(total_samps < ((par->frame_step * 2.0) + par->wind_dur) * sf) {
+    Tcl_AppendResult(interp, "input range too small for analysis by get_f0.", NULL);
+    return TCL_ERROR;
+  }
+  /* Initialize variables in get_f0.c; allocate data structures;
+   * determine length and overlap of input frames to read.
+   */
+  if (init_dp_f0(sf, par, &buff_size, &sdstep)
+      || buff_size > INT_MAX || sdstep > INT_MAX)
+  {
+    Tcl_AppendResult(interp, "problem in init_dp_f0().", NULL);
+    return TCL_ERROR;
+  }
+
+  if (debug_level)
+    Fprintf(stderr, "init_dp_f0 returned buff_size %ld, sdstep %ld.\n",buff_size, sdstep);
+
+  if (buff_size > total_samps)
+    buff_size = total_samps;
+
+  actsize = min(buff_size, sound->length);
+  fdata = (float *) ckalloc(sizeof(float) * max(buff_size, sdstep));
+  list = Tcl_NewListObj(0, NULL);
+  /*  Snack_ProgressCallback(sound->cmdPtr, interp, "Computing pitch", 0.0);*/
+  ndone = startpos;
+
+  while (TRUE) {
+    done = (actsize < buff_size) || (total_samps == buff_size);
+    Snack_GetSoundData(sound, ndone, fdata, actsize);
+    /*if (sound->debug > 0) Snack_WriteLog("dp_f0...\n");*/
+    if (dp_f0(fdata, (int) actsize, (int) sdstep, sf, par,
+	      &f0p, &vuvp, &rms_speech, &acpkp, &vecsize, done)) {
+      Tcl_AppendResult(interp, "problem in dp_f0().", NULL);
+      return TCL_ERROR;
+    }
+    /*if (sound->debug > 0) Snack_WriteLogInt("done dp_f0",vecsize);*/
+    for (i = vecsize - 1; i >= 0; i--) {
+      tmp[count] = f0p[i];
+      count++;
+    }
+
+    if (done) break;
+
+    ndone += sdstep; 
+    actsize = min(buff_size, sound->length - ndone);
+    total_samps -= sdstep;
+
+    if (actsize > total_samps)
+      actsize = total_samps;
+
+    /*    if (1) {
+      int res = Snack_ProgressCallback(sound->cmdPtr, interp, "Computing pitch", (double) ndone / sound->length);
+      if (res != TCL_OK) {
+	return TCL_ERROR;
+      }
+      }*/
+  }
+
+  /*Snack_ProgressCallback(sound->cmdPtr, interp, "Computing pitch", 1.0);*/
+
+  ckfree((void *)fdata);
+
+  ckfree((void *)par);
+
+  free_dp_f0();
+
+  *outlist = tmp;
+  *length = count;  
+  /*Tcl_SetObjResult(interp, list);*/
+
+  return TCL_OK;
+}

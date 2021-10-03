@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -25,8 +25,7 @@
 #include <math.h>
 #include <string.h>
 #include "tcl.h"
-#include "jkAudIO.h"
-#include "jkSound.h"
+#include "snack.h"
 
 extern int rop, wop;
 extern double startDevTime;

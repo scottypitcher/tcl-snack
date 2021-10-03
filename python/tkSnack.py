@@ -1,9 +1,9 @@
 """
 tkSnack
-An interface to Kåre Sjölander's Snack Tcl extension
+An interface to Kare Sjolander's Snack Tcl extension
 http://www.speech.kth.se/snack/index.html
 
-by Kevin Russell and Kåre Sjölander
+by Kevin Russell and Kare Sjolander
 last modified: Mar 28, 2003
 """
 
@@ -20,6 +20,7 @@ def initializeSnack(newroot):
     Tkroot = newroot
     Tkroot.tk.call('eval', 'package require snack')
     Tkroot.tk.call('snack::createIcons')
+    Tkroot.tk.call('snack::setUseOldObjAPI')
     audio = AudioControllerSingleton()
     mixer = MixerControllerSingleton()
 
@@ -134,12 +135,8 @@ class Sound (TkObject):
         
     def append(self, binarydata, **kw):
         """Appends binary string data to the end of the sound."""
-        #tclvar = Tkinter.StringVar()
-        #tclvar.set(binarydata)
-        #self.tk.call((self.name, 'append', tclvar._name) + self._options(kw))
-        #return 'Test: length of data is' + str(len(tclvar.get()))
-        raise NotImplementedException
-            
+        self.tk.call((self.name, 'append', binarydata) + self._options(kw))
+     
     def concatenate(self, othersound):
         """Concatenates the sample data from othersound to the end of
         this sound.  Both sounds must be of the same type."""
@@ -152,6 +149,14 @@ class Sound (TkObject):
     def copy(self, sound, **kw):
         """Copies sample data from another sound into self."""
         self.tk.call((self.name, 'copy', sound.name) + self._options(kw))
+
+    def changed(self, flag):
+        """This command is used to inform Snack that the sound object has been
+        modified. Normally Snack tracks changes to sound objects automatically,
+        but in a few cases this must be performed explicitly. For example,
+        if individual samples are changed using the sample command these
+        will not be tracked for performance reasons."""
+        self.tk.call((self.name, 'changed', flag))
 
     def convert(self, **kw):
         """Convert a sound to a different sample encoding, sample rate,
@@ -170,13 +175,13 @@ class Sound (TkObject):
             end = self.length()
         self.tk.call((self.name, 'cut', start, end) + self._options(kw))
         
-    def data(self, **kw):
-        raise NotImplementedException
-        #tclvar = Tkinter.StringVar()
-        #self.tk.call((self.name, 'data', tclvar._name) + self._options(kw))
-        #return tclvar.get()
-        #return self.tk.call((self.name, 'data') + self._options(kw))
-                            
+    def data(self, binarydata=None, **kw):
+        """Loads sound data from, or writes to, a binary string."""
+        if binarydata: # copy data to sound
+            self.tk.call((self.name, 'data', binarydata) + self._options(kw))
+        else: # return sound data
+            return self.tk.call((self.name, 'data') + self._options(kw))
+                          
     def destroy(self):
         """Removes the Tcl command for this sound and frees the storage
         associated with it."""
@@ -188,7 +193,14 @@ class Sound (TkObject):
         result = self.tk.call((self.name, 'dBPowerSpectrum')
                               + self._options(kw))
         return self._getdoubles(result)        
-        
+
+    def powerSpectrum(self, **kw):
+        """Computes the FFT power spectrum of the sound (at the time
+        given by the start option) and returns a list of magnitude values."""
+        result = self.tk.call((self.name, 'powerSpectrum')
+                              + self._options(kw))
+        return self._getdoubles(result)        
+
     def filter(self, filter, **kw):
         """Applies the given filter to the sound."""
         return self.tk.call((self.name, 'filter', filter.name) +
@@ -249,7 +261,7 @@ class Sound (TkObject):
         
     def pitch(self, method=None, **kw):
         """Returns a list of pitch values."""
-        if method is None:
+        if method is None or method is "amdf" or method is "AMDF":
             result = self.tk.call((self.name, 'pitch') + self._options(kw))
             return self._getdoubles(result)
         else:
@@ -260,6 +272,13 @@ class Sound (TkObject):
     def play(self, **kw):
         """Plays the sound."""
         self.tk.call((self.name, 'play') + self._options(kw))
+
+    def power(self, **kw):
+        """Computes the FFT power spectrum of the sound (at the time
+        given by the start option) and returns a list of power values."""
+        result = self.tk.call((self.name, 'power')
+                              + self._options(kw))
+        return self._getdoubles(result)        
 
     def read(self, filename, **kw):
         """Reads new sound data from a file."""
@@ -290,6 +309,9 @@ class Sound (TkObject):
     def stop(self):
         """Stops current play or record operation."""
         self.tk.call(self.name, 'stop')
+
+    def stretch(self, **kw):
+        self.tk.call((self.name, 'stretch') + self._options(kw))
 
     def write(self, filename, **kw):
         """Writes sound data to a file."""

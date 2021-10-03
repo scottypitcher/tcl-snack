@@ -719,7 +719,7 @@ build Snack on the Macintosh.
 
 4/24/01 (new feature) Added support for the Ogg/Vorbis file format (SnackOgg.c) through the optional package "snackogg".
 
-5/1/00 (bug fix) Fixed bug in the map filter that occured when re-configuring it with only one value during playback of multi-channel sounds.
+5/1/01 (bug fix) Fixed bug in the map filter that occured when re-configuring it with only one value during playback of multi-channel sounds.
 
 5/3/01 (new feature) Added Ogg/Vorbis format support for writing files and for streaming play/record.
 
@@ -923,3 +923,98 @@ build Snack on the Macintosh.
 
 ----------------- Released 2.2.2, 5/9/03 -----------------------
 
+8/5/03 (bug fix) Fixed bug in audio code for Mac OS X.
+
+8/26/03 (enhancement) On Sun machines the environment variable AUDIODEV is now used.
+
+8/27/03 (new feature) Updated Snack script compiler, wrap.tcl, to use TclKit.
+
+8/27/03 (new feature) New sound commands powerSpectrum and speatures.
+
+8/29/03 (change) Changed distribution format for Windows.
+
+----------------- Released 2.2.3, 8/29/03 -----------------------
+
+9/9/03 (bug fix) Bug fix in the AIFF header parsing routine.
+
+11/20/03 (bug fix) Bug fix in the pitch command for short sounds (ESPS method) (Theado)
+
+11/20/03 (new feature) Easier Python installation through setup.py script. (Owen)
+
+2/6/04 (bug fix) Bug fix for Windows XP which caused a crash when using USB sound cards.
+
+2/6/04 (bug fix) Bug fix for Macintosh OS X audio which caused echo effect.
+
+2/6/04 (bug fix) Bug fix for Linux OSS which handles audio device busy better. (Wilkason)
+
+2/6/04 (enhancement) Added ability to set Windows DirectSound flags through Tcl integer variables. DSBCAPS_FLAG for DSBCAPS_* and DSSCL_FLAG for IDirectSound_SetCooperativeLevel(). (Wilkason)
+
+----------------- Released 2.2.4, 2/9/04 -----------------------
+
+3/12/04 (bug fix) Fixed memory leak in pitch command. (DeJong)
+
+3/23/04 (change) Updates for the ALSA 1.0 API. (Max)
+
+3/23/04 (enhancement) Modifications to allow build on 64-bit platforms. (Max)
+
+4/9/04 (new feature) Mingw support added. (DeJong)
+
+4/9/04 (bug fix) Fixes for playback clean-up. (DeJong)
+
+4/21/04 (enhancement) Support for playback (in addition to recording) of more than two channels on Windows.
+
+5/3/04 (bug fix) MME audio device selection corrected on Windows.
+
+5/5/04 (bug fix) Corrected bug which made it impossible to "stop" queued sounds.
+
+----------------- Released 2.2.5, 5/5/04 -----------------------
+
+5/12/04 (bug fix) Corrected sample command for use with 24-bit integer samples.
+
+5/15/04 (bug fix) Corrected sample command, now raises an error when more sample values than number of channels are given.
+
+6/8/04 (bug fix) Correction for Lin24 format on Windows. (Schnarr)
+
+6/14/04 (bug fix) Corrected mean calculation for dBPowerSpectrum.
+
+6/14/04 (bug fix) Added out-of-bounds checks SnackCopySamples(), Snack_PutSoundData(), and Snack_GetSoundData(). (DeJong)
+
+----------------- Released 2.2.6, 6/15/04 -----------------------
+
+6/18/04 (bug fix) Added out-of-bounds check in ReadSound(). (DeJong)
+
+6/24/04 (bug fix) Several fixes regarding spectral estimation.
+
+6/24/04 (new feature) New option -regressionorder for the speatures command.
+
+----------------- Released 2.2.7, 6/24/04 -----------------------
+
+8/18/02 (bug fix) Fix for configure. (Allaert)
+
+8/18/02 (bug fix) Fixes for Mingw. (DeJong)
+
+8/18/02 (bug fix) Fixed the -windowtype option to formant to actually use the window names given in the manual.
+
+8/18/02 (bug fix) Fixed the speatures command to update sound properties correctly.
+
+9/22/04 (change) Increased the number of default shades of grey for spectrograms to 256.
+
+9/23/02 (bug fix) Fixed problem with sound I/O using Windows DirectSound. (DeJong)
+
+9/24/04 (new feature) New command lastIndex, which returns last sample index of a sound object.
+
+----------------- Released 2.2.8, 9/30/04 -----------------------
+
+10/20/04 (new feature) Implementation of data and append commands for Python (Hinard).
+
+10/26/04 (bug fix) Fixed leak in Windows sound I/O code. (Wilkason)
+
+11/15/04 (new feature) The fade filter can now fade to a minimum level other than zero.
+
+11/18/04 (bug fix) Corrected memory leak in the pitch command.
+
+11/25/04 (bug fix) Corrected handling of Lin24packed sample encoding.
+
+11/30/04 (new feature) Support for more than 2 channels on Macintosh OS X.
+
+----------------- Released 2.2.9, 12/1/04 -----------------------

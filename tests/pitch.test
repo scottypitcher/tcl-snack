@@ -20,7 +20,7 @@ test pitch-1.2 {pitch command} {
   set res [$s pitch -start 4800 -end 4960]
   $s destroy
   set res
-} {141.0 133.0}
+} {141.0 133.0 126.0}
 
 test pitch-1.3 {pitch command} {
   set tcl_precision 5

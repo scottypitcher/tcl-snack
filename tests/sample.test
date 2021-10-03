@@ -33,6 +33,14 @@ test sample-1.3 {sample command, index out of bounds} {
   set msg
 } {Index out of bounds}
 
+test sample-1.4 {sample command, too many samples given} {
+  set s [snack::sound snd]
+  $s length 10
+  catch {$s sample 9 17 18} msg
+  $s destroy
+  set msg
+} {Too many samples given}
+
 test sample-2.1 {sample command, stereo get} {
   set s [snack::sound snd -channels 2]
   $s length 10
@@ -190,6 +198,17 @@ test sample-7.2 {sample command, set/get with configure channels} {
   $s destroy
   set res
 } {17 18 19 0 0}
+
+test sample-8.1 {sample command, lin24 sample set/get} {
+  set s [snack::sound snd -encoding lin24]
+  $s length 10
+  $s sample 9 32768
+  $s sample 8 -8388608
+  $s sample 7 8388607
+  set res [$s sample 9],[$s sample 8],[$s sample 7]
+  $s destroy
+  set res
+} 32768,-8388608,8388607
 
 # cleanup
 ::tcltest::cleanupTests

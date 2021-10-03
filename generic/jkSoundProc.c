@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2004 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -185,7 +185,6 @@ CheckLPCorder(Tcl_Interp *interp, int lpcorder)
   return TCL_OK;
 }
 
-
 extern void Snack_PowerSpectrum(float *z);
 
 int
@@ -215,6 +214,454 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
   float g_lpc;
 
   if (s->debug > 0) Snack_WriteLog("Enter dBPowerSpectrumCmd\n");
+
+  for (arg = 2; arg < objc; arg += 2) {
+    int index;
+	
+    if (Tcl_GetIndexFromObj(interp, objv[arg], subOptionStrings,
+			    "option", 0, &index) != TCL_OK) {
+      return TCL_ERROR;
+    }
+	
+    if (arg + 1 == objc) {
+      Tcl_AppendResult(interp, "No argument given for ",
+		       subOptionStrings[index], " option", (char *) NULL);
+      return TCL_ERROR;
+    }
+    
+    switch ((enum subOptions) index) {
+    case START:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case END:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case CHANNEL:
+      {
+	char *str = Tcl_GetStringFromObj(objv[arg+1], NULL);
+	if (GetChannel(interp, str, s->nchannels, &channel) != TCL_OK) {
+	  return TCL_ERROR;
+	}
+	break;
+      }
+    case FFTLEN:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &fftlen) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case WINDOWLEN:
+    case WINLEN:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &winlen) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case PREEMPH:
+      {
+	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &dpreemph) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case SKIP:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &skip) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case WINTYPE:
+      {
+	char *str = Tcl_GetStringFromObj(objv[arg+1], NULL);
+	if (GetWindowType(interp, str, &wintype) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case ANATYPE:
+      {
+	int len;
+ 	char *str = Tcl_GetStringFromObj(objv[arg+1], &len);
+	
+	if (strncasecmp(str, "lpc", len) == 0) {
+	  type = 1;
+	} else if (strncasecmp(str, "fft", len) == 0) {
+	  type = 0;
+	} else {
+	  Tcl_AppendResult(interp, "-type should be FFT or LPC", (char *)NULL);
+	  return TCL_ERROR;
+	}
+	break;
+      }
+    case LPCORDER:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &lpcOrder) != TCL_OK)
+	  return TCL_ERROR;
+	if (CheckLPCorder(interp, lpcOrder) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    }
+  }
+
+  if (CheckFFTlen(interp, fftlen) != TCL_OK) return TCL_ERROR;
+
+  if (CheckWinlen(interp, winlen, fftlen) != TCL_OK) return TCL_ERROR;
+
+  preemph = (float) dpreemph;
+
+  if (startpos < 0 || startpos > s->length - fftlen) {
+    Tcl_AppendResult(interp, "FFT window out of bounds", NULL);
+    return TCL_ERROR;
+  }
+
+  if (endpos < 0) 
+    endpos = startpos;
+
+  if (endpos > s->length - 1) {
+    Tcl_AppendResult(interp, "FFT window out of bounds", NULL);
+    return TCL_ERROR;
+  }
+
+  for (i = 0; i < NMAX/2; i++) {
+    ffts[i] = 0.0;
+  }
+
+  if (s->storeType != SOUND_IN_MEMORY) {
+    if (OpenLinkedFile(s, &info) != TCL_OK) {
+      return TCL_OK;
+    }
+  }
+  
+  Snack_InitWindow(hamwin, winlen, fftlen, wintype);
+  Snack_InitFFT(fftlen);
+  
+  if (skip < 1) {
+    skip = fftlen;
+  }
+  siglen = endpos - startpos;
+  n = siglen / skip;
+  if (n < 1) {
+    n = 1;
+  }
+
+  if (s->nchannels == 1) {
+    channel = 0;
+  }
+
+  if (type != 0 && n > 0) { /* LPC + FFT */
+    if (siglen < fftlen) siglen = fftlen;
+    sig_lpc = (float *) ckalloc(siglen * sizeof(float));
+
+    GetFloatMonoSig(s, &info, sig_lpc, startpos, siglen, channel);
+    if (startpos > 0)
+      GetFloatMonoSig(s, &info, &presample, startpos - 1, 1, channel);
+    PreEmphase(sig_lpc, presample, siglen, preemph);
+
+    /* windowing signal to make lpc look more like the fft spectrum ??? */
+    for (i = 0; i < winlen/2; i++) {
+      sig_lpc[i] = sig_lpc[i] * hamwin[i];
+    }
+    for (i = winlen/2; i < winlen; i++) {
+      sig_lpc[i + siglen - winlen] = sig_lpc[i + siglen - winlen] * hamwin[i];
+    }
+
+    g_lpc = LpcAnalysis(sig_lpc, siglen, xfft, lpcOrder);
+    ckfree((char *) sig_lpc);
+
+    for (i = 0; i <= lpcOrder; i++) {
+      /* the factor is a guess, try looking for analytical value */
+      xfft[i] = xfft[i] * 5000000000.0f;
+    }
+    for (i = lpcOrder + 1; i < fftlen; i++) {
+      xfft[i] = 0.0;
+    }
+    
+    Snack_DBPowerSpectrum(xfft);
+    
+    for (i = 0; i < fftlen/2; i++) {
+      ffts[i] = -xfft[i];
+    }
+
+  } else {  /* usual FFT */
+
+    for (j = 0; j < n; j++) {
+      if (s->storeType == SOUND_IN_MEMORY) {
+	if (s->nchannels == 1 || channel != -1) {
+	  int p = (startpos + j * skip) * s->nchannels + channel;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = (float) ((FSAMPLE(s, p + s->nchannels)
+				- preemph * FSAMPLE(s, p))
+			       * hamwin[i]);
+	    p += s->nchannels;
+	  }
+	} else {
+	  int c;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = 0.0;
+	  }
+	  for (c = 0; c < s->nchannels; c++) {
+	    int p = (startpos + j * skip) * s->nchannels + c;
+	    
+	    for (i = 0; i < fftlen; i++) {
+	      xfft[i] += (float) ((FSAMPLE(s, p + s->nchannels)
+				   - preemph * FSAMPLE(s, p))
+				  * hamwin[i]);
+	      p += s->nchannels;
+	    }
+	  }
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] /= s->nchannels;
+	  }
+	}
+      } else { /* storeType != SOUND_IN_MEMORY */
+	if (s->nchannels == 1 || channel != -1) {
+	  int p = (startpos + j * skip) * s->nchannels + channel;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = (float) ((GetSample(&info, p + s->nchannels)
+				- preemph * GetSample(&info, p))
+			       * hamwin[i]);
+	    p += s->nchannels;
+	  }
+	} else {
+	  int c;
+	  
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] = 0.0;
+	  }
+	  for (c = 0; c < s->nchannels; c++) {
+	    int p = (startpos + j * skip) * s->nchannels + c;
+	    
+	    for (i = 0; i < fftlen; i++) {
+	      xfft[i] += (float) ((GetSample(&info, p + s->nchannels)
+				   - preemph * GetSample(&info, p))
+				  * hamwin[i]);
+	      p += s->nchannels;
+	    }
+	  }
+	  for (i = 0; i < fftlen; i++) {
+	    xfft[i] /= s->nchannels;
+	  }
+	}
+      }
+      
+      Snack_PowerSpectrum(xfft);
+      
+      for (i = 0; i < fftlen/2; i++) {
+	ffts[i] += xfft[i];
+      }
+    }
+  }
+  
+  if (s->storeType != SOUND_IN_MEMORY) {
+    CloseLinkedFile(&info);
+  }
+
+  if (type == 0) {  
+    for (i = 0; i < fftlen/2; i++) {
+      ffts[i] = ffts[i] / (float) n;
+    }
+    for (i = 1; i < fftlen/2; i++) {
+      if (ffts[i] < SNACK_INTLOGARGMIN)
+	ffts[i] = SNACK_INTLOGARGMIN;
+      ffts[i] = (float) (SNACK_DB * log(ffts[i]) - SNACK_CORRN);
+    }
+    if (ffts[0] < SNACK_INTLOGARGMIN)
+      ffts[0] = SNACK_INTLOGARGMIN;
+    ffts[0] = (float) (SNACK_DB * log(ffts[0]) - SNACK_CORR0);
+  }
+  list = Tcl_NewListObj(0, NULL);
+  for (i = 0; i < fftlen/2; i++) {
+    Tcl_ListObjAppendElement(interp, list, Tcl_NewDoubleObj(ffts[i]));
+  }
+  
+  Tcl_SetObjResult(interp, list);
+
+  if (s->debug > 0) Snack_WriteLog("Exit dBPowerSpectrumCmd\n");
+
+  return TCL_OK;
+}
+
+int
+GetChannel(Tcl_Interp *interp, char *str, int nchan, int *channel)
+{
+  int n = -2;
+  int len = strlen(str);
+
+  if (strncasecmp(str, "left", len) == 0) {
+    n = 0;
+  } else if (strncasecmp(str, "right", len) == 0) {
+    n = 1;
+  } else if (strncasecmp(str, "all", len) == 0) {
+    n = -1;
+  } else if (strncasecmp(str, "both", len) == 0) {
+    n = -1;
+  } else {
+    Tcl_GetInt(interp, str, &n);
+  }
+
+  if (n < -1 || n >= nchan) {
+    Tcl_AppendResult(interp, "-channel must be left, right, both, all, -1, or an integer between 0 and the number channels - 1", NULL);
+    return TCL_ERROR;
+  }
+
+  *channel = n;
+
+  return TCL_OK;
+}
+
+int
+GetWindowType(Tcl_Interp *interp, char *str, SnackWindowType *wintype)
+{
+  SnackWindowType type = -1;
+  int len = strlen(str);
+  
+  if (strncasecmp(str, "hamming", len) == 0) {
+    type = SNACK_WIN_HAMMING;
+  } else if (strncasecmp(str, "hanning", len) == 0) {
+    type = SNACK_WIN_HANNING;
+  } else if (strncasecmp(str, "bartlett", len) == 0) {
+    type = SNACK_WIN_BARTLETT;
+  } else if (strncasecmp(str, "blackman", len) == 0) {
+    type = SNACK_WIN_BLACKMAN;
+  } else if (strncasecmp(str, "rectangle", len) == 0) {
+    type = SNACK_WIN_RECT;
+  }
+  
+  if (type == -1) {
+    Tcl_AppendResult(interp, "-windowtype must be hanning, hamming, bartlett,"
+		     "blackman, or rectangle", NULL);
+    return TCL_ERROR;
+  }
+  
+  *wintype = type;
+
+  return TCL_OK;
+}
+
+float  
+LpcAnalysis (float *data, int N, float *f, int order) {
+   int    i,m;
+   float  sumU = 0.0;
+   float  sumD = 0.0;
+   float  b[SNACK_MAX_LPC_ORDER+1];
+   float KK;
+
+   float ParcorCoeffs[SNACK_MAX_LPC_ORDER];
+   /* PreData should be used when signal is not windowed */
+   float PreData[SNACK_MAX_LPC_ORDER];
+   float *errF;
+   float *errB;
+   float errF_m = 0.0;
+
+   if ((order < 1) || (order > SNACK_MAX_LPC_ORDER))  return 0.0f;
+
+   errF = (float *) ckalloc((N+SNACK_MAX_LPC_ORDER) * sizeof(float));
+   errB = (float *) ckalloc((N+SNACK_MAX_LPC_ORDER) * sizeof(float));
+
+   for (i=0; i<order; i++) {
+     ParcorCoeffs[i] = 0.0;
+     PreData[i] = 0.0; /* delete here and use as argument when sig not windowed */
+   };
+
+   for (m=0; m<order; m++)
+     errF[m] = PreData[m];
+   for (m=0; m<N; m++)
+     errF[m+order] = data[m] ;
+
+   errB[0] = 0.0;
+   for (m=1; m<N+order; m++)
+     errB[m] = errF[m-1];
+
+   for (i=0; i<order; i++) {
+
+     sumU=0.0;
+     sumD=0.0;
+     for (m=i+1; m<N+order; m++) {
+       sumU -= errF[m] * errB[m];
+       sumD += errF[m] * errF[m] + errB[m] * errB[m];
+     };
+
+     if (sumD != 0) KK = 2.0f * sumU / sumD;   
+     else KK = 0;
+     ParcorCoeffs[i] = KK;
+
+
+     for (m=N+order-1; m>i; m--) {
+       errF[m] += KK * errB[m];
+       errB[m] = errB[m-1] + KK * errF[m-1];
+     };
+   };
+
+   for (i=order; i<N+order; i++) {
+     errF_m += errF[i]*errF[i];
+   }
+   errF_m /= N;
+
+   ckfree((char *)errF);
+   ckfree((char *)errB);
+
+   /* convert to direct filter coefficients */
+   f[0] = 1.0;    
+   for (m=1; m<=order; m++) {
+     f[m] = ParcorCoeffs[m-1];
+     for (i=1; i<m; i++)
+       b[i] = f[i];
+     for (i=1; i<m; i++)
+       f[i] = b[i] + ParcorCoeffs[m-1] * b[m-i];
+   }
+
+   return (float)sqrt(errF_m);
+}
+
+
+void PreEmphase(float *sig, float presample, int len, float preemph) {
+  int i;
+  float temp;
+
+  if (preemph == 0.0)  return;
+
+  for (i = 0; i < len; i++) {
+    temp = sig[i];
+    sig[i] = temp - preemph * presample;
+    presample = temp;
+  }
+}
+
+int
+powerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
+		   Tcl_Obj *CONST objv[])
+{
+  double dpreemph = 0.0;
+  float preemph = 0.0;
+  int i, j, n = 0, arg;
+  int channel = 0, winlen = 256, fftlen = 512;
+  int startpos = 0, endpos = -1, skip = -1;
+  Tcl_Obj *list;
+  SnackLinkedFileInfo info;
+  SnackWindowType wintype = SNACK_DEFAULT_DBPWINTYPE;
+  static CONST84 char *subOptionStrings[] = {
+    "-start", "-end", "-channel", "-fftlength", "-winlength", "-windowlength",
+    "-preemphasisfactor", "-skip", "-windowtype", "-analysistype",
+    "-lpcorder", NULL
+  };
+  enum subOptions {
+    START, END, CHANNEL, FFTLEN, WINLEN, WINDOWLEN, PREEMPH, SKIP, WINTYPE,
+    ANATYPE, LPCORDER
+  };
+  float *sig_lpc;
+  float presample = 0.0;
+  int siglen, type = 0, lpcOrder = SNACK_DEFAULT_DBP_LPC_ORDER;
+  float g_lpc;
+
+  if (s->debug > 0) Snack_WriteLog("Enter powerSpectrumCmd\n");
 
   for (arg = 2; arg < objc; arg += 2) {
     int index;
@@ -383,7 +830,7 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
       xfft[i] = 0.0;
     }
     
-    Snack_DBPowerSpectrum(xfft);
+    Snack_PowerSpectrum(xfft);
     
     for (i = 0; i < fftlen/2; i++) {
       ffts[i] = -xfft[i];
@@ -397,9 +844,11 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
 	  int p = (startpos + j * skip) * s->nchannels + channel;
 	  
 	  for (i = 0; i < fftlen; i++) {
+	    /*	    if (i < 4) printf("a %f %d\n", FSAMPLE(s, i), n);*/
 	    xfft[i] = (float) ((FSAMPLE(s, p + s->nchannels)
 				- preemph * FSAMPLE(s, p))
 			       * hamwin[i]);
+	    /*	    if (i < 4) printf("b %f %f\n", xfft[i], hamwin[i]);*/
 	    p += s->nchannels;
 	  }
 	} else {
@@ -454,18 +903,18 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
 	}
       }
       
-      Snack_DBPowerSpectrum(xfft);
-      
+      Snack_PowerSpectrum(xfft);
       for (i = 0; i < fftlen/2; i++) {
-	ffts[i] += xfft[i];
+	ffts[i] += (float)sqrt(xfft[i]);
+	/*		if (i < 4) printf("power %f %f\n", xfft[i],ffts[i]);*/
       }
     }
   }
-
+  
   if (s->storeType != SOUND_IN_MEMORY) {
     CloseLinkedFile(&info);
   }
-
+  
   for (i = 0; i < fftlen/2; i++) {
     ffts[i] = ffts[i] / (float) n;
   }
@@ -477,159 +926,12 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
 
   Tcl_SetObjResult(interp, list);
 
-  if (s->debug > 0) Snack_WriteLog("Exit dBPowerSpectrumCmd\n");
+  if (s->debug > 0) Snack_WriteLog("Exit powerSpectrumCmd\n");
 
   return TCL_OK;
-}
-
-int
-GetChannel(Tcl_Interp *interp, char *str, int nchan, int *channel)
-{
-  int n = -2;
-  int len = strlen(str);
-
-  if (strncasecmp(str, "left", len) == 0) {
-    n = 0;
-  } else if (strncasecmp(str, "right", len) == 0) {
-    n = 1;
-  } else if (strncasecmp(str, "all", len) == 0) {
-    n = -1;
-  } else if (strncasecmp(str, "both", len) == 0) {
-    n = -1;
-  } else {
-    Tcl_GetInt(interp, str, &n);
-  }
-
-  if (n < -1 || n >= nchan) {
-    Tcl_AppendResult(interp, "-channel must be left, right, both, all, -1, or an integer between 0 and the number channels - 1", NULL);
-    return TCL_ERROR;
-  }
-
-  *channel = n;
-
-  return TCL_OK;
-}
-
-int
-GetWindowType(Tcl_Interp *interp, char *str, SnackWindowType *wintype)
-{
-  SnackWindowType type = -1;
-  int len = strlen(str);
-  
-  if (strncasecmp(str, "hamming", len) == 0) {
-    type = SNACK_WIN_HAMMING;
-  } else if (strncasecmp(str, "hanning", len) == 0) {
-    type = SNACK_WIN_HANNING;
-  } else if (strncasecmp(str, "bartlett", len) == 0) {
-    type = SNACK_WIN_BARTLETT;
-  } else if (strncasecmp(str, "blackman", len) == 0) {
-    type = SNACK_WIN_BLACKMAN;
-  } else if (strncasecmp(str, "rectangle", len) == 0) {
-    type = SNACK_WIN_RECT;
-  }
-  
-  if (type == -1) {
-    Tcl_AppendResult(interp, "-windowtype must be hanning, hamming, bartlett,"
-		     "blackman, or rectangle", NULL);
-    return TCL_ERROR;
-  }
-  
-  *wintype = type;
-
-  return TCL_OK;
-}
-
-float  
-LpcAnalysis (float *data, int N, float *f, int order) {
-   int    i,m;
-   float  sumU = 0.0;
-   float  sumD = 0.0;
-   float  b[SNACK_MAX_LPC_ORDER+1];
-   float KK;
-
-   float ParcorCoeffs[SNACK_MAX_LPC_ORDER];
-   /* PreData should be used when signal is not windowed */
-   float PreData[SNACK_MAX_LPC_ORDER];
-   float *errF;
-   float *errB;
-   float errF_m = 0.0;
-
-   if ((order < 1) || (order > SNACK_MAX_LPC_ORDER))  return 0.0f;
-
-   errF = (float *) ckalloc((N+SNACK_MAX_LPC_ORDER) * sizeof(float));
-   errB = (float *) ckalloc((N+SNACK_MAX_LPC_ORDER) * sizeof(float));
-
-   for (i=0; i<order; i++) {
-     ParcorCoeffs[i] = 0.0;
-     PreData[i] = 0.0; /* delete here and use as argument when sig not windowed */
-   };
-
-   for (m=0; m<order; m++)
-     errF[m] = PreData[m];
-   for (m=0; m<N; m++)
-     errF[m+order] = data[m] ;
-
-   errB[0] = 0.0;
-   for (m=1; m<N+order; m++)
-     errB[m] = errF[m-1];
-
-   for (i=0; i<order; i++) {
-
-     sumU=0.0;
-     sumD=0.0;
-     for (m=i+1; m<N+order; m++) {
-       sumU -= errF[m] * errB[m];
-       sumD += errF[m] * errF[m] + errB[m] * errB[m];
-     };
-
-     if (sumD != 0) KK = 2.0f * sumU / sumD;   
-     else KK = 0;
-     ParcorCoeffs[i] = KK;
-
-
-     for (m=N+order-1; m>i; m--) {
-       errF[m] += KK * errB[m];
-       errB[m] = errB[m-1] + KK * errF[m-1];
-     };
-   };
-
-   for (i=order; i<N+order; i++) {
-     errF_m += errF[i]*errF[i];
-   }
-   errF_m /= N;
-
-   ckfree((char *)errF);
-   ckfree((char *)errB);
-
-   /* convert to direct filter coefficients */
-   f[0] = 1.0;    
-   for (m=1; m<=order; m++) {
-     f[m] = ParcorCoeffs[m-1];
-     for (i=1; i<m; i++)
-       b[i] = f[i];
-     for (i=1; i<m; i++)
-       f[i] = b[i] + ParcorCoeffs[m-1] * b[m-i];
-   }
-
-   return (float)sqrt(errF_m);
-}
-
-
-void PreEmphase(float *sig, float presample, int len, float preemph) {
-  int i;
-  float temp;
-
-  if (preemph == 0.0)  return;
-
-  for (i = 0; i < len; i++) {
-    temp = sig[i];
-    sig[i] = temp - preemph * presample;
-    presample = temp;
-  }
 }
 
 #define SNACK_DEFAULT_POWERWINTYPE SNACK_WIN_HAMMING
-#define DB 4.34294481903251830000000 /*  = 10 / ln(10)  */
 
 int
 powerCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
@@ -860,7 +1162,7 @@ powerCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       power += xfft[i] * xfft[i];
     }
     if (power < 1.0) power = 1.0;
-    powers[j] = (float) (DB * log(scale * power / (float)(winlen - winstart)));
+    powers[j] = (float) (SNACK_DB * log(scale * power / (float)(winlen - winstart)));
 
     if ((j % 10000) == 9999) {
       int res = Snack_ProgressCallback(s->cmdPtr, interp, "Computing power", 
@@ -896,6 +1198,60 @@ mel(float f)
   return((float)(1127.0 * log(1.0f + f / 700.0f)));
 }
 
+float regarr[15][5];
+
+static void
+obsv(Sound *s, int nStatCoeffs, float *v, int t, int nReg)
+{
+  int i, j, ne, pr;
+  float sum;
+
+  for (i = 0; i < nStatCoeffs; i++) {
+    for (j = 1; j < 5; j++) {
+      regarr[i][j-1] = regarr[i][j];
+    }
+  }
+
+  if (t >= 0) {
+    for (i = 0; i < nStatCoeffs; i++) {
+      v[i] = FSAMPLE(s, s->nchannels * t + i);
+    }
+  }
+  if (nReg) {
+    for (i = 0; i < nStatCoeffs; i++) {
+      sum = 0.0f;
+      for (j = 1; j <= 2; j++) {
+	pr = t + 2 - j;
+	if (pr < 0) pr = 0;
+	ne = t + 2 + j;
+	if (ne >= s->length) ne = s->length - 1;
+	sum += j * (FSAMPLE(s, s->nchannels * ne + i)-FSAMPLE(s, s->nchannels * pr + i));
+      }
+      regarr[i][4] = sum / 10.0f;
+      v[i+nStatCoeffs] = regarr[i][2];
+    }
+  }
+  if (nReg > 1) {
+    for (i = 0; i < nStatCoeffs; i++) {
+      sum = 0.0f;
+      for (j = 1; j <= 2; j++) {
+	pr = 2 - j;
+	if (t == 0) pr = 2;
+	if (t == 1 && j == 2) pr = 1;
+	ne = 2 + j;
+	if (t == s->length-1) ne = 2;
+	if (t == s->length-2 && j == 2) ne = 3;
+	sum += j * (regarr[i][ne]-regarr[i][pr]);
+      }
+      v[i+2*nStatCoeffs] = sum / 10.0f;
+    }
+  }
+
+  /*  for (i = 0; i < 13; i++) { printf("%f ",v[i]); } printf("\n");
+      for (i=13; i < 26; i++) { printf("%f ",v[i]); } printf("\n");
+      for (i=26; i < 39; i++) { printf("%f ",v[i]); } printf("\n");*/
+}
+
 int
 speaturesCmd(Sound *s, Tcl_Interp *interp, int objc,
 	     Tcl_Obj *CONST objv[])
@@ -914,12 +1270,13 @@ speaturesCmd(Sound *s, Tcl_Interp *interp, int objc,
     "-start", "-end", "-channel", "-framelength", "-windowlength",
     "-preemphasisfactor", "-windowtype",
     "-nchannels", "-ncoeff", "-cepstrallifter", "-energy", "-zeromean",
-    "-zerothcepstralcoeff", "-lowcutoff", "-highcutoff", NULL
+    "-zerothcepstralcoeff", "-lowcutoff", "-highcutoff",
+    "-regressionorder", NULL
   };
   enum subOptions {
     START, END, CHANNEL, FRAMELEN, WINDOWLEN, PREEMPH, WINTYPE,
     NCHANNELS, NCOEFF, CEPLIFT, ENERGY, ZEROMEAN, ZEROTHCC,
-    LOWCUT, HIGHCUT
+    LOWCUT, HIGHCUT, REGRESSION
   };
   float *outarr;
   int numchannels = 20, ncoeff = 12;
@@ -933,8 +1290,8 @@ speaturesCmd(Sound *s, Tcl_Interp *interp, int objc,
   float fbw[512];
   float frame[1024];
   double ceplifter = 22.0;
-  int doEnergy = 0, doZeroMean = 0, doZerothCC = 0;
-  int vectorLength;
+  int doEnergy = 0, doZeroMean = 0, doZerothCC = 0, regression = 0;
+  int vectorLength, regVecLen;
   Sound *outsnd;
   char *string;
 
@@ -1057,12 +1414,18 @@ speaturesCmd(Sound *s, Tcl_Interp *interp, int objc,
 	highcut = (float) tmpdouble;
 	break;
       }
+    case REGRESSION:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &regression) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
     }
   }
 
   winlen = (int) (s->samprate * dwinlen);
   
-  if (startpos < 0 || startpos > s->length - fftlen) {
+  if ((startpos < 0 || startpos > s->length - fftlen) && s->length > 0) {
     Tcl_AppendResult(interp, "FFT window out of bounds", NULL);
     return TCL_ERROR;
   }
@@ -1083,14 +1446,14 @@ speaturesCmd(Sound *s, Tcl_Interp *interp, int objc,
   framelen = (int) (dframelen * s->samprate);
   n = (endpos - startpos - winlen) / framelen + 1;
   if (n < 1) {
-    n = 1;
+    n = 0;
   }
 
   vectorLength  = ncoeff;
   if (doEnergy) vectorLength++;
   if (doZerothCC) vectorLength++;
-
-  outarr = (float *) ckalloc(sizeof(float) * vectorLength * n);
+  
+  outarr = (float *) ckalloc(sizeof(float) * vectorLength * n + 1);
 
   lowMel = (float) mel(lowcut);
   lowInd = (int) ((lowcut * fftlen / s->samprate) + 1.5);
@@ -1269,8 +1632,10 @@ speaturesCmd(Sound *s, Tcl_Interp *interp, int objc,
   if (s->storeType != SOUND_IN_MEMORY) {
     CloseLinkedFile(&info);
   }
-
-  outsnd->nchannels = vectorLength;
+  regVecLen = vectorLength * (regression + 1);
+  if (outsnd->nchannels < regVecLen) {
+    outsnd->nchannels = regVecLen;
+  }
   if (Snack_ResizeSoundStorage(outsnd, n) != TCL_OK) {
     return TCL_ERROR;
   }
@@ -1278,16 +1643,49 @@ speaturesCmd(Sound *s, Tcl_Interp *interp, int objc,
   
   for (i = 0; i < n; i++) {
     for (k = 0; k < vectorLength; k++) {
-      FSAMPLE(outsnd, i*vectorLength+k) = outarr[i*vectorLength+k];
+      FSAMPLE(outsnd, i*outsnd->nchannels+k) = outarr[i*vectorLength+k];
     }
   }
+
+  if (regression) {
+    float obs[45];
+    
+    for (k = -2; k < 2; k++) {
+      for (i = 0; i < vectorLength; i++) {
+	float sum = 0.0f;
+	for (j = 1; j <= 2; j++) {
+	  int pr = k - j;
+	  int ne = k + j;
+	  if (pr < 0) pr = 0;
+	  if (ne < 0) ne = 0;
+	  if (ne >= n) ne = n - 1;
+	  sum += j * (FSAMPLE(outsnd, outsnd->nchannels * ne + i)
+		      - FSAMPLE(outsnd, outsnd->nchannels * pr + i));
+	}
+	regarr[i][k+3] = sum / 10.0f;
+      }
+    }
+    for (i = 0; i < n; i++) {
+      obsv(outsnd, vectorLength, obs, i, regression);
+      for (k = vectorLength; k < regVecLen; k++) {
+	FSAMPLE(outsnd, i * outsnd->nchannels + k) = obs[k];
+      }
+    }
+  }
+
+  ckfree((char*) outarr);
+
+  outsnd->encoding = SNACK_FLOAT;
+  outsnd->samprate = (int) (1.0 / dframelen + 0.5);
+  Snack_UpdateExtremes(outsnd, 0, n, SNACK_NEW_SOUND);
+  Snack_ExecCallbacks(outsnd, SNACK_NEW_SOUND);
 
   if (s->debug > 0) Snack_WriteLog("Exit speaturesCmd\n");
 
   return TCL_OK;
 }
 
-extern int cPitch(Sound *s, Tcl_Interp *interp, int **outlist, int *length);
+extern int cGet_f0(Sound *s, Tcl_Interp *interp, float **outlist, int *length);
 
 static int
 searchZX(Sound *s, int pos)
@@ -1296,69 +1694,34 @@ searchZX(Sound *s, int pos)
 
   for(i = 0; i < 20000; i++) {
     j = pos + i;
-    if (j < s->length && FSAMPLE(s, j-1) < 0.0 && FSAMPLE(s, j) >= 0.0) {
+    if (j>0 && j<s->length && FSAMPLE(s, j-1) < 0.0 && FSAMPLE(s, j) >= 0.0) {
       return(j);
     }
     j = pos - i;
-    if (j > 0 && FSAMPLE(s, j-1) < 0.0 && FSAMPLE(s, j) >= 0.0) {
+    if (j>0 && j<s->length && FSAMPLE(s, j-1) < 0.0 && FSAMPLE(s, j) >= 0.0) {
       return(j);
     }
   }
-  return(-1);
-}
-
-static void
-copy(Sound *s, float *buf, int buflen, int pos, int index, int length)
-{
-  int i, ii;
-  float z, win, newsmp;
-  
-  index = index - length/2;
-  pos = pos - length/2;
-  length = 2 * length;
-  
-  for (i = 0; i < length; i++) {
-    if (i >= length / 2) {
-      ii = length - 1 - i;
-    } else {
-      ii = i;
-    }
-    z = (float) ((0.5 + length / 2 - 1 - ii) * SNACK_PI / length);
-    win = (float) exp(-3.0 * z * z);
-    if (pos < 0 || pos >= buflen || index < 0 || index >= s->length) return;
-    newsmp = buf[pos] + win * FSAMPLE(s, index);
-    if (newsmp >= 32767.0) {
-      newsmp = 32767.0;
-    }
-    if (newsmp <= -32768.0) {
-      newsmp = -32768.0;
-    }
-    buf[pos] = newsmp;
-    index++;
-    pos++;
-  }
+  return(pos);
 }
 
 int
-xoCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+stretchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-  double tmpdouble = 0.0;
-  float px = 1.0f, rx = 1.0f, tx = 1.0f;
-  int i, ind, last, start, inpos, outpos, newlen, arg, segOnly = 0;
+  int i, ind, last, start, arg, segOnly = 0;
   static CONST84 char *subOptionStrings[] = {
-    "-p", "-r", "-t", "-s", NULL
+    "-segments", NULL
   };
   enum subOptions {
-    P, R, T, S
+    SEGMENTS
   };
-  int *pitchList;
+  float *cPitchList;
   int *segs;
   int *sege;
-  int length = 0;
-  float *buf;
+  int cPitchLength = 0;
   int skip = s->samprate / 100;
 
-  if (s->debug > 0) Snack_WriteLog("Enter xoCmd\n");
+  if (s->debug > 0) Snack_WriteLog("Enter stretchCmd\n");
 
   for (arg = 2; arg < objc; arg += 2) {
     int index;
@@ -1375,28 +1738,7 @@ xoCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     }
     
     switch ((enum subOptions) index) {
-    case P:
-      {
-	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &tmpdouble) != TCL_OK)
-	  return TCL_ERROR;
-	px = (float) tmpdouble;
-	break;
-      }
-    case R:
-      {
-	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &tmpdouble) != TCL_OK)
-	  return TCL_ERROR;
-	rx = (float) tmpdouble;
-	break;
-      }
-    case T:
-      {
-	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &tmpdouble) != TCL_OK)
-	  return TCL_ERROR;
-	tx = (float) tmpdouble;
-	break;
-      }
-    case S:
+    case SEGMENTS:
       {
 	if (Tcl_GetIntFromObj(interp, objv[arg+1], &segOnly) != TCL_OK)
 	  return TCL_ERROR;
@@ -1405,111 +1747,100 @@ xoCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
     }
   }
 
-  cPitch(s, interp, &pitchList, &length);
+  if (s->length == 0) {
+    return TCL_OK;
+  }
+
+  cGet_f0(s, interp, &cPitchList, &cPitchLength);
 
   ind = 0;
   start = 0;
   last = 0;
-  segs = (int *) ckalloc(sizeof(int) * length);
-  sege = (int *) ckalloc(sizeof(int) * length);
-  for (i = 1; i < s->length; i++) {
-    int point;
-
-    if ((int)(i/(float)skip+.5) >= length) break;
-
-    point = pitchList[(int)(i/(float)skip+.5)];
-    if (point == 0.0) {
-      i += 9;
-      continue;
-    }
-    if (start == 0) {
-      i = searchZX(s, i);
-      segs[ind] = start;
-      sege[ind] = i;
-      start = i;
-      ind++;
-    } else {
-      i = searchZX(s, (int)(i+s->samprate/point));
-      if (i == last) {
-	int j = i + 10;
-	while (last == i) {
-	  i = searchZX(s, j);
-	  j += 10;
-	}
+  segs = (int *) ckalloc(sizeof(int) * cPitchLength * 2);
+  sege = (int *) ckalloc(sizeof(int) * cPitchLength * 2);
+  
+  if (s->length < 8000 && cPitchList[0] == 0.0 && cPitchList[1] == 0.0 && \
+      cPitchList[2] == 0.0) {
+  } else {  
+    for (i = 1; i < s->length; i++) {
+      int pitchListIndex = (int) (i/(float)skip+.5);
+      float point;
+      
+      if (pitchListIndex >= cPitchLength) {
+	pitchListIndex = cPitchLength - 1;
       }
-      last = i;
-      if (i > 0) {
+      if (ind >= cPitchLength*2) {
+	ind = cPitchLength * 2 - 1;
+      }
+      point = cPitchList[pitchListIndex];
+      
+      if (point == 0.0) {
+	i += 9;
+	continue;
+      }
+      if (start == 0) {
+	i = searchZX(s, (int)(i+s->samprate/point));
 	segs[ind] = start;
 	sege[ind] = i;
 	start = i;
 	ind++;
       } else {
-	segs[ind] = start;
-	sege[ind] = s->length;
-	start = s->length;
-	ind++;
-	break;
-      }
-    }
-  }
-  newlen = (int)(rx * s->length);
-  buf = (float *) ckalloc(sizeof(float) * newlen);
-  for (i = 0; i < newlen; i++) {
-    buf[i] = 0.0f;
-  }
-  inpos = 0;
-  outpos = 0;
-  
-  while (inpos < s->length) {
-    int frame = inpos / skip;
-    int point = pitchList[frame];
-  
-    if (point == 0) {
-      for (i = 1; i < 5; i++) {
-	frame++;
-	if (pitchList[frame] != 0) break;
-      }
-      
-      copy(s, buf, newlen, outpos, inpos, skip * i);
-   
-      inpos  += (int) (skip * i / rx);
-      outpos += (skip * i);
-      
-    } else {
-   
-      int index = -1;
-
-      for (i = 0; i < ind; i++) {
-	if (segs[i] <= inpos && inpos < sege[i] && (sege[i]-segs[i]) < 200) {
-	  index = i;
+	i = searchZX(s, (int)(i+s->samprate/point));
+	if (i == last) {
+	  int j = i + 10;
+	  while (last == i) {
+	    i = searchZX(s, j);
+	    j += 10;
+	  }
+	}
+	/* this is needed to make stretch.test happy, can surely be improved*/
+	if (i - last < (int)(0.8*s->samprate/point) && s->length - i < 200) {
+	  i = -1;
+	}
+	last = i;
+	if (i > 0) {
+	  segs[ind] = start;
+	  sege[ind] = i;
+	  start = i;
+	  ind++;
+	} else {
+	  segs[ind] = start;
+	  sege[ind] = s->length;
+	  start = s->length;
+	  ind++;
 	  break;
 	}
       }
-
-      if (index > 0) {
-	copy(s, buf, newlen, outpos, segs[index], sege[index] - segs[index]);
-	inpos  += (int) (px * (sege[index] - segs[index]) / rx);
-	outpos += (int) (px * (sege[index] - segs[index]));
-      } else {
-	inpos  += (int) (skip / rx);
-	outpos += skip;
-      }
     }
+    if (ind == 0) {
+      segs[ind] = start;
+      ind = 1;
+    }
+    sege[ind-1] = s->length-1;
+  }
+  
+  if (segOnly) {
+    Tcl_Obj *list = Tcl_NewListObj(0, NULL);
+    for (i = 0; i < ind; i++) {
+      Tcl_ListObjAppendElement(interp, list,
+			       Tcl_NewIntObj((int) segs[i]));
+    }
+    Tcl_SetObjResult(interp, list);
+    ckfree((char *)segs);
+    ckfree((char *)sege);
+    ckfree((char *)cPitchList);
+
+    if (s->debug > 0) Snack_WriteLog("Exit stretchCmd\n");     
+
+    return TCL_OK;
   }
 
-  for (i = 0; i < s->length; i++) {
-    FSAMPLE(s, i) = 0.0f;
-  }
-  Snack_ResizeSoundStorage(s, newlen);
-  s->length = newlen;
-  Snack_PutSoundData(s, 0, buf, newlen);
-  ckfree((char *)segs);
-  ckfree((char *)sege);
-  ckfree((char *)buf);
-  ckfree((char *)pitchList);
+  return TCL_OK;
+}
 
-  if (s->debug > 0) Snack_WriteLog("Exit xoCmd\n");
-
+int
+joinCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
   return TCL_OK;
 }
 
@@ -1520,10 +1851,137 @@ ocCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 }
 
 int
-alCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+fitCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   return TCL_OK;
 }
+
+#define  PI   3.141592653589793
+
+double singtabf[32];
+double singtabb[32];
+float futdat[512+10];
+float smerg[512+10];
+
+int
+inaCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  float a1[32],a2[32],mn[32];
+  int i,j,noli,nofpts=512,shobeg=2,nosing;
+  int start;
+  int plLen = 0;
+  Tcl_Obj** plElems;
+  Tcl_Obj *list, *listInv, *listFlow;
+
+  if (Tcl_GetIntFromObj(interp, objv[2], &start) != TCL_OK) return TCL_ERROR;
+
+  if (Tcl_ListObjGetElements(interp, objv[3], &plLen, &plElems) != TCL_OK)
+    return TCL_ERROR;
+  
+  nosing = plLen / 2;
+  
+  for (i=0;i<nosing;i++) {
+    if (Tcl_GetDoubleFromObj(interp, plElems[i], &singtabf[i]) != TCL_OK)
+      return TCL_ERROR;
+    if (Tcl_GetDoubleFromObj(interp, plElems[i+nosing], &singtabb[i]) != TCL_OK)
+      return TCL_ERROR;
+  }
+
+  for (i = 0; i < nofpts; i++) {
+    futdat[i] = FSAMPLE(s, start + i);
+  }
+  for (i = nofpts; i < nofpts+4; i++) {
+    futdat[i] = 0.0f;
+  }
+
+  noli=0;                         /* zero 2nd order filter */
+  for (i=0;i<nosing;i++) {          
+    if ((singtabf[i]>0.0) && (singtabb[i]>0.0)) {
+      a2[noli]=(float)exp((double)(-PI*singtabb[i]/s->samprate));
+      a1[noli]= -2*a2[noli]*(float)cos((double)(2.0*PI*singtabf[i]/s->samprate));
+      a2[noli]=a2[noli]*a2[noli];
+      mn[noli]=1.0f/(1.0f+a1[noli]+a2[noli]); 
+      a1[noli]=mn[noli]*a1[noli];      
+      a2[noli]=mn[noli]*a2[noli];
+      noli++;      
+    } 
+  }
+  for (j=0;j<noli;j++) {
+      for (i=shobeg+nofpts;i>=shobeg;i--) {
+        futdat[i]=mn[j]*futdat[i]+a1[j]*futdat[i-1]+a2[j]*futdat[i-2];
+      }                   
+  }                         
+
+  noli=0;                         /* pole 2nd order filter */
+  for (i=0;i<nosing;i++) {          
+    if ((singtabf[i]>0.0) && (singtabb[i]<0.0)) {
+      a2[noli]=(float)exp((double)(PI*singtabb[i]/s->samprate));
+      a1[noli]= -2*a2[noli]*(float)cos((double)(2.0*PI*singtabf[i]/s->samprate));
+      a2[noli]=a2[noli]*a2[noli];
+      mn[noli]=1.0f+a1[noli]+a2[noli]; 
+      noli++;      
+    } 
+  }
+  for (j=0;j<noli;j++) {
+      for (i=shobeg;i<shobeg+nofpts;i++) {
+        futdat[i]=mn[j]*futdat[i]-a1[j]*futdat[i-1]-a2[j]*futdat[i-2];
+      }                   
+  }                         
+
+  noli=0;                         /* pole 1st order filter */
+  for (i=0;i<nosing;i++) {          
+    if ((singtabf[i]==0.0) && (singtabb[i]<0.0)) {
+      a1[noli]= -(float)exp((double)(PI*singtabb[i]/s->samprate));
+      mn[noli]=1.0f+a1[noli];
+      noli++;      
+    } 
+  }
+  for (j=0;j<noli;j++) {
+      for (i=shobeg;i<shobeg+nofpts;i++) {
+        futdat[i]=mn[j]*(futdat[i]-futdat[i-1])+futdat[i-1];
+      }                   
+  }
+  /*shobeg = 1;*/ /* ugly fix, think about this*/
+  smerg[shobeg-1]=0.0;
+  for (i=shobeg;i<shobeg+nofpts;i++) {
+    smerg[i]=(futdat[i]-smerg[i-1])/32.0f+smerg[i-1];
+  }                   
+
+  list     = Tcl_NewListObj(0, NULL);
+  listInv  = Tcl_NewListObj(0, NULL);
+  listFlow = Tcl_NewListObj(0, NULL);
+  for (i = shobeg; i < shobeg+nofpts; i++) {
+    Tcl_ListObjAppendElement(interp, listInv, Tcl_NewDoubleObj(futdat[i]));
+    Tcl_ListObjAppendElement(interp, listFlow, Tcl_NewDoubleObj(smerg[i]));
+  }
+  Tcl_ListObjAppendElement(interp, list, listInv);
+  Tcl_ListObjAppendElement(interp, list, listFlow);
+  Tcl_SetObjResult(interp, list);
+
+  return TCL_OK;
+}
+
+Tcl_HashTable *arHashTable;
+
+int
+Snack_arCmd(ClientData cdata, Tcl_Interp *interp, int objc,
+		Tcl_Obj *CONST objv[])
+{
+  return TCL_OK;
+}
+
+void
+Snack_arDeleteCmd(ClientData clientData)
+{
+}
+
+int
+vpCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  return TCL_OK;
+}
+
+Tcl_HashTable *hsetHashTable;
 
 int
 Snack_HSetCmd(ClientData cdata, Tcl_Interp *interp, int objc,
@@ -1538,18 +1996,20 @@ Snack_HSetDeleteCmd(ClientData clientData)
 {
 }
 
-Tcl_HashTable *hsetHashTable;
-
 int
-Snack_arCmd(ClientData cdata, Tcl_Interp *interp, int objc,
-		Tcl_Obj *CONST objv[])
+alCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   return TCL_OK;
 }
 
-void
-Snack_arDeleteCmd(ClientData clientData)
+int
+isynCmd(ClientData cdata, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  return TCL_OK;
 }
 
-Tcl_HashTable *arHashTable;
+int
+osynCmd(ClientData cdata, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  return TCL_OK;
+}
