@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -51,6 +51,8 @@ static int mfd = 0;
 static struct MixerLink mixerLinks[SOUND_MIXER_NRDEVICES][2];
 
 static int littleEndian = 0;
+
+static int minNumChan = 1;
 
 int
 SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
@@ -174,7 +176,6 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
     Tcl_AppendResult(interp, "Failed setting sample frequency.", NULL);
     return TCL_ERROR;
   }
-
   
   /*  A->count = 0;*/
   A->frag_size = 0;
@@ -378,6 +379,7 @@ SnackAudioInit()
     char c[sizeof(short)];
     short s;
   } order;
+  int afd, format, channels, nchannels;
 
   /* Compute the byte order of this machine. */
 
@@ -389,6 +391,28 @@ SnackAudioInit()
   if ((mfd = open(MIXER_NAME, O_RDWR, 0)) == -1) {
     fprintf(stderr, "Unable to open mixer %s\n", MIXER_NAME);
   }
+
+  /* Determine minimum number of channels supported. */
+  
+  if ((afd = open(defaultDeviceName, O_WRONLY, 0)) == -1) {
+    return;
+  }
+  
+  if (littleEndian) {
+    format = AFMT_S16_LE;
+  } else {
+    format = AFMT_S16_BE;
+  }
+  if (ioctl(afd, SNDCTL_DSP_SETFMT, &format) == -1) {
+    close(afd);
+    return;
+  }
+  channels = nchannels = 1;
+  if (ioctl(afd, SNDCTL_DSP_CHANNELS, &channels) == -1
+      || channels != nchannels) {
+    minNumChan = channels;
+  }
+  close(afd);
 }
 
 void
@@ -497,13 +521,13 @@ void
 SnackAudioGetRates(char *device, char *buf, int n)
 {
   int afd, freq, pos= 0, i;
-  int f[] = { 8000, 11025, 16000, 22050, 32000, 44100, 48000 };
+  int f[] = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 96000 };
 
   if ((afd = open(DEVICE_NAME, O_WRONLY, 0)) == -1) {
     buf[0] = '\0';
     return;
   }
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < 8; i++) {
     freq = f[i];
     if (ioctl(afd, SNDCTL_DSP_SPEED, &freq) == -1) break;
     if (abs(f[i] - freq) > freq / 100) continue;
@@ -516,6 +540,12 @@ int
 SnackAudioMaxNumberChannels(char *device)
 {
   return(2);
+}
+
+int
+SnackAudioMinNumberChannels(char *device)
+{
+  return(minNumChan);
 }
 
 void
@@ -921,6 +951,8 @@ SnackGetInputDevices(char **arr, int n)
   
   glob("/dev/dsp*", 0, NULL, &globt);
   glob("/dev/audio*", GLOB_APPEND, NULL, &globt);
+  glob("/dev/sound/dsp*", GLOB_APPEND, NULL, &globt);
+  glob("/dev/sound/audio*", GLOB_APPEND, NULL, &globt);
 
   for (i = 0; i < globt.gl_pathc; i++) {
     if (j < n) {
@@ -939,7 +971,8 @@ SnackGetMixerDevices(char **arr, int n)
   glob_t globt;
   
   glob("/dev/mixer*", 0, NULL, &globt);
-
+  glob("/dev/sound/mixer*", GLOB_APPEND, NULL, &globt);
+  
   for (i = 0; i < globt.gl_pathc; i++) {
     if (j < n) {
       arr[j++] = (char *) SnackStrDup(globt.gl_pathv[i]);

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -30,4 +30,4 @@
 #include "jkAudIO.h"
 
 #define SNACK_VERSION     "2.1"
-#define SNACK_PATCH_LEVEL "2.1"
+#define SNACK_PATCH_LEVEL "2.1.6"

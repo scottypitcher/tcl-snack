@@ -46,9 +46,8 @@ proc Config {args} {
 }
 
 proc Play {} {
-  global f
   s stop
-  s play -filter $f
+  s play -filter $::f
 }
 
 proc Load {} {

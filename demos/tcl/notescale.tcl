@@ -8,6 +8,8 @@ set f [snack::filter generator 440.0 30000 0.0 sine 8000]
 snack::sound s
 #snack::audio playLatency 100
 
+wm resizable . 0 0
+
 proc Beep {freq} {
   $::f configure $freq
   s stop

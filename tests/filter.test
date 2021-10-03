@@ -198,6 +198,23 @@ test filter-2.14 {sound filter command, stereo, map filter reconfigured} {
   set res
 } {1000,-1000,2000,-2000,0,0}
 
+test filter-2.15 {sound filter command, long sound, check samples} {
+  set s [snack::sound snd]
+  $s length 200000
+  $s sample 100001 3000
+  $s sample 100002 -3000
+  set f [snack::filter map 0.25]
+  $s filter $f -start 100000
+  set res [$s max],[$s min]
+  $s sample 100001 0
+  $s sample 100002 0
+  $s changed New
+  append res ,[$s max],[$s min]
+  $f destroy
+  $s destroy
+  set res
+} {750,-750,0,0}
+
 test filter-3.1 {sound filter command, with -progress option} {
   set res ""
   proc prog {msg frac} {
@@ -240,7 +257,7 @@ test filter-4.1 {filter compose} {
   $f2 destroy
   $cf destroy
   set res
-} compose20
+} compose21
 
 test filter-4.2 {filter compose, apply three-filter composition} {
   set s [snack::sound snd]
@@ -344,6 +361,27 @@ test filter-6.1 {generator filter, testing generation with empty sound} {
   $s destroy
   set res
 } {16000 16000 10026 -6287 Lin16 1 RAW 0}
+
+test filter-7.1 {iir filter, applied to sound} {
+  set s [snack::sound snd -load ex1.wav]
+  set f [snack::filter iir -numerator "0.99 -0.99" -denominator "1 -0.99"]
+  $s filter $f -continuedrain 0
+  set res [$s info]
+  $f destroy
+  $s destroy
+  set res
+} {15820 16000 13222 -9615 Lin16 1 WAV 44}
+
+test filter-7.2 {iir filter, applied to stereo sound} {
+  set s [snack::sound snd -load ex1.wav]
+  $s convert -channels 2
+  set f [snack::filter iir -numerator "0.99 -0.99" -denominator "1 -0.99"]
+  $s filter $f -continuedrain 0
+  set res [$s info]
+  $f destroy
+  $s destroy
+  set res
+} {15820 16000 13222 -9616 Lin16 2 WAV 44}
 
 # cleanup
 ::tcltest::cleanupTests

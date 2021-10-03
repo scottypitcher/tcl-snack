@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -84,7 +84,10 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
 
   ASetErrorHandler(newHandler);
 
-  A->audio = AOpenAudio(NULL, NULL);
+  if ((A->audio = AOpenAudio(NULL, NULL)) == NULL) {
+    Tcl_AppendResult(interp, "Audio server not active (AOpenAudio returns NULL).", NULL);
+    return TCL_ERROR;
+  }
 
   attribs.type = ATSampled;
   attribs.attr.sampled_attr.sampling_rate = freq;
@@ -394,6 +397,8 @@ ASetRecGain(int gain)
 {
   int g = min(max(gain, 0), 100);
 
+  if (a == NULL) return;
+
   g = (int) (g * (a->max_input_gain - a->min_input_gain) / 100.0 + a->min_input_gain + 0.5);
 
   ASetSystemRecordGain(a, g, (long *)NULL);
@@ -405,6 +410,8 @@ ASetPlayGain(int gain)
 {
   int g = min(max(gain, 0), 100);
 
+  if (a == NULL) return;
+
   g = (int) (g * (a->max_output_gain - a->min_output_gain) / 100.0 + a->min_output_gain);
 
   ASetSystemChannelGain(a, ASGTPlay, ACTMono, g, (long *)NULL);
@@ -414,7 +421,9 @@ int
 AGetRecGain()
 {
   long g = 0;
-
+  
+  if (a == NULL) return(0);
+  
   AGetSystemChannelGain(a, ASGTRecord, ACTMono, &g, (long *)NULL);
 
   g = (int) ((g - a->min_input_gain) * 100.0 / (a->max_input_gain - a->min_input_gain) + 0.5);
@@ -426,7 +435,9 @@ int
 AGetPlayGain()
 {
   long g = 0;
-
+  
+  if (a == NULL) return(0);
+  
   AGetSystemChannelGain(a, ASGTPlay, ACTMono, &g, (long *)NULL);
 
   g = (int) ((g - a->min_output_gain) * 100.0 / (a->max_output_gain - a->min_output_gain));
@@ -451,6 +462,12 @@ int
 SnackAudioMaxNumberChannels(char *device)
 {
   return(2);
+}
+
+int
+SnackAudioMinNumberChannels(char *device)
+{
+  return(1);
 }
 
 void

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -199,6 +199,7 @@ extern int  SnackAudioWriteable(ADesc *A);
 extern int SnackAudioGetEncodings(char *device);
 extern void SnackAudioGetRates(char *device, char *buf, int n);
 extern int SnackAudioMaxNumberChannels(char *device);
+extern int SnackAudioMinNumberChannels(char *device);
 
 extern void ASetRecGain(int gain);
 extern void ASetPlayGain(int gain);

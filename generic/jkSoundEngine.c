@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -440,7 +440,7 @@ AssembleSoundChunk(int inSize)
       p->nWritten += nPrepared;
       outFrames = writeSize;
     }
-
+    
     for (i = first * globalOutWidth, j = first * globalStreamWidth;
 	 i < outFrames * globalOutWidth;) {
       int c;
@@ -449,8 +449,6 @@ AssembleSoundChunk(int inSize)
 
 	switch (s->encoding) {
 	case LIN16:
-	case SNACK_FLOAT:
-	case SNACK_DOUBLE:
 	case ALAW:
 	case MULAW:
 	  floatBuffer[i] += fff[j];
@@ -466,6 +464,14 @@ AssembleSoundChunk(int inSize)
 	  break;
 	case LIN24:
 	  floatBuffer[i] += fff[j] / 256.0f;
+	  break;
+	case SNACK_FLOAT:
+	case SNACK_DOUBLE:
+	  if (s->maxsamp > 1.0) {
+	    floatBuffer[i] += fff[j];
+	  } else {
+	    floatBuffer[i] += fff[j] * 65536.0f;
+	  }
 	  break;
 	}
       }
@@ -593,9 +599,9 @@ PlayCallback(ClientData clientData)
   }
 
   if (closedDown) {
-    ExecSoundCmd(sCurr, EXEC_AND_CLEAN);
     CleanPlayQueue();
     wop = IDLE;
+    ExecSoundCmd(sCurr, EXEC_AND_CLEAN);
     return;
   }
 
@@ -775,8 +781,8 @@ Snack_StopSound(Sound *s, Tcl_Interp *interp)
 	}
 	/*Tcl_Close(interp, s->rwchan);*/
       }
-      ckfree((char *)s->tmpbuf);
-      s->tmpbuf = NULL;
+      /*ckfree((char *)s->tmpbuf);
+	s->tmpbuf = NULL;*/
       s->rwchan = NULL;
       s->validStart = 0;
       s->readStatus = IDLE;
@@ -813,8 +819,8 @@ Snack_StopSound(Sound *s, Tcl_Interp *interp)
 	Tcl_DeleteTimerHandler(ptoken);
 	CleanPlayQueue();
       }	
-      ckfree((char *)s->tmpbuf);
-      s->tmpbuf = NULL;
+      /*      ckfree((char *)s->tmpbuf);
+	      s->tmpbuf = NULL;*/
       if (s->rwchan != NULL) {
 	if (s->storeType == SOUND_IN_FILE) {
 	  Snack_FileFormat *ff;
@@ -839,7 +845,7 @@ int
 playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
 {
   int startPos = 0, endPos = -1, block = 0, arg, startTime = 0;
-  int channels = -1, rate = -1;
+  int devChannels = -1, rate = -1;
   double dStart = 0.0;
   static char *subOptionStrings[] = {
     "-output", "-start", "-end", "-command", "-blocking", "-device", "-filter",
@@ -989,7 +995,7 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
       }
     case DEVCHANNELS:
       {
-	if (Tcl_GetIntFromObj(interp, objv[arg+1], &channels) != TCL_OK) {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &devChannels) != TCL_OK) {
 	  return TCL_ERROR;
 	}
 	break;
@@ -1013,7 +1019,7 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
     }
     while (tlen < s->buffersize) {
       rlen = Tcl_Read(s->rwchan, &((char *)s->tmpbuf)[tlen], 1);
-      if (rlen < 0) break;
+      if (rlen <= 0) break;
       s->firstNRead += rlen;
       tlen += rlen;
       if (s->forceFormat == 0) {
@@ -1037,7 +1043,7 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
     s->firstNRead -= s->headSize;
   }
   if (s->storeType != SOUND_IN_MEMORY) {
-    if (s->buffersize < s->samprate / 2) {
+    /*if (s->buffersize < s->samprate / 2) {
       s->buffersize = s->samprate / 2;
     }
     if (s->tmpbuf) {
@@ -1048,7 +1054,7 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
       Tcl_AppendResult(interp, "Could not allocate buffer!", NULL);
       return TCL_ERROR;
     }
-
+     */
     if (s->linkInfo.linkCh == NULL && s->storeType == SOUND_IN_FILE) {
       if (OpenLinkedFile(s, &s->linkInfo) != TCL_OK) {
 	return TCL_ERROR;
@@ -1115,26 +1121,30 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
   }
 
   if (wop == IDLE) {
-    if (channels == -1) {
+    if (devChannels == -1) {
       globalStreamWidth = s->nchannels;
       if (s->nchannels > SnackAudioMaxNumberChannels(s->devStr)) {
-	channels = SnackAudioMaxNumberChannels(s->devStr);
+	devChannels = SnackAudioMaxNumberChannels(s->devStr);
       } else {
-	channels = s->nchannels;
+	devChannels = s->nchannels;
+      }
+      if (devChannels < SnackAudioMinNumberChannels(s->devStr)) {
+	devChannels = SnackAudioMinNumberChannels(s->devStr);
+	globalStreamWidth = devChannels;
       }
     } else {
-      globalStreamWidth = channels; /* option -devicechannels used */
+      globalStreamWidth = devChannels; /* option -devicechannels used */
     }
   } else {
     if (s->nchannels > globalStreamWidth) {
       globalStreamWidth = s->nchannels;
     }
-    channels = s->nchannels;
+    devChannels = globalStreamWidth;
   }
 
   if (s->filterName != NULL) {
     f->si->streamWidth = globalStreamWidth;
-    f->si->outWidth    = channels;
+    f->si->outWidth    = devChannels;
     f->si->rate        = rate;
     (f->startProc)(f, f->si);
   }
@@ -1161,7 +1171,7 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
   wop = WRITE;
   s->writeStatus = WRITE;
 
-  if (SnackAudioOpen(&ado, interp, s->devStr, PLAY, rate, channels,
+  if (SnackAudioOpen(&ado, interp, s->devStr, PLAY, rate, devChannels,
 		     LIN16) != TCL_OK) {
     wop = IDLE;
     s->writeStatus = IDLE;
@@ -1175,7 +1185,7 @@ playCmd(Sound *s, Tcl_Interp *interp, int objc,	Tcl_Obj *CONST objv[])
 #endif
   }
   globalRate = rate;
-  globalOutWidth = channels;
+  globalOutWidth = devChannels;
   globalNWritten = 0;
   if (s->writeStatus == WRITE && s->readStatus == READ) {
     globalNFlowThrough++;
@@ -1620,6 +1630,8 @@ Snack_ExitProc(ClientData clientData)
     SnackAudioClose(&ado);
   }
   SnackAudioFree();
+  rop = IDLE;
+  wop = IDLE;
 }
 
 /*

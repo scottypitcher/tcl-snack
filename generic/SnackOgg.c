@@ -2109,7 +2109,7 @@ ConfigOgg(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   return 1;
 }
 
-#define OGGFILE_VERSION "1.1"
+#define OGGFILE_VERSION "1.2"
 
 Snack_FileFormat snackOggFormat = {
   OGG_STRING,

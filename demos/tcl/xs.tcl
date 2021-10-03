@@ -84,12 +84,16 @@ set v(s0) 0
 
 set z(zoomwinh) 200
 set z(zoomwinw) 600
+set z(zoomwinx) 200
+set z(zoomwiny) 200
 set z(zoomwavh) 0
 set z(zoomwavw) 0
 set z(f) 1
 
 set s(sectwinh) 400
 set s(sectwinw) 400
+set s(sectwinx) 200
+set s(sectwiny) 200
 set s(secth) 400
 set s(sectw) 400
 set s(rx) -1
@@ -206,6 +210,8 @@ set normalize(v) 100.0
 set normalize(db) 0
 set normalize(allEqual) 1
 
+set remdc(f) [snack::filter iir -numerator "0.99 -0.99" -denominator "1 -0.99"]
+
 set f(spath) $f(ipath)
 set f(http) $f(ihttp)
 set f(urlToken) ""
@@ -314,6 +320,7 @@ snack::menuCommand Transform {Mix Channels...} MixChan
 snack::menuCommand Transform Invert Invert
 snack::menuCommand Transform Reverse Reverse
 snack::menuCommand Transform Silence Silence
+snack::menuCommand Transform {Remove DC} RemoveDC
 
 snack::menuPane Tools
 
@@ -1006,7 +1013,7 @@ proc OpenFiles {fn} {
 	StopPlay
 
 	set f(byteOrder) [snd cget -byteorder]
-	set tmps [snack::sound]
+	set tmps [snack::sound -debug $::debug]
 	set ffmt [$tmps read $f(spath)$f(sndfile) -end 1 -guessproperties 1]
 	if {$ffmt == "RAW"} {
 	    set v(rate)      [$tmps cget -rate]
@@ -1109,7 +1116,8 @@ proc InterpretRawDialog {} {
 	    -value bigEndian -var ::f(byteOrder)] -anchor w
     pack [label $w.q.f4.l2 -text "\nRead Offset (bytes)"]
     pack [entry $w.q.f4.e -textvar f(skip) -wi 6]
-    snack::makeDialogBox $w -title "Interpret Raw File As" -type okcancel
+    snack::makeDialogBox $w -title "Interpret Raw File As" -type okcancel \
+	-default ok
 }
 
 proc Link2File {} {
@@ -1174,6 +1182,7 @@ proc ConfigTransformMenu {} {
 	snack::menuEntryOff Transform Invert
 	snack::menuEntryOff Transform Reverse
 	snack::menuEntryOff Transform Silence
+	snack::menuEntryOff Transform {Remove DC}
     } else {
 	snack::menuEntryOn Transform Conversions
 	snack::menuEntryOn Transform Amplify...
@@ -1183,6 +1192,7 @@ proc ConfigTransformMenu {} {
 	snack::menuEntryOn Transform Invert
 	snack::menuEntryOn Transform Reverse
 	snack::menuEntryOn Transform Silence
+	snack::menuEntryOn Transform {Remove DC}
     }
     if {[snd cget -channels] == 1} {
 	snack::menuEntryOff Transform {Mix Channels...}
@@ -1545,6 +1555,7 @@ proc Reverse {} {
     set v(redoc) "snd reverse -start $start -end $end"
     set v(smpchanged) 1
     .tb.undo config -state normal
+    Redraw
 }
 
 proc Invert {} {
@@ -1569,6 +1580,7 @@ proc Invert {} {
     set v(redoc) "snd swap cbs"
     set v(smpchanged) 1
     .tb.undo config -state normal
+    Redraw
 }
 
 proc Silence {} {
@@ -1593,6 +1605,31 @@ proc Silence {} {
     set v(redoc) "snd swap cbs"
     set v(smpchanged) 1
     .tb.undo config -state normal
+    Redraw
+}
+
+proc RemoveDC {} {
+    global v remdc
+
+    if {[Marker2Sample m1] == [Marker2Sample m2]} MarkAll
+    set start [Marker2Sample m1]
+    set end   [Marker2Sample m2]
+    if {$start == $end} return
+    SetMsg "Removing DC for range: $start $end"
+
+    cbs copy snd
+    if [catch {snd filter $remdc(f) -start $start -end $end \
+	    -progress snack::progressCallback -continuedrain 0}] {
+	SetMsg "Remove DC cancelled"
+	snd copy cbs
+	return
+    }
+
+    set v(undoc) "snd swap cbs"
+    set v(redoc) "snd swap cbs"
+    set v(smpchanged) 1
+    .tb.undo config -state normal
+    Redraw
 }
 
 proc ConfAmplify {flag} {
@@ -1640,6 +1677,7 @@ proc DoAmplify {} {
     set v(redoc) "snd swap cbs"
     set v(smpchanged) 1
     .tb.undo config -state normal
+    Redraw
 }
 
 proc Amplify {} {
@@ -1697,7 +1735,7 @@ proc DoNormalize {} {
     set end   [Marker2Sample m2]
     if {$start == $end} return
     SetMsg "Normalizing range: $start $end"
-
+  
     if {$normalize(db) == 1} {
 	set tmp [expr {pow(10,$normalize(v)/20.0)}]
     } else {
@@ -1705,6 +1743,8 @@ proc DoNormalize {} {
     }
     if {[string match [snd cget -encoding] Lin8]} {
 	set smax 255.0
+    } elseif {[string match [snd cget -encoding] Lin24]} {
+        set smax 8388608.0
     } else {
 	set smax 32767.0
     }
@@ -1748,6 +1788,7 @@ proc DoNormalize {} {
     set v(redoc) "snd swap cbs"
     set v(smpchanged) 1
     .tb.undo config -state normal
+    Redraw
 }
 
 proc Normalize {} {
@@ -1814,6 +1855,7 @@ proc DoEcho {} {
     set v(redoc) "snd swap cbs"
     set v(smpchanged) 1
     .tb.undo config -state normal
+    Redraw
 }
 
 proc PlayEcho {} {
@@ -1961,6 +2003,7 @@ proc DoMix {} {
     set v(redoc) "snd swap cbs"
     set v(smpchanged) 1
     .tb.undo config -state normal
+    Redraw
 }
 
 proc PlayMix {} {
@@ -2104,7 +2147,7 @@ proc RecvXScroll {a} {
 }
 
 proc Redraw {args} {
-    global c labels f v debug
+    global c labels f v
 
     SetCursor watch
     set length [snd length]
@@ -2138,7 +2181,7 @@ proc Redraw {args} {
 		$c create waveform 0 0 -sound snd -height $v(waveh) \
 			-pixels $v(pps) -tags [list obj wave] \
 			-start $v(startsmp) -end $v(endsmp) \
-			-channel $v(vchan) -debug $debug -fill $v(fg) \
+			-channel $v(vchan) -debug $::debug -fill $v(fg) \
 	-shapefile [file rootname [file tail $f(spath)$f(sndfile)]].shape\
 			-progress snack::progressCallback
 		snack::makeShapeFileDeleteable [file tail $f(spath)$f(sndfile)]
@@ -2146,7 +2189,7 @@ proc Redraw {args} {
 		$c create waveform 0 0 -sound snd -height $v(waveh) \
 			-pixels $v(pps) -tags [list obj wave] \
 			-start $v(startsmp) -end $v(endsmp) \
-			-channel $v(vchan) -debug $debug -fill $v(fg)
+			-channel $v(vchan) -debug $::debug -fill $v(fg)
 	    }
 	    $c lower wave
 	    .cf.fyc.yc create text $v(yaxisw) 2 -text [snd max]\
@@ -2172,7 +2215,7 @@ proc Redraw {args} {
 		    -gridtspacing $v(gridtspacing) \
 		    -gridfspacing $v(gridfspacing) -channel $v(vchan) \
 		    -colormap $v($v(cmap)) -gridcol $v(gridcolor) \
-		    -progress snack::progressCallback -debug $debug
+		    -progress snack::progressCallback -debug $::debug
 	    $c lower speg
 	    snack::frequencyAxis .cf.fyc.yc 0 $v(waveh) $v(yaxisw) $v(spegh)\
 		    -topfrequency $v(topfr) -tags axis -fill $v(fg)\
@@ -2362,16 +2405,20 @@ proc RePos {args} {
 }
 
 proc DrawOverAxis {} {
-    global v
-
-    set totw [winfo width .]
-    set scrh [winfo height .of.xscroll]
-    set width [expr $totw - 2 * $scrh]
-    set length [snd length -unit seconds]
+  global v
+  
+  set totw [winfo width .]
+  set scrh [winfo height .of.xscroll]
+  set width [expr $totw - 2 * $scrh]
+  set length [snd length -unit seconds]
+  if {$length > 0} {
     set v(opps) [expr $width/$length]
-    .of.c delete overaxis
-    snack::timeAxis .of.c $scrh 20 $width 11 $v(opps) -tags overaxis \
-	    -fill $v(fg)
+  } else {
+    set v(opps) 400
+  }
+  .of.c delete overaxis
+  snack::timeAxis .of.c $scrh 20 $width 11 $v(opps) -tags overaxis \
+      -fill $v(fg)
 }
 
 proc OverPlay {x} {
@@ -2390,7 +2437,7 @@ proc OverPlay {x} {
 }
 
 proc Reconf {} {
-    global c v f debug
+    global c v f
 
     set dox 0
     set doy 0
@@ -2418,11 +2465,11 @@ proc Reconf {} {
 	.of.c delete overwave
         if {$v(linkfile) && $f(sndfile) != ""} {
 	    .of.c create waveform $v(scrh) 0 -sound snd -height 20 \
-		    -width $totw -tags overwave -fill $v(fg) -debug $debug \
+		    -width $totw -tags overwave -fill $v(fg) -debug $::debug \
 	    -shapefile [file rootname [file tail $f(spath)$f(sndfile)]].shape
 	} else {
 	    .of.c create waveform $v(scrh) 0 -sound snd -height 20 \
-		    -width $totw -tags overwave -fill $v(fg) -debug $debug
+		    -width $totw -tags overwave -fill $v(fg) -debug $::debug
 	}
 	.of.c create rectangle -1 -1 -1 -1 -tags mark -fill yellow -stipple gray25
     }
@@ -2732,7 +2779,7 @@ proc ToggleRecording {} {
 }
 
 proc Record {} {
-    global c v rec debug
+    global c v rec
 
     StopPlay
     set v(smpchanged) 1
@@ -2744,13 +2791,13 @@ proc Record {} {
     if {$v(waveh) > 0} {
 	$c create waveform 0 0 -sound snd -height $v(waveh) -pixels $v(pps) \
 		-width $width -tags [list obj recwave] -channel $v(vchan) \
-		-debug $debug -fill red
+		-debug $::debug -fill red
     }
     if {$v(spegh) > 0} {
 	$c create spectrogram 0 $v(waveh) -sound snd -height $v(spegh) \
 		-pixels $v(pps) \
 		-width $width -tags [list obj recwave] -channel $v(vchan) \
-		-colormap $v($v(cmap)) -debug $debug
+		-colormap $v($v(cmap)) -debug $::debug
     }
     if {$v(linkfile)} {
 	catch {file delete -force _xs[pid].wav}
@@ -2877,15 +2924,11 @@ proc Undo {} {
 
     if {[cbs length] != 0} {
 	eval $v(undoc)
-	set tmp $v(undoc)
-	set v(undoc) $v(redoc)
-	set v(redoc) $tmp
+        foreach {v(undoc) v(redoc)} [list $v(redoc) $v(undoc)] break
 	DrawOverAxis
 	Redraw
     } else {
-	set tmp $labels
-	set labels $undo
-	set undo $tmp
+        foreach {labels undo} [list $undo $labels] break
 	Redraw quick
     }
     SetMsg ""
@@ -3608,7 +3651,9 @@ proc PutMarker {m x y f} {
 	set xc [Time2Coord $x]
 	set t $x
     }
-
+    if {$t >= [snd length]} {
+      set t [expr {[snd length]-1}]
+    }
     $c itemconf $m -tags [list mark $t $m]
     $c coords $m $xc 0 $xc $v(toth)
 
@@ -3742,6 +3787,7 @@ proc OpenSectWindow {} {
     catch {destroy .sect}
     toplevel .sect -width $s(sectwinw) -height $s(sectwinh)
     wm title .sect "Spectrum section plot"
+    wm geometry .sect +$s(sectwinx)+$s(sectwiny)
     pack propagate .sect 0
 
     set s(ostart) ""
@@ -3814,12 +3860,14 @@ proc LPCcontrols {state} {
 }
 
 proc DrawSect {} {
-    global c s v debug
+    global c s v
 
     if [winfo exists .sect] {
 	set geom [lindex [split [wm geometry .sect] +] 0]
 	set s(sectwinw) [lindex [split $geom x] 0]
 	set s(sectwinh) [lindex [split $geom x] 1]
+        set s(sectwinx) [lindex [split [wm geometry .sect] +] 1]
+        set s(sectwiny) [lindex [split [wm geometry .sect] +] 2]
 	set s(sectw) [expr [winfo width .sect.c] - 25]
 	set s(secth) [expr [winfo height .sect.c] - 20]
 	set s(sectcw) [winfo width .sect.c]
@@ -3848,7 +3896,7 @@ catch {
 		-minval [expr 10.0*$s(bot)] \
 		-start $s(start) -end $s(end) -tags sect -fftlen $s(fftlen) \
 		-winlen $s(fftlen) -channel $v(vchan) -frame 1 \
-		-debug $debug -fill $v(fg) -analysistype $s(atype) \
+		-debug $::debug -fill $v(fg) -analysistype $s(atype) \
 		-lpcorder $s(lpcorder) -topfr $v(topfr) -windowtype $s(wintype)
     }
 	.sect.c create text -10 -10 -text df: -font $v(sfont) -tags df \
@@ -3963,6 +4011,7 @@ proc OpenZoomWindow {} {
     catch {destroy .zmenu}
     toplevel .zoom -width $z(zoomwinw) -height $z(zoomwinh)
     wm title .zoom "Zoom view"
+    wm geometry .zoom +$z(zoomwinx)+$z(zoomwiny)
     pack propagate .zoom 0
 
     frame .zoom.f
@@ -3998,6 +4047,8 @@ proc DrawZoom {factor} {
 	set geom [lindex [split [wm geometry .zoom] +] 0]
 	set z(zoomwinw) [lindex [split $geom x] 0]
 	set z(zoomwinh) [lindex [split $geom x] 1]
+        set z(zoomwinx) [lindex [split [wm geometry .zoom] +] 1]
+        set z(zoomwiny) [lindex [split [wm geometry .zoom] +] 2]
 	set z(zoomwavw) [winfo width .zoom.c]
 	set z(zoomwavh) [winfo height .zoom.c]
 	set z(f) [expr $z(f) * $factor]

@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+#
 # Usage: oggplay.py file.ogg
 #
 # Note: this script will also play audio files in any other format supported

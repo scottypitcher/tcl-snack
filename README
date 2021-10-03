@@ -11,12 +11,11 @@ Snack is a sound processing toolkit designed as an extension
 to a scripting language. Snack currently works with the scripting
 languages Tcl/Tk and Python.
 Snack has commands to play, record, process, and visualize sound.
-Snack supports in-memory sound objects, file based
-audio, and streaming audio. It handles fileformats such as WAV, AU, AIFF,
-and MP3.
+Snack provides high level sound objects, with flexible storage management,
+and streaming support. It handles most common sound file formats.
 The visualization canvas item types update in real-time and can output
 postscript. The same scripts run on Unix (Linux, Solaris, HP-UX, IRIX,
-FreeBSD, NetBSD), Macintosh, and Windows 95/98/NT/2000. It is also possible
+FreeBSD, NetBSD), Macintosh, and Windows 95/98/NT/2000/XP. It is also possible
 to run scripts embedded in web pages through the use of the Tcl plug-in.
 Several example scripts can be found in the demos directory.
 
@@ -25,7 +24,7 @@ Tcl/Tk: http://tcl.activestate.com/
 Python: http://www.python.org/
 
 In order to use Snack you must have Tcl and Tk version 8.0 or later. Always 
-use the latest stable release, currently 8.3.3, which can be downloaded from 
+use the latest stable release, currently 8.3.4, which can be downloaded from 
 ftp.activestate.com/ActiveTcl/html/.
 
 Tcl/Tk is often included with Python distributions. Snack has been tested
@@ -33,10 +32,10 @@ with Python 1.5.2 - 2.1 on Linux and Windows. See the Python
 section below.
 
 The Snack package has been tested on the following platforms:
-Windows 95/98/NT/2000
-Linux 2.0.35 (OSS 3.5) - 2.2.14 (OSS 3.8.2) (x86 and PowerPC)
+Windows 95/98/NT/2000/XP
+Linux 2.0.35 (OSS 3.5) - 2.4.3 (OSS 3.8.2) (x86 and PowerPC)
 SunOS 5.5.1 (Sparc and x86), Solaris 8 (Sparc)
-HP-UX B.10.20
+HP-UX B.10.20/11.00
 IRIX 6.2, 6.3 & 6.4 (even runs under SoftWindows, although slowly)
 NetBSD-current/i386 using the OSS emulation library
 BSD/OS-4.1
@@ -54,7 +53,7 @@ You must have Tcl/Tk installed on your system. Both Tcl and Tk must have
 been configured with the "--enable-shared" flag at build time (this is 
 default for the 8.3 versions). Build them before Snack.
 
-Unpack Snack and change directory to the snack2.1/unix directory.
+Unpack Snack and change directory to the snack2.1.6/unix directory.
 
 Type "./configure".
 
@@ -79,11 +78,11 @@ files.
 Summary in case you download Tcl, Tk, and Snack and build from scratch:
 You should place the distributions in the same directory and unpack them.
 Build Snack using the following commands:
-cd tcl8.3.1/unix
+cd tcl8.3.4/unix
 ./configure --enable-shared
-cd ../../tk8.3.1/unix
+cd ../../tk8.3.4/unix
 ./configure --enable-shared
-cd ../../snack2.1/unix
+cd ../../snack2.1.6/unix
 ./configure
 make
 
@@ -99,9 +98,9 @@ When you have succesfully compiled Snack it's time to look at the demos.
 In order to run these you will have to set the environment variable 
 TCLLIBPATH to the directory containing the Snack library files (you don't 
 need this step if you install Snack as described below). If you have 
-compiled Snack in /u/kare/snack2.1/unix, this would be:
+compiled Snack in /u/kare/snack2.1.6/unix, this would be:
 
-setenv TCLLIBPATH /u/kare/snack2.1/unix
+setenv TCLLIBPATH /u/kare/snack2.1.6/unix
 
 Change to the demos/tcl/ directory and type ./widget.tcl:
 
@@ -142,11 +141,16 @@ make install
 Compilation instructions for Snack on Windows
 -------------------------------------------------------------------
 
-The workspace and project files necessary to build Snack on Windows are
-in the win directory of the source distribution.
+The MSVC++ workspace and project files necessary to build Snack on Windows
+are located in the win directory of the source distribution.
 
-In order to use Snack you will have to install Tcl/Tk 8.3 first, don't forget
-to tick the box to install include and library files.
+In order to use Snack you will have to install Tcl/Tk 8.3 first.
+
+Snack's project files are set up for use with Tcl installed in C:\Tcl\, it
+might be easiest to change such paths by editing all *.dsp files in a text
+editor.
+Don't forget to copy the files snack.tcl and pkgIndex.tcl.dll from the
+unix directory to C:\Tcl\lib\snack2.1\ and rename the last file pkgIndex.tcl
 
 
 
@@ -208,8 +212,9 @@ Using Snack with NIST/Sphere file formats
 -------------------------------------------------------------------
 
 It is possible to configure Snack to create an additional package for
-handling the NIST/Sphere file formats. Use the configure option
---with-nist=DIR to specify the location of the NIST/Sphere distribution,
+handling the NIST/Sphere file formats. Use the configure options
+--with-nist-include and --with-nist-lib to specify the locations of
+the corresponding directories of the NIST/Sphere distribution,
 which can be downloaded at
 ftp://jaguar.ncsl.nist.gov/pub/sphere_2.6a.tar.Z. In the Sphere
 distribution you will have to modify the file src/scripts/install.sh and add
@@ -217,7 +222,9 @@ the compilation flag to create position independent code in some cases. Look
 at the Snack Makefile for these.
 
 On HP-UX with HP cc use: -Ae +z
-
+Linux users should specify platform: 10 (Custom),
+compiler flags: -O -Wall -fPIC, architecture: INTEL,and comment the
+line "extern char *sys_errlist[];" in nist/src/lib/sp/exit.c
 See SphereFile.txt for more info.
 
 Windows users can get a compiled dll at the address
@@ -234,8 +241,9 @@ Using Snack with the OGG/Vorbis file format
 -------------------------------------------------------------------
 
 It is possible to configure Snack to create an additional package for
-handling the OGG/Vorbis file format. Use the configure option
---with-ogg=DIR to specify the location of an existing OGG/Vorbis installation.
+handling the OGG/Vorbis file format. Use the configure options
+--with-ogg-include and --with-ogg-lib to specify the locations of an
+existing OGG/Vorbis installation.
 More information about OGG/Vorbis available at http://www.vorbis.com/
 
 Windows users can get a compiled dll at the address
@@ -246,6 +254,14 @@ Linux users can get a compiled library at the address
 http://www.speech.kth.se/~kare/ogg.tar.gz
 Put libsnackogg.so in the Snack installation directory (together 
 with libsnack.so).
+
+When building Ogg/Vorbis from source on Unix note that some modifications
+to the Makefiles might be necessary. Specify
+"AM_CPPFLAGS=-I$prefix/include" "LDFLAGS=-L$exec_prefix/lib"
+to get them to find their own installed headers and libraries.
+On Solaris force libvorbis to use the native compiler and add
+-Dalloca=__builtin_alloca
+to prevent the system from using a non-existing alloca.
 
 
 
@@ -316,3 +332,6 @@ Tom Wilkason
 Jonas Ekeroot
 Peter Kabal
 Ted Dunning
+Andreas Kupries
+Erik Allaert
+Christian Wegehaupt

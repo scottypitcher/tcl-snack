@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001 Kåre Sjölander <kare@speech.kth.se>
+ * Copyright (C) 2000-2002 Kåre Sjölander <kare@speech.kth.se>
  * Copyright (C) 1997 Philippe Langlais <felipe@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
@@ -354,11 +354,8 @@ parametre_amdf(Sound *s, Tcl_Interp *interp, int start, int longueur,
     if (i > s->length - cst_length_hamming) break;
     if (i > longueur - cst_length_hamming/2) break;
     if (quick && (Nrj[trame] < seuil_nrj) && (Dpz[trame] > seuil_dpz)) {
-      Resultat[trame] = NULL;
     } else {
-      Resultat[trame] = (int *) ckalloc(sizeof(int) * length); /* un peu couteux en temps */
-      
-      amdf(s, (int) i,Hammer,Resultat[trame],(Nrj[trame])? Nrj[trame]:1,start); 
+      amdf(s, (int) i,Hammer,Resultat[trame],(Nrj[trame])? Nrj[trame]:1,start);
       for (j=0; j<length;j++) {
 	if (Resultat[trame][j]>max_amdf) max_amdf = Resultat[trame][j];
 	
@@ -369,19 +366,13 @@ parametre_amdf(Sound *s, Tcl_Interp *interp, int start, int longueur,
       int res = Snack_ProgressCallback(s->cmdPtr, interp, "Computing pitch",
 				       0.05 + 0.95 * (double) i / longueur);
       if (res != TCL_OK) {
-	for (i = 0; i < trame; i++) {
-	  if (Resultat[i]) {
-	    ckfree((char *) Resultat[i]);
-	  }
-	}
 	return TCL_ERROR;
       }
     }
   }
   Snack_ProgressCallback(s->cmdPtr, interp, "Computing pitch", 1.0);
-  Resultat[trame] = NULL;
   *nb_trames = (int) trame;
-  
+
   if (debug) printf("min_amdf=%d, max_amdf=%d\n",min_amdf,max_amdf);
   return TCL_OK;
 }
@@ -792,16 +783,11 @@ static int calcul_nrj_dpz(Sound *s, Tcl_Interp *interp, int start,int longueur)
     
     if (m > max_dpz) max_dpz = m;
     if (m < min_dpz) min_dpz = m;
-    
+
     if ((trame % 300) == 299) {
       int res = Snack_ProgressCallback(s->cmdPtr, interp, "Computing pitch",
 				       0.05 * (double) i / longueur);
       if (res != TCL_OK) {
-	for (i = 0; i < trame; i++) {
-	  if (Resultat[i]) {
-	    ckfree((char *) Resultat[i]);
-	  }
-	}
 	return TCL_ERROR;
       }
     }  
@@ -947,6 +933,10 @@ pitchCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
   Vois = (short *) ckalloc(sizeof(short) * nb_trames);
   Fo =   (short *) ckalloc(sizeof(short) * nb_trames);
   Resultat = (int **) ckalloc(sizeof(int *) * nb_trames);
+
+  for (i = 0; i < nb_trames; i++) {
+    Resultat[i] = (int *) ckalloc(sizeof(int) * (cst_step_max-cst_step_min+1));
+  }
 
   nb_trames = nbframes = calcul_nrj_dpz(s, interp, start, longueur);
 

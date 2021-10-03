@@ -754,3 +754,77 @@ build Snack on the Macintosh.
 6/18/01 (enhancement) Snack save dialogs now append .wav etc on the Macintosh.
 
 ----------------- Released 2.1.1, 6/21/01 -----------------------
+
+6/29/01 (bug fix) Fixed bug during clean-up which occured for the command sequence "sound record", "exit" (Snack_ExitProc()), followed by after handler with "sound destroy".
+
+7/2/01 (enhancement) Added read support for AU sound files with header specifying dataSize = -1.
+
+7/2/01 (change) Changed the Windows binary installer to default to C:\Tcl which is what ActiveTcl-8.3.3 uses.
+
+7/4/01 (bug fix) Fixed problem reading some CSL sample files (.nsp).
+
+7/20/01 (new feature) New sound command 'power', which is used to compute windowed log power values for a sound.
+
+----------------- Released 2.1.2, 7/20/01 -----------------------
+
+8/1/01 (bug fix) Fixed byte order problem with RAW sound streams.
+
+8/1/01 (bug fix) Fixed problem with RAW sound streams which caused a hang, during play, if no samples were received.
+
+8/3/01 (enhancement) The iir filter now supports multi-channel sound.
+
+8/3/01 (new feature) New demo, pitch.tcl.
+
+8/3/01 (new feature) The Snack script compiler, wrap.tcl, now works out-of-the-box on Windows, with the binary distribution, and for Linux with the source distribution, because freeWrap binaries were included.
+
+8/6/01 (bug fix) Fixed memory leak for sounds linked to disk files that occurred for repeteated configure/play sequences.
+
+8/13/01 (change) Changed the Windows binary installer to use the Tcl installation directory from ActiveState's registry entry.
+
+8/13/01 (bug fix) Added missing library definition for the Ogg/Vorbis encoder in configure.in.
+
+----------------- Released 2.1.3, 8/14/01 -----------------------
+
+8/15/01 (enhancement) Overhaul of the configure script. New options --with-nist-include, --with-nist-lib, --with-ogg-include, and --with-ogg-lib replace --with-nist and --with-ogg, in order to facilitate multi-platform builds. Also, --exec-prefix is now used as intended.
+
+10/25/01 (bug fix) Minor fix in the MP3 decoder for gcc v2.96.
+
+10/25/01 (bug fix) CSL files are now written with a correct block size in FORMDS16. (Kabal)
+
+10/25/01 (enhancement) Support for reading AIFF files containing samples with non multiple of 8 number of bits. (Kabal)
+
+10/25/01 (enhancement) Support for reading WAV files with formats that use WAVE_FORMAT_EXTENSIBLE. (Kabal)
+
+10/26/01 (enhancement) Updated the MSVC++ project files match ActiveTcl's directory structure.
+
+10/26/01 (new feature) New demo, phonetogram.tcl.
+
+----------------- Released 2.1.4, 10/29/01 -----------------------
+
+11/9/01 (bug fix) Fixed problem in the configure script which caused Snack to be built without the TCL_81_API flag, which in turn caused problems for the sound data command.
+
+1/9/02 (enhancement) The generator filter now works correctly on multi-channel sounds through channel duplication.
+
+1/10/02 (new feature) New demo, generator2.tcl.
+
+1/9/02 (enhancement) Support for the stereo-only devices.
+
+1/21/02 (enhancement) Configure script now support HP-UX 11.x.
+
+2/4/02 (new feature) Support for variable bit rate MP3 files with XING headers. (Wilkason)
+
+2/4/02 (bug fix) Fixed crash on HP-UX machines without audio server. (Allaert)
+
+----------------- Released 2.1.5, 2/5/02 -----------------------
+
+2/22/02 (enhancement) Support for 96kHz sample rate on Windows/Linux.
+
+2/25/02 (enhancement) Playback support for normalized float, [1.0, -1.0], sounds.
+
+2/27/02 (bug fix) Fixed problem with the 'filter' command and the -end option.
+
+2/28/02 (new feature) New filter type: fade, which implements linear/logarithmic/exponential fade-in/-out.
+
+----------------- Released 2.1.6, 3/4/02 -----------------------
+
+3/6/02 (change) Removed automatic zero-padding of ESPS files, the start_time field can now be accessed using "sndName configure -start_time" instead.

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001 Jonas Beskow <beskow@speech.kth.se>
+ * Copyright (C) 2001-2002 Jonas Beskow <beskow@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -313,7 +313,7 @@ generatorFlowProc(Snack_Filter f, Snack_StreamInfo si, float *in, float *out,
 		  int *inFrames, int *outFrames) {
   
   generatorFilter_t mf = (generatorFilter_t) f;
-  int i,i0,i1,ii;
+  int i, i0, i1, ii, fr, wi;
   double y = 1.0/RAND_MAX, z = 1.0/(*outFrames), ph = mf->_phase;
   double frac,a,b,v[2],tmp;
   
@@ -332,61 +332,74 @@ generatorFlowProc(Snack_Filter f, Snack_StreamInfo si, float *in, float *out,
   }
   mf->nSamples += i;
   *inFrames = i;
-  
+
+  i = 0;
   switch (mf->type) {
   case NOISE:
     
-    for (i=0;i<*outFrames;i++) {
-      frac = i*z;
-      out[i]=(float)(LIN(mf->ampl,frac)*2*(y*rand()-.5));
+    for (fr = 0; fr < *outFrames; fr++) {
+      frac = fr*z;
+      for (wi = 0; wi < si->outWidth; wi++) {
+	out[i++]=(float)(LIN(mf->ampl,frac)*2*(y*rand()-.5));
+      }
+      i += (si->streamWidth - si->outWidth);
     }
     *inFrames = 0;
     break;
 
   case RECTANGLE:
-    for (i=0;i<*outFrames;i++) {
-      frac = i*z;
+    for (fr = 0; fr < *outFrames; fr++) {
+      frac = fr*z;
       ph = fmod (ph + LIN(mf->freq,frac)/si->rate,1.0);
-      out[i] = (float)(LIN(mf->ampl,frac)*(ph<LIN(mf->shape,frac)?-1:1));
+      for (wi = 0; wi < si->outWidth; wi++) {
+	out[i++] = (float)(LIN(mf->ampl,frac)*(ph<LIN(mf->shape,frac)?-1:1));
+      }
+      i += (si->streamWidth - si->outWidth);
     }
     *inFrames = 0;
     break;
 
   case TRIANGLE:
-    for (i=0;i<*outFrames;i++) {
-      frac = i*z;
+    for (fr = 0; fr < *outFrames; fr++) {
+      frac = fr*z;
       ph = fmod (ph + LIN(mf->freq,frac)/si->rate,1.0);
-      if (ph < LIN(mf->shape,frac)) {
-	out[i] = (float)(LIN(mf->ampl,frac)*(-1+2*(ph)/LIN(mf->shape,frac)));
-      } else if (ph > LIN(mf->shape,frac)) {
-	out[i] = (float)(LIN(mf->ampl,frac)*(1-2*(ph-LIN(mf->shape,frac))/(1-LIN(mf->shape,frac))));
-      } else {
-	out[i] = (float)LIN(mf->ampl,frac);
+      for (wi = 0; wi < si->outWidth; wi++) {
+	if (ph < LIN(mf->shape,frac)) {
+	  out[i++] = (float)(LIN(mf->ampl,frac)*(-1+2*(ph)/LIN(mf->shape,frac)));
+	} else if (ph > LIN(mf->shape,frac)) {
+	  out[i++] = (float)(LIN(mf->ampl,frac)*(1-2*(ph-LIN(mf->shape,frac))/(1-LIN(mf->shape,frac))));
+	} else {
+	  out[i++] = (float)LIN(mf->ampl,frac);
+	}
       }
+      i += (si->streamWidth - si->outWidth);
     }
     *inFrames = 0;
     break;
 
   case SINE:
-    for (i=0;i<*outFrames;i++) {
-      frac = i*z;
+    for (fr = 0; fr < *outFrames; fr++) {
+      frac = fr*z;
       ph = fmod (ph + LIN(mf->freq,frac)/si->rate,1.0);
       a = sin(ph * 2 * M_PI);
       b = 2*LIN(mf->shape,frac)-1;
       a = a>b?a:b;
-      if (1-b==0.0) {
-	out[i] = 0.0;
-      } else {
-	out[i] = (float)(LIN(mf->ampl,frac)*(a-.5-.5*b)/(1-b));
+      for (wi = 0; wi < si->outWidth; wi++) {
+	if (1-b==0.0) {
+	  out[i++] = 0.0;
+	} else {
+	  out[i++] = (float)(LIN(mf->ampl,frac)*(a-.5-.5*b)/(1-b));
+	}
       }
+      i += (si->streamWidth - si->outWidth);
       *inFrames = 0;
     }
     break;
 
   case SAMPLED:
     if (mf->nSamples > 0) {
-      for (i=0;i<*outFrames;i++) {
-	frac = i*z;
+      for (fr = 0; fr < *outFrames; fr++) {
+	frac = fr*z;
 	ph = fmod (ph + LIN(mf->freq,frac)/si->rate,1.0);
 	a = ph*(mf->nSamples);
 	i0 = (int)floor(a);
@@ -394,10 +407,18 @@ generatorFlowProc(Snack_Filter f, Snack_StreamInfo si, float *in, float *out,
 	v[0] = mf->samples[i0];
 	v[1] = mf->samples[i1];
 	frac = (a-i0);
-	out[i] = (float)(LIN(v,frac)*LIN(mf->ampl,frac)/mf->maxval);
+	for (wi = 0; wi < si->outWidth; wi++) {
+	  out[i++] = (float)(LIN(v,frac)*LIN(mf->ampl,frac)/mf->maxval);
+	}
+	i += (si->streamWidth - si->outWidth);
       }
     } else {
-      for (i=0;i<*outFrames;i++) out[i] = 0;
+      for (fr = 0; fr < *outFrames; fr++) {
+	for (wi = 0; wi < si->outWidth; wi++) {
+	  out[i++] = 0;
+	}
+	i += (si->streamWidth - si->outWidth);
+      }
     }
   }
   mf->_phase = ph; /* save current phase value */

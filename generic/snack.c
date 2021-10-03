@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -22,6 +22,7 @@
 #include "snack.h"
 #include "tk.h"
 #include "jkCanvItems.h"
+#include <string.h>
 
 #if defined(__WIN32__)
 #  define WIN32_LEAN_AND_MEAN

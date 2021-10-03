@@ -158,6 +158,70 @@ test play-1.1.7 {play command, -channel, data as bigEndian shorts} {
   set flag
 } RAW
 
+test play-1.1.8 {play command, -channel, data length 0} {
+  proc endproc {snd sock} {
+    set info [$snd info]
+    close $sock
+    $snd destroy
+    set ::flag [lindex $info 6]
+  }
+  proc servproc { sock addr port } {
+    set s [snack::sound snd -channel $sock -byteorder bigEndian]
+    $s play -command [list endproc $s $sock]
+  }
+
+  set s [snack::sound snd]
+  set data [$s data -fileformat raw -byteorder bigendian]
+  $s destroy
+
+  set servsock [socket -server servproc 24684]
+
+  set sock [socket localhost 24684]
+  fconfigure $sock -translation binary -blocking 1
+  if {$::tcl_version > 8.0} {
+    fconfigure $sock -encoding binary
+  }
+  puts -nonewline $sock $data
+  close $sock
+ 
+  vwait flag
+  set flag
+} RAW
+
+test play-1.1.9 {play command, -channel, data with 1024 initial zeros} {
+  proc endproc {snd sock} {
+    set info [$snd info]
+    close $sock
+    $snd destroy
+    set ::flag [lindex $info 6]
+  }
+  proc servproc { sock addr port } {
+    set s [snack::sound snd -channel $sock -byteorder bigEndian]
+    $s play -command [list endproc $s $sock]
+  }
+
+  set s [snack::sound snd -load ex1.wav]
+  set s2 [snack::sound snd2]
+  $s2 length 512
+  set data [$s2 data -fileformat raw -byteorder bigendian]
+  append data [$s data -fileformat raw -byteorder bigendian]
+  $s destroy
+  $s2 destroy
+
+  set servsock [socket -server servproc 24685]
+
+  set sock [socket localhost 24685]
+  fconfigure $sock -translation binary -blocking 1
+  if {$::tcl_version > 8.0} {
+    fconfigure $sock -encoding binary
+  }
+  puts -nonewline $sock $data
+  close $sock
+ 
+  vwait flag
+  set flag
+} RAW
+
 test play-1.2.1 {play command, blocking} {
   set s [snack::sound snd -load ex1.wav]
   $s play -blocking 1 -command {set flag 1}

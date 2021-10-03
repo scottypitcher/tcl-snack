@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -421,6 +421,9 @@ extern double SnackCurrentTime();
 extern char *Snack_InitStubs (Tcl_Interp *interp, char *version, int exact);
 
 extern int pitchCmd(Sound *s, Tcl_Interp *interp, int objc,
+		    Tcl_Obj *CONST objv[]);
+
+extern int powerCmd(Sound *s, Tcl_Interp *interp, int objc,
 		    Tcl_Obj *CONST objv[]);
 
 extern int reverseCmd(Sound *s, Tcl_Interp *interp, int objc,

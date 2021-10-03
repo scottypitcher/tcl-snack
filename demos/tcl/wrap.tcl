@@ -6,7 +6,7 @@ exec wish8.3 "$0" "$@"
 # It needs the freewrap tool which can be downloaded from
 # http://freewrap.sourceforge.net/
 # Edit this file to set the freewrap variable below according to
-# your install path.
+# your freewrap install path.
 
 
 pack [label .l1 -text "This utility creates\nstand-alone executables"]
@@ -22,7 +22,8 @@ set snackdir [file dirname $tmp]
 switch -glob [string tolower $tcl_platform(platform)] {
  windows {
 # Customize freewrap install dir here
-  set freewrap E:/freewrap44/freewrap.exe
+# freewrap.exe is included in the Windows binary distribution
+  set freewrap [file join [pwd] freewrap.exe]
   set tmpdir C:/temp
   regsub -all {\\} $tmpdir / tmpdir
   set wrapdir [file join $tmpdir wrap]
@@ -30,7 +31,8 @@ switch -glob [string tolower $tcl_platform(platform)] {
  }
  unix {
 # Customize freewrap install dir here
-  set freewrap ~/bin/freewrap
+# freewrap executable for Linux-i386 is included in the source distribution
+  set freewrap [file join [pwd] freewrap]
   set tmpdir /tmp
   set wrapdir [file join $tmpdir wrap]
   set appextension ""
@@ -39,12 +41,12 @@ switch -glob [string tolower $tcl_platform(platform)] {
   error "unknown os $tcl_platform(os)"
  }
 }
-
+if {[info exists argv] == 0} { set argv "" }
 set mainprog [file rootname [lindex $argv 0]]
 if {$mainprog == ""} {
  set mainprog [file rootname [lindex [file split \
 	 [tk_getOpenFile -filetypes {{{Tcl scripts} {.tcl}}}]] end]]
- if {$mainprog == ""} exit
+  if {$mainprog == ""} return
 }
 
 if {[file executable $freewrap] == 0} {
@@ -162,4 +164,5 @@ file copy -force $wrapdir/${mainprog}$appextension $appdir
 
 catch {exec chmod -R 777 $wrapdir}
 catch {tk_messageBox -message "Created: ${mainprog}$appextension"}
+cd $appdir
 exit

@@ -1157,10 +1157,8 @@ namespace eval snack {
               switch -- [lindex $args 0] {
     	      -level {
 		  set arg [lindex $args 1]
-		  set arg [expr {$arg/32768.0}]
-		  if {$arg < 0.00001} { set arg 0.00001 }
-		  set lm(level) [expr {log($arg)/4.516+1.0}]
-
+   		  if {$arg < 1} { set arg 1 }
+		  set lm(level) [expr {log($arg)/10.3972}]
 		  if {[clock seconds] - $lm(maxtime) > 2} {
 		    set lm(maxtime) [clock seconds]
 		    set lm(maxlevel) 0.0

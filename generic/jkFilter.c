@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 2001-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -144,15 +144,15 @@ filterSndCmd(ClientData clientData, Tcl_Interp *interp, int objc,
   fs = (startpos * s->nchannels) - (fi << FEXP);
   ei = (endpos * s->nchannels) >> FEXP;
   es = (endpos * s->nchannels) - (ei << FEXP);
-
+  
   if (len > 0) {
     for (i = fi; i <= ei; i++) {
       int res;
       
       if (i > fi) fs = 0;
       if (i < ei) {
-	inSize  = min(len, FBLKSIZE / s->nchannels) - fs / s->nchannels;
-	outSize = min(len, FBLKSIZE / s->nchannels) - fs / s->nchannels;
+	inSize  = min(len, (FBLKSIZE - fs) / s->nchannels);
+	outSize = min(len, (FBLKSIZE - fs) / s->nchannels);
       } else {
 	inSize  = (es - fs) / s->nchannels + 1;
 	outSize = (es - fs) / s->nchannels + 1;
@@ -1227,6 +1227,174 @@ Snack_FilterType snackComposeType = {
   (Snack_FilterType *) NULL
 };
 
+struct fadeFilter {
+  configProc *configProc;
+  startProc  *startProc;
+  flowProc   *flowProc;
+  freeProc   *freeProc;
+  Tcl_Interp *interp;
+  Snack_Filter prev, next;
+  Snack_StreamInfo si;
+  double     dataRatio;
+  int        reserved[4];
+  /* private members */
+  int        in;
+  int        type;
+  float      msLength;
+  int        length;
+  int        pos;
+} fadeFilter;
+
+typedef struct fadeFilter *fadeFilter_t;
+#define LINEAR 0
+#define EXPONENTIAL 1
+#define LOGARITHMIC 2
+
+int
+fadeConfigProc(Snack_Filter f, Tcl_Interp *interp, int objc,
+	       Tcl_Obj *CONST objv[])
+{
+  fadeFilter_t mf = (fadeFilter_t) f;
+  char *typestr;
+  double val;
+
+  if (objc == 3) {
+    typestr = Tcl_GetStringFromObj(objv[0], NULL);
+    if (strcasecmp(typestr, "in") == 0) {
+      mf->in = 1;
+    } else if (strcasecmp(typestr, "out") == 0) {
+      mf->in = 0;
+    } else {
+      Tcl_SetResult(interp, "bad fade direction, must be in or out",
+		    TCL_STATIC);
+      return TCL_ERROR;
+    }
+    
+    typestr = Tcl_GetStringFromObj(objv[1], NULL);
+    if (strncasecmp(typestr, "linear", 3) == 0) {
+      mf->type = LINEAR;
+    } else if (strncasecmp(typestr, "exponential", 3) == 0) {
+      mf->type = EXPONENTIAL;
+    } else if (strncasecmp(typestr, "logarithmic", 3) == 0) {
+      mf->type = LOGARITHMIC;
+    } else {
+      Tcl_SetResult(interp,
+	    "bad fade type, must be linear, exponential, or logarithmic",
+		    TCL_STATIC);
+      return TCL_ERROR;
+    }
+    
+    if (Tcl_GetDoubleFromObj(interp, objv[2], &val) != TCL_OK) {
+      return TCL_ERROR;
+    }
+    mf->msLength = (float) val;
+  } else {
+    
+    /* Arguments need to be at least three */
+    
+    Tcl_WrongNumArgs(interp, 0, objv, "fade direction type length");
+    return TCL_ERROR;
+  }
+  
+  return TCL_OK;
+}
+
+Snack_Filter
+fadeCreateProc(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  fadeFilter_t mf;
+  
+  mf = (fadeFilter_t) ckalloc(sizeof(fadeFilter));
+
+  if (fadeConfigProc((Snack_Filter) mf, interp, objc, objv) != TCL_OK) {
+    ckfree((char *) mf);
+    return (Snack_Filter) NULL;
+  }
+  
+  return (Snack_Filter) mf;
+}
+
+int
+fadeStartProc(Snack_Filter f, Snack_StreamInfo si)
+{
+  fadeFilter_t mf = (fadeFilter_t) f;
+  mf->length = (int) (mf->msLength * si->rate / 1000.0);
+  mf->pos = 0;
+  
+  return TCL_OK;
+}
+
+#define EULER 2.7182818284590452354 
+#define EXP_MINUS_1 0.36787944117
+
+int
+fadeFlowProc(Snack_Filter f, Snack_StreamInfo si, float *in, float *out,
+	    int *inFrames, int *outFrames)
+{
+  fadeFilter_t mf = (fadeFilter_t) f;
+  int i = 0, fr, wi;
+  float factor = 1.0;
+  
+  for (fr = 0; fr < *inFrames; fr++) {
+    if (mf->pos < mf->length) {
+      switch (mf->type) {
+      case LINEAR:
+	if (mf->in) {
+	  factor = (float) mf->pos / mf->length;
+	} else {
+	  factor = (float) (1.0 - (float) mf->pos / mf->length);
+	}
+	break;
+      case EXPONENTIAL:
+	if (mf->in) {
+	  factor = (float) exp(-10.0+10.0 * mf->pos / mf->length);
+	} else {
+	  factor = (float) exp(-10.0 * mf->pos / mf->length);
+	}
+	break;
+      case LOGARITHMIC:
+	if (mf->in) {
+	  factor = (float) (0.5 + 0.5 * log(EXP_MINUS_1 + (EULER - EXP_MINUS_1)
+				    * ((float) mf->pos / mf->length)));
+	} else {
+	  factor = (float) (0.5 + 0.5 * log(EXP_MINUS_1 + (EULER - EXP_MINUS_1)
+				    * (1.0-(float) mf->pos / mf->length)));
+	}
+	break;
+      }
+    } else {
+      factor = 1.0;
+    }
+    for (wi = 0; wi < si->outWidth; wi++) {
+      out[i] = factor * in[i];
+      i++;
+      mf->pos++;
+    }
+  }
+
+  *outFrames = *inFrames;
+
+  return TCL_OK;
+}
+
+void
+fadeFreeProc(Snack_Filter f)
+{
+  fadeFilter_t mf = (fadeFilter_t) f;
+
+  ckfree((char *) mf);
+}
+
+Snack_FilterType snackFadeType = {
+  "fade",
+  fadeCreateProc,
+  fadeConfigProc,
+  fadeStartProc,
+  fadeFlowProc,
+  fadeFreeProc,
+  (Snack_FilterType *) NULL
+};
+
 void
 Snack_CreateFilterType(Snack_FilterType *typePtr)
 {
@@ -1262,6 +1430,7 @@ SnackCreateFilterTypes(Tcl_Interp *interp)
   Snack_CreateFilterType(&snackMapType);
   Snack_CreateFilterType(&snackEchoType);
   Snack_CreateFilterType(&snackReverbType);
+  Snack_CreateFilterType(&snackFadeType);
   createSynthesisFilters();
   createIIRFilter();
   /*  Snack_CreateFilterType(&snackLowpassType);*/

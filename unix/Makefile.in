@@ -239,6 +239,15 @@ editversion: ${OBJSN}
 	    sed s/wish8.3/wish${TCL_VERSION}/ polarspec.tcl > tmp ;\
 	    mv -f tmp polarspec.tcl ;\
 	    chmod 755 polarspec.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ pitch.tcl > tmp ;\
+	    mv -f tmp pitch.tcl ;\
+	    chmod 755 pitch.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ phonetogram.tcl > tmp ;\
+	    mv -f tmp phonetogram.tcl ;\
+	    chmod 755 phonetogram.tcl ;\
+	    sed s/wish8.3/wish${TCL_VERSION}/ CSLwithAB.tcl > tmp ;\
+	    mv -f tmp CSLwithAB.tcl ;\
+	    chmod 755 CSLwithAB.tcl ;\
 	    sed s/wish8.3/wish${TCL_VERSION}/ xs.tcl > tmp ;\
 	    mv -f tmp xs.tcl ;\
 	    chmod 755 xs.tcl ;\

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -1343,7 +1343,7 @@ SnackAudioGetEncodings(char *device)
 void
 SnackAudioGetRates(char *device, char *buf, int n)
 {
-  strncpy(buf, "8000 11025 16000 22050 32000 44100 48000", n);
+  strncpy(buf, "8000 11025 16000 22050 32000 44100 48000 96000", n);
   buf[n-1] = '\0';
 }
 
@@ -1376,6 +1376,12 @@ SnackAudioMaxNumberChannels(char *device)
     */
   }
   return(2);
+}
+
+int
+SnackAudioMinNumberChannels(char *device)
+{
+  return(1);
 }
 
 void

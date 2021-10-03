@@ -19,7 +19,6 @@ CFG=sound - Win32 Debug
 !MESSAGE 
 !MESSAGE "sound - Win32 Release" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE "sound - Win32 Debug" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "sound - Win32 Tcl80" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE 
 
 # Begin Project
@@ -44,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "SOUND_EXPORTS" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "C:\Program Files\Tcl\include" /I "../generic" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "SOUND_EXPORTS" /D "WIN" /D "USE_TCL_STUBS" /D "TCL_81_API" /D "BUILD_snack" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "C:\Tcl\include" /I "../generic" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "SOUND_EXPORTS" /D "WIN" /D "USE_TCL_STUBS" /D "TCL_81_API" /D "BUILD_snack" /YX /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -54,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tclstub83.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.1\libsound.dll" /libpath:"C:\Program Files\Tcl\lib"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tclstub83.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Tcl\lib\snack2.1\libsound.dll" /libpath:"C:\Tcl\lib"
 
 !ELSEIF  "$(CFG)" == "sound - Win32 Debug"
 
@@ -70,7 +69,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "SOUND_EXPORTS" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "C:\Program Files\Tcl\include" /I "../generic" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "SOUND_EXPORTS" /D "WIN" /D "USE_TCL_STUBS" /D "TCL_81_API" /D "BUILD_snack" /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "C:\Tcl\include" /I "../generic" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "SOUND_EXPORTS" /D "WIN" /D "USE_TCL_STUBS" /D "TCL_81_API" /D "BUILD_snack" /YX /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -82,40 +81,12 @@ LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
 # ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /out:"Debug/libsound.dll" /pdbtype:sept
 
-!ELSEIF  "$(CFG)" == "sound - Win32 Tcl80"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "sound___Win32_Tcl80"
-# PROP BASE Intermediate_Dir "sound___Win32_Tcl80"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "sound___Win32_Tcl80"
-# PROP Intermediate_Dir "sound___Win32_Tcl80"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MT /W3 /GX /O2 /I "C:\Program Files\Tcl\include" /I "../generic" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "SOUND_EXPORTS" /D "WIN" /D "USE_TCL_STUBS" /D "TCL_81_API" /D "BUILD_snack" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "C:\Program Files\Tcl\include80" /I "../generic" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "SOUND_EXPORTS" /D "WIN" /D "BUILD_snack" /YX /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
-# ADD BASE RSC /l 0x409 /d "NDEBUG"
-# ADD RSC /l 0x409 /d "NDEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tclstub83.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.1\libsound.dll" /libpath:"C:\Program Files\Tcl\lib"
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib winmm.lib tcl80.lib /nologo /dll /machine:I386 /nodefaultlib:"msvcrt.lib" /out:"C:\Program Files\Tcl\lib\snack2.1\libsound.dll" /libpath:"C:\Program Files\Tcl\lib"
-
 !ENDIF 
 
 # Begin Target
 
 # Name "sound - Win32 Release"
 # Name "sound - Win32 Debug"
-# Name "sound - Win32 Tcl80"
 # Begin Group "Source Files"
 
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
@@ -142,10 +113,6 @@ SOURCE=..\generic\jkFilter.c
 # Begin Source File
 
 SOURCE=..\generic\jkFilterIIR.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\generic\jkSynthesis.c
 # End Source File
 # Begin Source File
 
@@ -181,22 +148,15 @@ SOURCE=..\generic\jkSoundProc.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\generic\jkSynthesis.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\generic\shape.c
 # End Source File
 # Begin Source File
 
 SOURCE=..\generic\snackStubInit.c
-
-!IF  "$(CFG)" == "sound - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "sound - Win32 Debug"
-
-!ELSEIF  "$(CFG)" == "sound - Win32 Tcl80"
-
-# PROP Exclude_From_Build 1
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 

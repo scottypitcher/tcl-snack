@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -1414,6 +1414,8 @@ PutSmpHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   return TCL_OK;
 }
 
+#define SNACK_SD_INT 20
+
 static int
 GetSdHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 	    char *buf)
@@ -1450,14 +1452,31 @@ GetSdHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 	}
       }
       memcpy(&start, &buf[i], 8);
+
+      if (s->extHead != NULL && s->extHeadType != SNACK_SD_INT) {
+	Snack_FileFormat *ff;
+	
+	for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+	  if (strcmp(s->fileType, ff->name) == 0) {
+	    if (ff->freeHeaderProc != NULL) {
+	      (ff->freeHeaderProc)(s);
+	    }
+	  }
+	}
+      }
+      if (s->extHead == NULL) {
+	s->extHead = (char *) ckalloc(sizeof(double));
+	memcpy(s->extHead, &buf[i], sizeof(double));
+	s->extHeadType = SNACK_SD_INT;
+      }
     }
   }
-
+  
   s->encoding = LIN16;
   s->sampsize = 2;
   s->nchannels = 1;
   s->samprate = (int) freq;
-  s->loadOffset = (int) (start * s->samprate + 0.5);
+  s->loadOffset = 0; /*(int) (start * s->samprate + 0.5);*/
 
   if (ch != NULL) {
     Tcl_Seek(ch, 0, SEEK_END);
@@ -1484,6 +1503,54 @@ GetSdHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   SwapIfLE(s);
 
   return TCL_OK;
+}
+
+static int
+ConfigSdHeader(Sound *s, Tcl_Interp *interp, int objc,
+                Tcl_Obj *CONST objv[])
+{
+  int index;
+  static char *optionStrings[] = {
+    "-start_time", NULL
+  };
+  enum options {
+    STARTTIME
+  };
+
+  if (s->extHeadType != SNACK_SD_INT || objc < 3) return 0;
+
+  if (objc == 3) { /* get option */
+    if (Tcl_GetIndexFromObj(interp, objv[2], optionStrings, "option", 0,
+                            &index) != TCL_OK) {
+      Tcl_AppendResult(interp, ", or\n", NULL);
+      return 0;
+    }
+
+    switch ((enum options) index) {
+    case STARTTIME:
+      {
+	double *start = (double *) s->extHead;
+        Tcl_SetObjResult(interp, Tcl_NewDoubleObj(*start));
+        break;
+      }
+    }
+  }
+
+  return 1;
+}
+
+static void
+FreeSdHeader(Sound *s)
+{
+  if (s->debug > 2) Snack_WriteLog("    Enter FreeSdHeader\n");
+
+  if (s->extHead != NULL) {
+    ckfree((char *)s->extHead);
+    s->extHead = NULL;
+    s->extHeadType = 0;
+  }
+  
+  if (s->debug > 2) Snack_WriteLog("    Exit FreeSdHeader\n");
 }
 
 #define SND_FORMAT_MULAW_8   1
@@ -1553,13 +1620,16 @@ GetAuHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   }
   s->samprate = GetBELong(buf, 16);
   s->nchannels = GetBELong(buf, 20);
+  if (hlen < 24) {
+    hlen = 24;
+  }
   s->headSize = hlen;
   nsamp = GetBELong(buf, 8) / (s->sampsize * s->nchannels);
 
   if (ch != NULL) {
     Tcl_Seek(ch, 0, SEEK_END);
     nsampfile = (Tcl_Tell(ch) - hlen) / (s->sampsize * s->nchannels);
-    if (nsampfile < nsamp || nsamp == 0) {
+    if (nsampfile < nsamp || nsamp <= 0) {
       nsamp = nsampfile;
     }
   }
@@ -1663,6 +1733,7 @@ PutAuHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 #  define WAVE_FORMAT_ALAW  6
 #  define WAVE_FORMAT_MULAW 7
 #endif
+#define WAVE_EX		(-2)	/* (OxFFFE) in a 2-byte word */
 
 static int
 GetHeaderBytes(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *buf, 
@@ -1701,6 +1772,10 @@ GetWavHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
       s->nchannels = GetLEShort(buf, i+10);
       s->samprate  = GetLELong(buf, i+12);
       s->sampsize  = GetLEShort(buf, i+22) / 8;
+
+      /* For WAVE-EX, the format is the first two bytes of the GUID */
+      if (fmt == WAVE_EX)
+	fmt = GetLEShort(buf, i+32);
 
       switch (fmt) {
       case WAVE_FORMAT_PCM:
@@ -1939,6 +2014,9 @@ StoreFloat(unsigned char * buffer, unsigned long value)
   memcpy(buffer + 2, &value, sizeof(long));
 }
 
+#define ICEILV(n,m)	(((n) + ((m) - 1)) / (m))	/* int n,m >= 0 */
+#define RNDUPV(n,m)	((m) * ICEILV (n, m))		/* Round up */
+
 static int
 GetAiffHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 	      char *buf)
@@ -1959,7 +2037,7 @@ GetAiffHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
       }
       s->nchannels = GetBEShort(buf, i + 8);
       bits = GetBEShort(buf, i + 14);
-      
+      bits = RNDUPV (bits, 8);
       switch (bits) {
       case 8:
 	s->encoding = LIN8;
@@ -1977,6 +2055,9 @@ GetAiffHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 	s->encoding = LIN32;
 	s->sampsize = 4;
 	break;
+      default:
+	Tcl_AppendResult(interp, "Unsupported AIFF format", NULL);
+	return TCL_ERROR;
       }
       s->samprate = ConvertFloat((unsigned char *)&buf[i+16]);
       if (s->debug > 3) {
@@ -2123,15 +2204,15 @@ GetCslHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 	Snack_WriteLogInt("      HDR8 block parsed", chunkLen);
       }
     } else if (strncasecmp("SDA_", &buf[i], strlen("SDA_")) == 0) {
-      nsamp = GetLELong(buf, i + 4) / (s->sampsize * s->nchannels);
       s->nchannels  = 1;
+      nsamp = GetLELong(buf, i + 4) / (s->sampsize * s->nchannels);
       if (s->debug > 3) {
 	Snack_WriteLogInt("      SDA_ block parsed", nsamp);
       }
       break;
     } else if (strncasecmp("SD_B", &buf[i], strlen("SD_B")) == 0) {
-      nsamp = GetLELong(buf, i + 4) / (s->sampsize * s->nchannels);
       s->nchannels  = 1;
+      nsamp = GetLELong(buf, i + 4) / (s->sampsize * s->nchannels);
       if (s->debug > 3) {
 	Snack_WriteLogInt("      SD_B block parsed", nsamp);
       }
@@ -2216,7 +2297,7 @@ PutCslHeader(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
   
   sprintf(&buf[0], "FORMDS16");
   if (len != -1) {
-    PutLELong(buf, 8, len * s->sampsize * s->nchannels + 78);
+    PutLELong(buf, 8, len * s->sampsize * s->nchannels + 76);
   } else {
     SwapIfBE(s);
     PutLELong(buf, 8, 0);
@@ -2968,11 +3049,14 @@ GetHeader(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj)
 {
   Snack_FileFormat *ff;
   Tcl_Channel ch = NULL;
-  int status = TCL_OK;
+  int status = TCL_OK, openedOk = 0;
   int buflen = max(HEADBUF, NFIRSTSAMPLES * 2), len = 0;
 
   if (s->guessEncoding) {
     s->swap = 0;
+  }
+  if (s->tmpbuf != NULL) {
+    ckfree((char *)s->tmpbuf);
   }
   if ((s->tmpbuf = (short *) ckalloc(buflen)) == NULL) {
     Tcl_AppendResult(interp, "Could not allocate buffer!", NULL);
@@ -2990,6 +3074,8 @@ GetHeader(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj)
 	ch = NULL;
       }
     } else {
+      ckfree((char *)s->tmpbuf);
+      s->tmpbuf = NULL;
       return TCL_ERROR;
     }
   } else {
@@ -3017,6 +3103,7 @@ GetHeader(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj)
     if (strcmp(s->fileType, ff->name) == 0) {
       if (obj == NULL) {
 	status = SnackOpenFile(ff->openProc, s, interp, &ch, "r");
+	if (status == TCL_OK) openedOk = 1;
       }
       if (status == TCL_OK) {
 	status = (ff->getHeaderProc)(s, interp, ch, obj, (char *)s->tmpbuf);
@@ -3024,9 +3111,8 @@ GetHeader(Sound *s, Tcl_Interp *interp, Tcl_Obj *obj)
       if (strcmp(s->fileType, RAW_STRING) == 0 && s->guessEncoding) {
 	GuessEncoding(s, (unsigned char *)s->tmpbuf, len);
       }
-      if (obj == NULL && status == TCL_OK) {
+      if (obj == NULL && openedOk == 1) {
 	status = SnackCloseFile(ff->closeProc, s, interp, &ch);
-	/*	Tcl_Close(interp, ch);*/
       }
       ckfree((char *)s->tmpbuf);
       s->tmpbuf = NULL;
@@ -3211,8 +3297,8 @@ Snack_FileFormat snackSdFormat = {
   NULL,
   NULL,
   NULL,
-  NULL,
-  NULL,
+  FreeSdHeader,
+  ConfigSdHeader,
   (Snack_FileFormat *) NULL
 };
 

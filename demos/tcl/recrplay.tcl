@@ -31,7 +31,7 @@ proc Start {} {
 
     puts -nonewline $sock [s data -fileformat au]
 
-    # Run this procedure again in 200ms
+    # Run SendData procedure in 200ms
 
     after 200 SendData
 }

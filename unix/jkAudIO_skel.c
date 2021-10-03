@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -170,6 +170,12 @@ int
 SnackAudioMaxNumberChannels(char *device)
 {
   return(2);
+}
+
+int
+SnackAudioMinNumberChannels(char *device)
+{
+  return(1);
 }
 
 void

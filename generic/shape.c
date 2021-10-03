@@ -279,7 +279,7 @@ int shapeCmd(Sound *s, Tcl_Interp *interp, int objc,
     Snack_SetSampleEncoding(shp, encoding);
     Snack_SetBytesPerSample(shp, sampsize);
     Snack_SetNumChannels(shp, nc);
-    Snack_SetLength(shp, (int) 2 * ceil((endpos+1-pos)/hRatio));
+    Snack_SetLength(shp, (int) (2 * ceil((endpos+1-pos)/hRatio)));
     if (Snack_ResizeSoundStorage(shp, Snack_GetLength(shp)) != TCL_OK) {
       return TCL_ERROR;
     }

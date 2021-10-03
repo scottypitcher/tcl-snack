@@ -270,7 +270,7 @@ menu .m
 # Generator GUI
 
 frame .f1 -relief groove -bd 2
-grid .f1 -row 0 -col 0 -sticky news -padx 5 -pady 5
+grid .f1 -row 0 -column 0 -sticky news -padx 5 -pady 5
 label .f1.l -text Source -bg red -anchor w
 tk_optionMenu .f1.gt v(g,type) rectangle triangle sine sampled noise
 button .f1.b -bitmap snackPlay -command Play
@@ -289,17 +289,17 @@ grid rowconfigure .f1 4 -weight 1
 # Formant filter GUI
 
 frame .f2 -relief groove -bd 2
-grid .f2 -row 0 -col 1 -sticky news -padx 5 -pady 5
+grid .f2 -row 0 -column 1 -sticky news -padx 5 -pady 5
 label .f2.l -text "Formants" -bg green -anchor w
 grid .f2.l -columnspan 5 -sticky we -padx 5 -pady 5
 label .f2.lf -text "Frequency" -anchor w
 label .f2.lfu -text "Hz "
 label .f2.lb -text "Bandwidth" -anchor w
 label .f2.lbu -text "Hz "
-grid .f2.lf -row 1 -col 1 -sticky w
-grid .f2.lfu -row 1 -col 2 -sticky w
-grid .f2.lb -row 1 -col 3 -sticky w
-grid .f2.lbu -row 1 -col 4 -sticky w
+grid .f2.lf -row 1 -column 1 -sticky w
+grid .f2.lfu -row 1 -column 2 -sticky w
+grid .f2.lb -row 1 -column 3 -sticky w
+grid .f2.lbu -row 1 -column 4 -sticky w
 
 for {set i 1} {$i<=4} {incr i} {
  label .f2.l0$i -text F$i -width 2
@@ -317,7 +317,7 @@ set vokw 275
 # Vowel space
 
 vok4Create .voc $vokw $vokh
-grid .voc -row 1 -col 0 -sticky news
+grid .voc -row 1 -column 0 -sticky news
 
 # Spectrum section preview
 
@@ -328,7 +328,7 @@ set secw $vokw
 set sech $vokh
 
 canvas .c2 -bg black -height 100 -width $secw
-grid .c2 -row 1 -col 1  -sticky news
+grid .c2 -row 1 -column 1  -sticky news
 .c2 create section 0 0 -sound preview1 -fill red -height $sech -topfrequency 4000 -width $secw -analysistype lpc -tags sect -maxvalue 30
 .c2 create section 0 0 -sound preview2 -fill green -height $sech -topfrequency 4000 -width $secw -analysistype lpc -tags sect -maxvalue 30
 

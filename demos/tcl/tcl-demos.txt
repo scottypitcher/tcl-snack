@@ -53,7 +53,7 @@ echo.tcl
 Demo of echo filter with interactive parameter modification.
 
 compose.tcl
-Demo of a composed filter, i.e. one map filter pipe-lined with an echo filter.
+Demo of a composed filter, a map filter in series with an echo filter.
 
 formant.tcl
 Demo of a simple formant speech synthesizer built using Snack filters.
@@ -69,3 +69,15 @@ Simple real-time tone generator.
 
 notescale.tcl
 Example of on-the-fly beep generation.
+
+CSLwithAB.tcl
+Example on how to read CSL/NSP files with A and B data chunks.
+
+pitch.tcl
+Draws pitch track of speech recorded from the microphone.
+
+phonetogram.tcl
+Draws simple phonetogram, i.e., a pitch/intensity plot.
+
+generator2.tcl
+Two channel real-time tone generator.

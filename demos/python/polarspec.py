@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from Tkinter import *
 from tkSnack import *
 from math import *

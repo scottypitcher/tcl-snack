@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2001
+ * Copyright (C) 1998-2002
  * Dan Ellis
  * Leonid Spektor
  * Frederic Bonnet
@@ -1042,6 +1042,12 @@ int
 SnackAudioMaxNumberChannels(char *device)
 {
   return(2);
+}
+
+int
+SnackAudioMinNumberChannels(char *device)
+{
+  return(1);
 }
 
 void

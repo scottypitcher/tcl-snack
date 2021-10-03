@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -327,21 +327,6 @@ Snack_SwapDouble(double d)
   *(p+4) = tc;
   
   return(d);
-}
-
-void
-ByteSwapSound(Sound *s)
-{
-  /*
-  int i, j;
-  for (j = 0; j < s->nblks; j++)
-    if (s->encoding == LIN16)
-      for (i = 0; i < min(SBLKSIZE, s->length * s->nchannels); i++)
-	s->blocks[j][i] = Snack_SwapShort(s->blocks[j][i]);
-    else
-      for (i = 0; i < min(LBLKSIZE, s->length * s->nchannels); i++)
-	((int **)s->blocks)[j][i] = Snack_SwapLong(((int **)s->blocks)[j][i]);
-	*/
 }
 
 extern struct Snack_FileFormat *snackFileFormats;
@@ -1396,7 +1381,7 @@ cgetCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 int filterSndCmd(Sound *s, Tcl_Interp *interp, int objc,
 		 Tcl_Obj *CONST objv[]);
 
-#define NSOUNDCOMMANDS   32
+#define NSOUNDCOMMANDS   33
 #define MAXSOUNDCOMMANDS 50
 
 static int nSoundCommands   = NSOUNDCOMMANDS;
@@ -1435,6 +1420,7 @@ char *sndCmdNames[MAXSOUNDCOMMANDS] = {
   "datasamples",
   "filter",
   "swap",
+  "power",
   NULL
 };
 
@@ -1472,10 +1458,12 @@ soundCmd *sndCmdProcs[MAXSOUNDCOMMANDS] = {
   shapeCmd,
   dataSamplesCmd,
   filterSndCmd,
-  swapCmd
+  swapCmd,
+  powerCmd
 };
 
 soundDelCmd *sndDelCmdProcs[MAXSOUNDCOMMANDS] = {
+  NULL,
   NULL,
   NULL,
   NULL,

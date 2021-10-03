@@ -8,25 +8,24 @@ set f [snack::filter generator 440.0]
 snack::sound s
 #snack::audio playLatency 200
 
-set v(freq) 440.0
-set v(ampl) 20000
-
-pack [frame .f]
-pack [scale .f.s1 -label Frequency -from 4000 -to 50 -length 200\
-        -variable v(freq) -command Config] -side left
-pack [scale .f.s2 -label Amplitude -from 32767 -to 0 -length 200\
-        -variable v(ampl) -command Config] -side left
-
 tk_optionMenu .m v(type) sine rectangle triangle sawtooth noise
 foreach i [list 0 1 2 3 4] {
   .m.menu entryconfigure $i -command Config
 }
-pack .m
+pack .m -side bottom
 
-snack::createIcons
-pack [frame .fb]
+pack [frame .fb] -side bottom
 pack [button .fb.a -bitmap snackPlay -command Play] -side left
 pack [button .fb.b -bitmap snackStop -command "s stop"] -side left
+
+set v(freq) 440.0
+set v(ampl) 20000
+
+pack [frame .f] -expand yes -fill both -side top
+pack [scale .f.s1 -label Frequency -from 4000 -to 50 -length 200\
+        -variable v(freq) -command Config] -side left -expand yes -fill both
+pack [scale .f.s2 -label Amplitude -from 32767 -to 0 -length 200\
+        -variable v(ampl) -command Config] -side left -expand yes -fill both
 
 proc Config {args} {
   global f v

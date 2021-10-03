@@ -9,9 +9,8 @@ exec wish8.3 "$0" "$@"
 package require -exact snack 2.1
 
 proc Update {} {
-  global doMonitor
   snack::mixer update
-  if $doMonitor { after 100 Update }
+  if $::doMonitor { after 100 Update }
 }
 bind . <Configure> Update
 wm protocol . WM_DELETE_WINDOW exit

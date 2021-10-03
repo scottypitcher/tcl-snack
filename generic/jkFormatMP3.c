@@ -1,24 +1,24 @@
-/* 
- * Copyright (C) 2000 Kare Sjolander <kare@speech.kth.se>
+/*
+ * Copyright (C) 2000-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
  *
-
-  This file is derived from
-
-  amp MPEG audio decoder (version 0.7.3)
-  (C) Tomislav Uzelac  1996,1997
-
+ 
+ This file is derived from
+ 
+ amp MPEG audio decoder (version 0.7.3)
+ (C) Tomislav Uzelac  1996,1997
+ 
 This software can be used freely for any purpose. It can be distributed
 freely, as long as it is not sold commercially without permission from
 Tomislav Uzelac <tuzelac@rasip.fer.hr>. However, including this software
-on CD_ROMs containing other free software is explicitly permitted even 
+on CD_ROMs containing other free software is explicitly permitted even
 when a modest distribution fee is charged for the CD, as long as this
 software is not a primary selling argument for the CD.
 
 Building derived versions of this software is permitted, as long as they
-are not sold commercially without permission from Tomislav Uzelac 
+are not sold commercially without permission from Tomislav Uzelac
 <tuzelac@rasip.fer.hr>. Any derived versions must be clearly marked as
 such, and must be called by a name other than amp. Any derived versions
 must retain this copyright notice.
@@ -37,7 +37,6 @@ static Tcl_Channel gch;
 static int fool_opt = 0;
 
 extern int useOldObjAPI;
-
 /* "getbits.c" */
 
 static int
@@ -67,7 +66,7 @@ _getbits(int n)
   ret_value >>= 32 - n;
   _bptr += n;
   return ret_value;
-}       
+}
 
 static int
 fillbfr(int advance)
@@ -109,7 +108,7 @@ unsigned int viewbits(int n)
   ret_value >>= 32 - n;
 
   return ret_value;
-}       
+}
 
 static void
 sackbits(int n)
@@ -215,22 +214,22 @@ getinfo(struct AUDIO_HEADER *header,struct SIDE_INFO *info)
       info->window_switching_flag[gr][ch]=_getbits(1);
 
       if (info->window_switching_flag[gr][ch]) {
-	info->block_type[gr][ch]=_getbits(2);
-	info->mixed_block_flag[gr][ch]=_getbits(1);
+        info->block_type[gr][ch]=_getbits(2);
+        info->mixed_block_flag[gr][ch]=_getbits(1);
 
-	for (region=0;region<2;region++)
-	  info->table_select[gr][ch][region]=_getbits(5);
-	info->table_select[gr][ch][2]=0;
+        for (region=0;region<2;region++)
+          info->table_select[gr][ch][region]=_getbits(5);
+        info->table_select[gr][ch][2]=0;
 
-	for (window=0;window<3;window++)
-	  info->subblock_gain[gr][ch][window]=_getbits(3);
+        for (window=0;window<3;window++)
+          info->subblock_gain[gr][ch][window]=_getbits(3);
       } else {
-	for (region=0;region<3;region++)
-	  info->table_select[gr][ch][region]=_getbits(5);
+        for (region=0;region<3;region++)
+          info->table_select[gr][ch][region]=_getbits(5);
 
-	info->region0_count[gr][ch]=_getbits(4);
-	info->region1_count[gr][ch]=_getbits(3);
-	info->block_type[gr][ch]=0;
+        info->region0_count[gr][ch]=_getbits(4);
+        info->region1_count[gr][ch]=_getbits(3);
+        info->block_type[gr][ch]=0;
       }
 
       if (header->ID) info->preflag[gr][ch]=_getbits(1);
@@ -253,8 +252,8 @@ decode_scalefactors(struct SIDE_INFO *info,struct AUDIO_HEADER *header,int gr,in
   int i1,i2,i=0;
   int j,k;
   if (header->ID==1) {
-    /* this is MPEG-1 scalefactors format, quite different than 
-     * the MPEG-2 format. 
+    /* this is MPEG-1 scalefactors format, quite different than
+     * the MPEG-2 format.
      */
     slen1=t_slen1[info->scalefac_compress[gr][ch]];
     slen2=t_slen2[info->scalefac_compress[gr][ch]];
@@ -263,76 +262,76 @@ decode_scalefactors(struct SIDE_INFO *info,struct AUDIO_HEADER *header,int gr,in
 
     if (info->window_switching_flag[gr][ch] && info->block_type[gr][ch]==2) {
       if (info->mixed_block_flag[gr][ch]) {
-	for (sfb=0;sfb<8;sfb++) {
-	  scalefac_l[gr][ch][sfb]=getbits(slen1);
-	  i+=slen1;
-	}
-	for (sfb=3;sfb<6;sfb++) {
-	  for (window=0;window<3;window++)
-	    scalefac_s[gr][ch][sfb][window]=getbits(slen1);
-	  i+=i1;
-	}
-	for (;sfb<12;sfb++) {
-	  for (window=0;window<3;window++)
-	    scalefac_s[gr][ch][sfb][window]=getbits(slen2);
-	  i+=i2;
-	}
+        for (sfb=0;sfb<8;sfb++) {
+          scalefac_l[gr][ch][sfb]=getbits(slen1);
+          i+=slen1;
+        }
+        for (sfb=3;sfb<6;sfb++) {
+          for (window=0;window<3;window++)
+            scalefac_s[gr][ch][sfb][window]=getbits(slen1);
+          i+=i1;
+        }
+        for (;sfb<12;sfb++) {
+          for (window=0;window<3;window++)
+            scalefac_s[gr][ch][sfb][window]=getbits(slen2);
+          i+=i2;
+        }
       } else { /* !mixed_block_flag */
-	for (sfb=0;sfb<6;sfb++) {
-	  for (window=0;window<3;window++)
-	    scalefac_s[gr][ch][sfb][window]=getbits(slen1);
-	  i+=i1;
-	}
-	for (;sfb<12;sfb++) {
-	  for (window=0;window<3;window++)
-	    scalefac_s[gr][ch][sfb][window]=getbits(slen2);
-	  i+=i2;
-	}
+        for (sfb=0;sfb<6;sfb++) {
+          for (window=0;window<3;window++)
+            scalefac_s[gr][ch][sfb][window]=getbits(slen1);
+          i+=i1;
+        }
+        for (;sfb<12;sfb++) {
+          for (window=0;window<3;window++)
+            scalefac_s[gr][ch][sfb][window]=getbits(slen2);
+          i+=i2;
+        }
       }
-      for (window=0;window<3;window++) 
-	scalefac_s[gr][ch][12][window]=0;
+      for (window=0;window<3;window++)
+        scalefac_s[gr][ch][12][window]=0;
     } else { /* block_type!=2 */
       if ( !info->scfsi[ch][0] || !gr )
-	for (sfb=0;sfb<6;sfb++) {
-	  scalefac_l[gr][ch][sfb]=getbits(slen1);
-	  i+=slen1;
-	}
+        for (sfb=0;sfb<6;sfb++) {
+          scalefac_l[gr][ch][sfb]=getbits(slen1);
+          i+=slen1;
+        }
       else for (sfb=0;sfb<6;sfb++) {
-	scalefac_l[1][ch][sfb]=scalefac_l[0][ch][sfb];
+        scalefac_l[1][ch][sfb]=scalefac_l[0][ch][sfb];
       }
       if ( !info->scfsi[ch][1] || !gr )
-	for (sfb=6;sfb<11;sfb++) {
-	  scalefac_l[gr][ch][sfb]=getbits(slen1);
-	  i+=slen1;
-	}
+        for (sfb=6;sfb<11;sfb++) {
+          scalefac_l[gr][ch][sfb]=getbits(slen1);
+          i+=slen1;
+        }
       else for (sfb=6;sfb<11;sfb++) {
-	scalefac_l[1][ch][sfb]=scalefac_l[0][ch][sfb];
+        scalefac_l[1][ch][sfb]=scalefac_l[0][ch][sfb];
       }
       if ( !info->scfsi[ch][2] || !gr )
-	for (sfb=11;sfb<16;sfb++) {
-	  scalefac_l[gr][ch][sfb]=getbits(slen2);
-	  i+=slen2;
-	}
+        for (sfb=11;sfb<16;sfb++) {
+          scalefac_l[gr][ch][sfb]=getbits(slen2);
+          i+=slen2;
+        }
       else for (sfb=11;sfb<16;sfb++) {
-	scalefac_l[1][ch][sfb]=scalefac_l[0][ch][sfb];
+        scalefac_l[1][ch][sfb]=scalefac_l[0][ch][sfb];
       }
       if ( !info->scfsi[ch][3] || !gr )
-	for (sfb=16;sfb<21;sfb++) {
-	  scalefac_l[gr][ch][sfb]=getbits(slen2);
-	  i+=slen2;
-	}
+        for (sfb=16;sfb<21;sfb++) {
+          scalefac_l[gr][ch][sfb]=getbits(slen2);
+          i+=slen2;
+        }
       else for (sfb=16;sfb<21;sfb++) {
-	scalefac_l[1][ch][sfb]=scalefac_l[0][ch][sfb];
+        scalefac_l[1][ch][sfb]=scalefac_l[0][ch][sfb];
       }
       scalefac_l[gr][ch][21]=0;
     }
   } else { /* ID==0 */
     int index = 0,index2,spooky_index;
     int slen[5],nr_of_sfb[5]; /* actually, there's four of each, not five, labelled 1 through 4, but
-			       * what's a word of storage compared to one's sanity. so [0] is irellevant.
-			       */
+                               * what's a word of storage compared to one's sanity. so [0] is irellevant.
+                               */
 
-    /* ok, so we got 3 indexes. 
+    /* ok, so we got 3 indexes.
      * spooky_index - indicates whether we use the normal set of slen eqs and nr_of_sfb tables
      *                or the one for the right channel of intensity stereo coded frame
      * index        - corresponds to the value of scalefac_compress, as listed in the standard
@@ -343,54 +342,54 @@ decode_scalefactors(struct SIDE_INFO *info,struct AUDIO_HEADER *header,int gr,in
       intensity_scale=info->scalefac_compress[0][1]&1;
       spooky_index=1;
       if (int_scalefac_compress < 180) {
-	slen[1]=int_scalefac_compress/36;
-	slen[2]=(int_scalefac_compress%36)/6;
-	slen[3]=(int_scalefac_compress%36)%6;
-	slen[4]=0;
-	info->preflag[0][ch]=0;
-	index=0;
+        slen[1]=int_scalefac_compress/36;
+        slen[2]=(int_scalefac_compress%36)/6;
+        slen[3]=(int_scalefac_compress%36)%6;
+        slen[4]=0;
+        info->preflag[0][ch]=0;
+        index=0;
       }
       if ( 180 <= int_scalefac_compress && int_scalefac_compress < 244) {
-	slen[1]=((int_scalefac_compress-180)%64)>>4;
-	slen[2]=((int_scalefac_compress-180)%16)>>2;
-	slen[3]=(int_scalefac_compress-180)%4;
-	slen[4]=0;
-	info->preflag[0][ch]=0;
-	index=1;
+        slen[1]=((int_scalefac_compress-180)%64)>>4;
+        slen[2]=((int_scalefac_compress-180)%16)>>2;
+        slen[3]=(int_scalefac_compress-180)%4;
+        slen[4]=0;
+        info->preflag[0][ch]=0;
+        index=1;
       }
       if ( 244 <= int_scalefac_compress && int_scalefac_compress < 255) {
-	slen[1]=(int_scalefac_compress-244)/3;
-	slen[2]=(int_scalefac_compress-244)%3;
-	slen[3]=0;
-	slen[4]=0;
-	info->preflag[0][ch]=0;
-	index=2;
+        slen[1]=(int_scalefac_compress-244)/3;
+        slen[2]=(int_scalefac_compress-244)%3;
+        slen[3]=0;
+        slen[4]=0;
+        info->preflag[0][ch]=0;
+        index=2;
       }
     } else { /* the usual */
       spooky_index=0;
       if (info->scalefac_compress[0][ch] < 400) {
-	slen[1]=(info->scalefac_compress[0][ch]>>4)/5;
-	slen[2]=(info->scalefac_compress[0][ch]>>4)%5;
-	slen[3]=(info->scalefac_compress[0][ch]%16)>>2;
-	slen[4]=info->scalefac_compress[0][ch]%4;
-	info->preflag[0][ch]=0;
-	index=0;
+        slen[1]=(info->scalefac_compress[0][ch]>>4)/5;
+        slen[2]=(info->scalefac_compress[0][ch]>>4)%5;
+        slen[3]=(info->scalefac_compress[0][ch]%16)>>2;
+        slen[4]=info->scalefac_compress[0][ch]%4;
+        info->preflag[0][ch]=0;
+        index=0;
       }
       if (info->scalefac_compress[0][ch] >= 400 && info->scalefac_compress[0][ch] < 500) {
-	slen[1]=((info->scalefac_compress[0][ch]-400)>>2)/5;
-	slen[2]=((info->scalefac_compress[0][ch]-400)>>2)%5;
-	slen[3]=(info->scalefac_compress[0][ch]-400)%4;
-	slen[4]=0;
-	info->preflag[0][ch]=0;
-	index=1;
-      } 
+        slen[1]=((info->scalefac_compress[0][ch]-400)>>2)/5;
+        slen[2]=((info->scalefac_compress[0][ch]-400)>>2)%5;
+        slen[3]=(info->scalefac_compress[0][ch]-400)%4;
+        slen[4]=0;
+        info->preflag[0][ch]=0;
+        index=1;
+      }
       if (info->scalefac_compress[0][ch] >= 500 && info->scalefac_compress[0][ch] < 512) {
-	slen[1]=(info->scalefac_compress[0][ch]-500)/3;
-	slen[2]=(info->scalefac_compress[0][ch]-500)%3;
-	slen[3]=0;
-	slen[4]=0;
-	info->preflag[0][ch]=1;
-	index=2;
+        slen[1]=(info->scalefac_compress[0][ch]-500)/3;
+        slen[2]=(info->scalefac_compress[0][ch]-500)%3;
+        slen[3]=0;
+        slen[4]=0;
+        info->preflag[0][ch]=1;
+        index=2;
       }
     }
 
@@ -408,54 +407,54 @@ decode_scalefactors(struct SIDE_INFO *info,struct AUDIO_HEADER *header,int gr,in
     if (!info->window_switching_flag[0][ch] || (info->window_switching_flag[0][ch] && info->block_type[0][ch]!=2)) {
       sfb=0;
       for (j=1;j<=4;j++) {
-	for (k=0;k<nr_of_sfb[j];k++) {
-	  scalefac_l[0][ch][sfb]=getbits(slen[j]);
-	  i+=slen[j];
-	  if (ch) is_max[sfb]=(1<<slen[j])-1;
-	  sfb++;
-	}
+        for (k=0;k<nr_of_sfb[j];k++) {
+          scalefac_l[0][ch][sfb]=getbits(slen[j]);
+          i+=slen[j];
+          if (ch) is_max[sfb]=(1<<slen[j])-1;
+          sfb++;
+        }
       }
     } else if (info->block_type[0][ch]==2) {
       if (!info->mixed_block_flag[0][ch]) {
-	sfb=0;
-	for (j=1;j<=4;j++) {
-	  for (k=0;k<nr_of_sfb[j];k+=3) {
-	    /* we assume here that nr_of_sfb is divisible by 3. it is.
-	     */
-	    scalefac_s[0][ch][sfb][0]=getbits(slen[j]);
-	    scalefac_s[0][ch][sfb][1]=getbits(slen[j]);
-	    scalefac_s[0][ch][sfb][2]=getbits(slen[j]);
-	    i+=3*slen[j];
-	    if (ch) is_max[sfb+6]=(1<<slen[j])-1;
-	    sfb++;
-	  }
-	}
+        sfb=0;
+        for (j=1;j<=4;j++) {
+          for (k=0;k<nr_of_sfb[j];k+=3) {
+            /* we assume here that nr_of_sfb is divisible by 3. it is.
+             */
+            scalefac_s[0][ch][sfb][0]=getbits(slen[j]);
+            scalefac_s[0][ch][sfb][1]=getbits(slen[j]);
+            scalefac_s[0][ch][sfb][2]=getbits(slen[j]);
+            i+=3*slen[j];
+            if (ch) is_max[sfb+6]=(1<<slen[j])-1;
+            sfb++;
+          }
+        }
       } else {
-	/* what we do here is:
-	 * 1. assume that for every fs, the two lowest subbands are equal to the
-	 *    six lowest scalefactor bands for long blocks/MPEG2. they are.
-	 * 2. assume that for every fs, the two lowest subbands are equal to the
-	 *    three lowest scalefactor bands for short blocks. they are.
-	 */
-	sfb=0;
-	for (k=0;k<6;k++) {
-	  scalefac_l[0][ch][sfb]=getbits(slen[1]);
-	  i+=slen[j];
-	  if (ch) is_max[sfb]=(1<<slen[1])-1;
-	  sfb++;
-	}
-	nr_of_sfb[1]-=6;
-	sfb=3;
-	for (j=1;j<=4;j++) {
-	  for (k=0;k<nr_of_sfb[j];k+=3) {
-	    scalefac_s[0][ch][sfb][0]=getbits(slen[j]);
-	    scalefac_s[0][ch][sfb][1]=getbits(slen[j]);
-	    scalefac_s[0][ch][sfb][2]=getbits(slen[j]);
-	    i+=3*slen[j];
-	    if (ch) is_max[sfb+6]=(1<<slen[j])-1;
-	    sfb++;
-	  }
-	}
+        /* what we do here is:
+         * 1. assume that for every fs, the two lowest subbands are equal to the
+         *    six lowest scalefactor bands for long blocks/MPEG2. they are.
+         * 2. assume that for every fs, the two lowest subbands are equal to the
+         *    three lowest scalefactor bands for short blocks. they are.
+         */
+        sfb=0;
+        for (k=0;k<6;k++) {
+          scalefac_l[0][ch][sfb]=getbits(slen[1]);
+          i+=slen[j];
+          if (ch) is_max[sfb]=(1<<slen[1])-1;
+          sfb++;
+        }
+        nr_of_sfb[1]-=6;
+        sfb=3;
+        for (j=1;j<=4;j++) {
+          for (k=0;k<nr_of_sfb[j];k+=3) {
+            scalefac_s[0][ch][sfb][0]=getbits(slen[j]);
+            scalefac_s[0][ch][sfb][1]=getbits(slen[j]);
+            scalefac_s[0][ch][sfb][2]=getbits(slen[j]);
+            i+=3*slen[j];
+            if (ch) is_max[sfb+6]=(1<<slen[j])-1;
+            sfb++;
+          }
+        }
       }
     }
   }
@@ -468,7 +467,7 @@ static int
 _qsign(int x,int *q)
 {
   int ret_value=0,i;
-  for (i=3;i>=0;i--) 
+  for (i=3;i>=0;i--)
     if ((x>>i) & 1) {
       if (getbits(1)) *q++=-1;
       else *q++=1;
@@ -505,15 +504,15 @@ decode_huffman_data(struct SIDE_INFO *info,int gr,int ch,int ssize)
     else {
       r[1]=t_l[ info->region0_count[gr][ch] + info->region1_count[gr][ch] + 1 ] + 1;
       if (r[1] > big_value)
-	r[1]=big_value;
+        r[1]=big_value;
     }
     r[2]=big_value;
 
   } else {
 
-    if (info->block_type[gr][ch]==2 && info->mixed_block_flag[gr][ch]==0) 
+    if (info->block_type[gr][ch]==2 && info->mixed_block_flag[gr][ch]==0)
       r[0]=3*(t_s[2]+1);
-    else 
+    else
       r[0]=t_l[7]+1;
 
     if (r[0] > big_value)
@@ -530,20 +529,20 @@ decode_huffman_data(struct SIDE_INFO *info,int gr,int ch,int ssize)
       cnt+=huffman_decode(tr[i],&x,&y);
 
       if (x==15 && j>0) {
-	x+=getbits(j);
-	cnt+=j;
+        x+=getbits(j);
+        cnt+=j;
       }
       if (x) {
-	if (getbits(1)) x=-x;
-	cnt++;
+        if (getbits(1)) x=-x;
+        cnt++;
       }
       if (y==15 && j>0) {
-	y+=getbits(j);
-	cnt+=j;
+        y+=getbits(j);
+        cnt+=j;
       }
       if (y) {
-	if (getbits(1)) y=-y;
-	cnt++;
+        if (getbits(1)) y=-y;
+        cnt++;
       }
 
       /*      if (SHOW_HUFFBITS) printf(" (%d,%d) %d\n",x,y, SHOW_HUFFBITS);*/
@@ -553,18 +552,18 @@ decode_huffman_data(struct SIDE_INFO *info,int gr,int ch,int ssize)
   }
   /*if (cnt > info->part2_3_length[gr][ch] - ssize )
         if (SHOW_HUFFMAN_ERRORS) printf(" ERROR in BIGVALUES %d\n",\
-	  cnt-info->part2_3_length[gr][ch]+ssize);*/
+          cnt-info->part2_3_length[gr][ch]+ssize);*/
   while ((cnt < info->part2_3_length[gr][ch]-ssize) && (l<576)) {
     cnt+=huffman_decode(tr[3],&x,&y);
     cnt+=_qsign(x,q);
     for (i=0;i<4;i++) is[ch][l+i]=q[i]; /* ziher je ziher, is[578]*/
     l+=4;
-    /*    if (SHOW_HUFFBITS) 
-	  printf(" (%d,%d,%d,%d)\n",q[0],q[1],q[2],q[3]);*/
+    /*    if (SHOW_HUFFBITS)
+          printf(" (%d,%d,%d,%d)\n",q[0],q[1],q[2],q[3]);*/
   }
   /*
   if (SHOW_HUFFMAN_ERRORS) {
-    if (cnt > info->part2_3_length[gr][ch] - ssize ) 
+    if (cnt > info->part2_3_length[gr][ch] - ssize )
       printf ( "%d BITS DISCARDED\n",info->part2_3_length[gr][ch]-cnt+i-ssize);
     else if (cnt < info->part2_3_length[gr][ch] - ssize )
       printf(" %d BITS NOT USED\n",cnt-info->part2_3_length[gr][ch]+ssize);
@@ -583,7 +582,7 @@ decode_huffman_data(struct SIDE_INFO *info,int gr,int ch,int ssize)
   return 1;
 }
 
-/* 
+/*
  * fras == Formula for Requantization and All Scaling **************************
  */
 static float
@@ -664,30 +663,30 @@ requantize_mono(int gr,int ch,struct SIDE_INFO *info,struct AUDIO_HEADER *header
       l=0;sfb=0;
       a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
       while (l<36) {
-	xr[ch][0][l]=fras2(is[ch][l],a);
-	if (l==t_l[sfb]) {
-	  scalefac=scalefac_l[gr][ch][++sfb];
-	  a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
-	}
-	l++;
+        xr[ch][0][l]=fras2(is[ch][l],a);
+        if (l==t_l[sfb]) {
+          scalefac=scalefac_l[gr][ch][++sfb];
+          a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
+        }
+        l++;
       }
       /*
        * requantize_mono - mixed blocks/short block part *********************
        */
-      sfb=3; 
+      sfb=3;
       window_len=t_s[sfb]-t_s[sfb-1];
       while (l<non_zero[ch]) {
-	for (window=0;window<3;window++) {
-	  int scalefac=scalefac_s[gr][ch][sfb][window];
-	  int subblock_gain=info->subblock_gain[gr][ch][window];
-	  a=fras_s(global_gain,subblock_gain,scalefac_scale,scalefac);
-	  for (i=0;i<window_len;i++) {
-	    xr[ch][0][t_reorder[header->ID][sfreq][l]]=fras2(is[ch][l],a);
-	    l++;
-	  }
-	}
-	sfb++;
-	window_len=t_s[sfb]-t_s[sfb-1];
+        for (window=0;window<3;window++) {
+          int scalefac=scalefac_s[gr][ch][sfb][window];
+          int subblock_gain=info->subblock_gain[gr][ch][window];
+          a=fras_s(global_gain,subblock_gain,scalefac_scale,scalefac);
+          for (i=0;i<window_len;i++) {
+            xr[ch][0][t_reorder[header->ID][sfreq][l]]=fras2(is[ch][l],a);
+            l++;
+          }
+        }
+        sfb++;
+        window_len=t_s[sfb]-t_s[sfb-1];
       }
       while (l<576) xr[ch][0][t_reorder[header->ID][sfreq][l++]]=0;
     } else {
@@ -699,17 +698,17 @@ requantize_mono(int gr,int ch,struct SIDE_INFO *info,struct AUDIO_HEADER *header
       sfb=0; l=0;
       window_len=t_s[0]+1;
       while (l<non_zero[ch]) {
-	for (window=0;window<3;window++) {
-	  int scalefac=scalefac_s[gr][ch][sfb][window];
-	  int subblock_gain=info->subblock_gain[gr][ch][window];
-	  float a=fras_s(global_gain,subblock_gain,scalefac_scale,scalefac);
-	  for (i=0;i<window_len;i++) {
-	    xr[ch][0][t_reorder[header->ID][sfreq][l]]=fras2(is[ch][l],a);
-	    l++;
-	  }
-	}
-	sfb++;
-	window_len=t_s[sfb]-t_s[sfb-1];
+        for (window=0;window<3;window++) {
+          int scalefac=scalefac_s[gr][ch][sfb][window];
+          int subblock_gain=info->subblock_gain[gr][ch][window];
+          float a=fras_s(global_gain,subblock_gain,scalefac_scale,scalefac);
+          for (i=0;i<window_len;i++) {
+            xr[ch][0][t_reorder[header->ID][sfreq][l]]=fras2(is[ch][l],a);
+            l++;
+          }
+        }
+        sfb++;
+        window_len=t_s[sfb]-t_s[sfb-1];
       }
       while (l<576) xr[ch][0][t_reorder[header->ID][sfreq][l++]]=0;
     }
@@ -721,10 +720,10 @@ requantize_mono(int gr,int ch,struct SIDE_INFO *info,struct AUDIO_HEADER *header
     sfb=0; l=0;
     a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
     while (l<non_zero[ch]) {
-      xr[ch][0][l]=fras2(is[ch][l],a); 
+      xr[ch][0][l]=fras2(is[ch][l],a);
       if (l==t_l[sfb]) {
-	scalefac=scalefac_l[gr][ch][++sfb];
-	a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
+        scalefac=scalefac_l[gr][ch][++sfb];
+        a=fras_l(sfb,global_gain,scalefac_scale,scalefac,preflag);
       }
       l++;
     }
@@ -751,34 +750,34 @@ find_isbound(int isbound[3],int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *h
       tmp=non_zero[1];
       sfb=0; while ((3*t_s[sfb]+2) < tmp  && sfb < 12) sfb++;
       while ((isbound[0]<0 || isbound[1]<0 || isbound[2]<0) && !(info->mixed_block_flag[gr][0] && sfb<3) && sfb) {
-	for (window=0;window<3;window++) {
-	  if (sfb==0) {
-	    window_len=t_s[0]+1;
-	    tmp=(window+1)*window_len - 1;
-	  } else {
-	    window_len=t_s[sfb]-t_s[sfb-1];
-	    tmp=(3*t_s[sfb-1]+2) + (window+1)*window_len;
-	  }
-	  if (isbound[window] < 0)
-	    for (i=0;i<window_len;i++)
-	      if (is[1][tmp--] != 0) {
-		isbound[window]=t_s[sfb]+1; 
-		break;
-	      }
-	}
-	sfb--;
+        for (window=0;window<3;window++) {
+          if (sfb==0) {
+            window_len=t_s[0]+1;
+            tmp=(window+1)*window_len - 1;
+          } else {
+            window_len=t_s[sfb]-t_s[sfb-1];
+            tmp=(3*t_s[sfb-1]+2) + (window+1)*window_len;
+          }
+          if (isbound[window] < 0)
+            for (i=0;i<window_len;i++)
+              if (is[1][tmp--] != 0) {
+                isbound[window]=t_s[sfb]+1;
+                break;
+              }
+        }
+        sfb--;
       }
 
       /* mixed block magic now...
        */
       if (sfb==2 && info->mixed_block_flag[gr][0]) {
-	if (isbound[0]<0 && isbound[1]<0 && isbound[2]<0) {
-	  tmp=35;
-	  while (is[1][tmp] == 0) tmp--;
-	  sfb=0; while (t_l[sfb] < tmp  && sfb < 21) sfb++;
-	  isbound[0]=isbound[1]=isbound[2]=t_l[sfb]+1;
-	} else for (window=0;window<3;window++) 
-	  if (isbound[window]<0) isbound[window]=36;
+        if (isbound[0]<0 && isbound[1]<0 && isbound[2]<0) {
+          tmp=35;
+          while (is[1][tmp] == 0) tmp--;
+          sfb=0; while (t_l[sfb] < tmp  && sfb < 21) sfb++;
+          isbound[0]=isbound[1]=isbound[2]=t_l[sfb]+1;
+        } else for (window=0;window<3;window++)
+          if (isbound[window]<0) isbound[window]=36;
       }
       if (header->ID==1) isbound[0]=isbound[1]=isbound[2]=max(isbound[0],max(isbound[1],isbound[2]));
 
@@ -807,8 +806,8 @@ find_isbound(int isbound[3],int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *h
     ms_flag=1;
 
     /* i really put a lot of work in this, but it still looks like shit (works, though)
-     */ 
-    if (!info->window_switching_flag[gr][0] || (info->window_switching_flag[gr][0] && info->block_type[gr][0]!=2)) 
+     */
+    if (!info->window_switching_flag[gr][0] || (info->window_switching_flag[gr][0] && info->block_type[gr][0]!=2))
       isbound[0]=isbound[1]=isbound[2]=(max(non_zero[0],non_zero[1]));
     else isbound[0]=isbound[1]=isbound[2]=576;
 
@@ -872,7 +871,7 @@ stereo_l(int l,float a[2],int ms_flag,int is_pos,struct AUDIO_HEADER *header)
     xr[0][0][l]=(1-t_is[is_pos])*ftmp;
     xr[1][0][l]=t_is[is_pos]*ftmp;
     return;
-  } 
+  }
 
   if ((is_pos != IS_ILLEGAL) && (header->ID==0)) {
     ftmp=fras2(is[0][l],a[0]);
@@ -916,9 +915,9 @@ requantize_ms(int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *header)
   global_gain=info->global_gain[gr];
   scalefac_scale=info->scalefac_scale[gr];
 
-  if (info->window_switching_flag[gr][0] && info->block_type[gr][0]==2)  
+  if (info->window_switching_flag[gr][0] && info->block_type[gr][0]==2)
     if (info->mixed_block_flag[gr][0]) {
-      /* 
+      /*
        * mixed blocks w/stereo processing - long block part ******************
        */
       int window,window_len;
@@ -928,34 +927,34 @@ requantize_ms(int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *header)
 
       sfb=0; l=0;
       for (ch=0;ch<2;ch++) {
-	scalefac[ch]=scalefac_l[gr][ch][0];
-	a[ch]=fras_l(0,global_gain[ch],scalefac_scale[ch],scalefac[ch],preflag[ch]);
+        scalefac[ch]=scalefac_l[gr][ch][0];
+        a[ch]=fras_l(0,global_gain[ch],scalefac_scale[ch],scalefac[ch],preflag[ch]);
       }
 
 
       while (l<36) {
-	int is_pos;
-	if (l<isbound[0]) is_pos=IS_ILLEGAL;
-	else {
-	  is_pos=scalefac[1];
-	  if (id==1) { /* MPEG1 */
-	    if (is_pos==7) is_pos=IS_ILLEGAL;
-	    else /* MPEG2 */
-	      if (is_pos==is_max[sfb]) is_pos=IS_ILLEGAL;
-	  }
-	}
+        int is_pos;
+        if (l<isbound[0]) is_pos=IS_ILLEGAL;
+        else {
+          is_pos=scalefac[1];
+          if (id==1) { /* MPEG1 */
+            if (is_pos==7) is_pos=IS_ILLEGAL;
+            else /* MPEG2 */
+              if (is_pos==is_max[sfb]) is_pos=IS_ILLEGAL;
+          }
+        }
 
-	stereo_l(l,a,ms_flag,is_pos,header);
+        stereo_l(l,a,ms_flag,is_pos,header);
 
-	if (l==t_l[sfb]) {
-	  sfb++;
-	  for (ch=0;ch<2;ch++) {
-	    scalefac[ch]=scalefac_l[gr][ch][sfb];
-	    a[ch]=fras_l(sfb,global_gain[ch],scalefac_scale[ch],scalefac[ch],preflag[ch]);
-	  }
-	}
+        if (l==t_l[sfb]) {
+          sfb++;
+          for (ch=0;ch<2;ch++) {
+            scalefac[ch]=scalefac_l[gr][ch][sfb];
+            a[ch]=fras_l(sfb,global_gain[ch],scalefac_scale[ch],scalefac[ch],preflag[ch]);
+          }
+        }
 
-	l++;
+        l++;
       }
       /*
        * mixed blocks w/stereo processing - short block part *****************
@@ -964,41 +963,41 @@ requantize_ms(int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *header)
       window_len=t_s[sfb]-t_s[sfb-1];
 
       while (l<(max(non_zero[0],non_zero[1]))) {
-	for (window=0;window<3;window++) {
-	  subblock_gain[0]=info->subblock_gain[gr][0][window];
-	  subblock_gain[1]=info->subblock_gain[gr][1][window];
-	  scalefac[0]=scalefac_s[gr][0][sfb][window];
-	  scalefac[1]=scalefac_s[gr][1][sfb][window];
+        for (window=0;window<3;window++) {
+          subblock_gain[0]=info->subblock_gain[gr][0][window];
+          subblock_gain[1]=info->subblock_gain[gr][1][window];
+          scalefac[0]=scalefac_s[gr][0][sfb][window];
+          scalefac[1]=scalefac_s[gr][1][sfb][window];
 
-	  if (t_s[sfb] < isbound[window]) {
-	    is_pos=IS_ILLEGAL;
-	    a[0]=fras_s(global_gain[0],subblock_gain[0],scalefac_scale[0],scalefac[0]);
-	    a[1]=fras_s(global_gain[1],subblock_gain[1],scalefac_scale[1],scalefac[1]);
-	  } else {
-	    is_pos=scalefac[1];
-	    if (id==1) { /* MPEG1 */
-	      if (is_pos==7) is_pos=IS_ILLEGAL;
-	      else /* MPEG2 */
-		if (is_pos==is_max[sfb+6]) is_pos=IS_ILLEGAL;
-	    }
- 
-	    a[0]=fras_s(global_gain[0],subblock_gain[0],scalefac_scale[0],scalefac[0]);
-	  }
+          if (t_s[sfb] < isbound[window]) {
+            is_pos=IS_ILLEGAL;
+            a[0]=fras_s(global_gain[0],subblock_gain[0],scalefac_scale[0],scalefac[0]);
+            a[1]=fras_s(global_gain[1],subblock_gain[1],scalefac_scale[1],scalefac[1]);
+          } else {
+            is_pos=scalefac[1];
+            if (id==1) { /* MPEG1 */
+              if (is_pos==7) is_pos=IS_ILLEGAL;
+              else /* MPEG2 */
+                if (is_pos==is_max[sfb+6]) is_pos=IS_ILLEGAL;
+            }
 
-	  for (i=0;i<window_len && l < 576;i++) {
-	    stereo_s(l,a,t_reorder[id][sfreq][l],ms_flag,is_pos,header);
-	    l++;
-	  }
-	}
-	sfb++;
-	window_len=t_s[sfb]-t_s[sfb-1];
+            a[0]=fras_s(global_gain[0],subblock_gain[0],scalefac_scale[0],scalefac[0]);
+          }
+
+          for (i=0;i<window_len && l < 576;i++) {
+            stereo_s(l,a,t_reorder[id][sfreq][l],ms_flag,is_pos,header);
+            l++;
+          }
+        }
+        sfb++;
+        window_len=t_s[sfb]-t_s[sfb-1];
       }
       while (l<576) {
-	int reorder = t_reorder[id][sfreq][l++];
-                          
-	xr[0][0][reorder]=xr[1][0][reorder]=0;
+        int reorder = t_reorder[id][sfreq][l++];
+
+        xr[0][0][reorder]=xr[1][0][reorder]=0;
       }
-    } else {                                                                       
+    } else {
       /*
        * requantize_ms - short blocks w/stereo processing ********************
        */
@@ -1009,38 +1008,39 @@ requantize_ms(int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *header)
       window_len=t_s[0]+1;
 
       while (l<(max(non_zero[0],non_zero[1]))) {
-	for (window=0;window<3;window++) {
-	  subblock_gain[0]=info->subblock_gain[gr][0][window];
-	  subblock_gain[1]=info->subblock_gain[gr][1][window];
-	  scalefac[0]=scalefac_s[gr][0][sfb][window];
-	  scalefac[1]=scalefac_s[gr][1][sfb][window];
+        for (window=0;window<3;window++) {
+          subblock_gain[0]=info->subblock_gain[gr][0][window];
+          subblock_gain[1]=info->subblock_gain[gr][1][window];
+          scalefac[0]=scalefac_s[gr][0][sfb][window];
+          scalefac[1]=scalefac_s[gr][1][sfb][window];
 
-	  if (t_s[sfb] < isbound[window]) {
-	    is_pos=IS_ILLEGAL;
-	    a[0]=fras_s(global_gain[0],subblock_gain[0],scalefac_scale[0],scalefac[0]);
-	    a[1]=fras_s(global_gain[1],subblock_gain[1],scalefac_scale[1],scalefac[1]);
-	  } else {
-	    is_pos=scalefac[1];
-	    if (id==1) { /* MPEG1 */
-	      if (is_pos==7) is_pos=IS_ILLEGAL;
-	      else /* MPEG2 */
-		if (is_pos==is_max[sfb+6]) is_pos=IS_ILLEGAL;
-	    }
+          if (t_s[sfb] < isbound[window]) {
+            is_pos=IS_ILLEGAL;
+            a[0]=fras_s(global_gain[0],subblock_gain[0],scalefac_scale[0],scalefac[0]);
+            a[1]=fras_s(global_gain[1],subblock_gain[1],scalefac_scale[1],scalefac[1]);
+          } else {
+            is_pos=scalefac[1];
+            if (id==1) { /* MPEG1 */
+              if (is_pos==7) is_pos=IS_ILLEGAL;
+              else /* MPEG2 */
+                if (is_pos==is_max[sfb+6]) is_pos=IS_ILLEGAL;
+            }
 
-	    a[0]=fras_s(global_gain[0],subblock_gain[0],scalefac_scale[0],scalefac[0]);
-	  }
+            a[0]=fras_s(global_gain[0],subblock_gain[0],scalefac_scale[0],scalefac[0]);
+          }
 
-	  for (i=0;i<window_len && l < 576;i++) {
-	    stereo_s(l,a,t_reorder[id][sfreq][l],ms_flag,is_pos,header);
-	    l++;
-	  }
-	}
-	window_len=-t_s[sfb]+t_s[++sfb];
+          for (i=0;i<window_len && l < 576;i++) {
+            stereo_s(l,a,t_reorder[id][sfreq][l],ms_flag,is_pos,header);
+            l++;
+          }
+        }
+        window_len=-t_s[sfb]+t_s[sfb+1];
+        sfb++;
       }
       while (l<576) {
-	int reorder = t_reorder[id][sfreq][l++];
-                          
-	xr[0][0][reorder]=xr[1][0][reorder]=0;
+        int reorder = t_reorder[id][sfreq][l++];
+
+        xr[0][0][reorder]=xr[1][0][reorder]=0;
       }
     }
   else {
@@ -1056,32 +1056,32 @@ requantize_ms(int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *header)
     a[0]=fras_l(sfb,global_gain[0],scalefac_scale[0],scalefac[0],preflag[0]);
     scalefac[1]=scalefac_l[gr][1][sfb];
     a[1]=fras_l(sfb,global_gain[1],scalefac_scale[1],scalefac[1],preflag[1]);
-    while (l< isbound[0]) {   
+    while (l< isbound[0]) {
       int is_pos=IS_ILLEGAL;
       stereo_l(l,a,ms_flag,is_pos,header);
       if (l==t_l[sfb]) {
-	sfb++;
-	scalefac[0]=scalefac_l[gr][0][sfb];
-	a[0]=fras_l(sfb,global_gain[0],scalefac_scale[0],scalefac[0],preflag[0]);
-	scalefac[1]=scalefac_l[gr][1][sfb];
-	a[1]=fras_l(sfb,global_gain[1],scalefac_scale[1],scalefac[1],preflag[1]);
+        sfb++;
+        scalefac[0]=scalefac_l[gr][0][sfb];
+        a[0]=fras_l(sfb,global_gain[0],scalefac_scale[0],scalefac[0],preflag[0]);
+        scalefac[1]=scalefac_l[gr][1][sfb];
+        a[1]=fras_l(sfb,global_gain[1],scalefac_scale[1],scalefac[1],preflag[1]);
       }
       l++;
     }
     while (l<(max(non_zero[0],non_zero[1]))) {
       int is_pos=scalefac[1];
       if (id==1) { /* MPEG1 */
-	if (is_pos==7) is_pos=IS_ILLEGAL;
-	else /* MPEG2 */
-	  if (is_pos==is_max[sfb]) is_pos=IS_ILLEGAL;
+        if (is_pos==7) is_pos=IS_ILLEGAL;
+        else /* MPEG2 */
+          if (is_pos==is_max[sfb]) is_pos=IS_ILLEGAL;
       }
 
       stereo_l(l,a,ms_flag,is_pos,header);
       if (l==t_l[sfb]) {
-	sfb++;
-	scalefac[0]=scalefac_l[gr][0][sfb];
-	scalefac[1]=scalefac_l[gr][1][sfb];
-	a[0]=fras_l(sfb,global_gain[0],scalefac_scale[0],scalefac[0],preflag[0]);
+        sfb++;
+        scalefac[0]=scalefac_l[gr][0][sfb];
+        scalefac[1]=scalefac_l[gr][1][sfb];
+        a[0]=fras_l(sfb,global_gain[0],scalefac_scale[0],scalefac[0],preflag[0]);
       }
       l++;
     }
@@ -1097,9 +1097,9 @@ requantize_ms(int gr,struct SIDE_INFO *info,struct AUDIO_HEADER *header)
 #pragma optimize("", on)
 #endif
 
-/* 
+/*
  * antialiasing butterflies
- * 
+ *
  */
 static void
 alias_reduction(int ch)
@@ -1148,14 +1148,14 @@ huffman_decode(int tbl,int *x,int *y)
   if ((*h_tab>>(32-len)) != (chunk>>(19-len))) {
     if (chunk >> (19-NC_O) < N_CUE-1)
       lag=(h_cue[tbl][(chunk >> (19-NC_O))+1] -
-	   h_cue[tbl][chunk >> (19-NC_O)]);
+           h_cue[tbl][chunk >> (19-NC_O)]);
     else {
       /* we strongly depend on h_cue[N_CUE-1] to point to
        * the last entry in the huffman table, so we should
        * not get here anyway. if it didn't, we'd have to
        * have another table with huffman tables lengths, and
        * it would be a mess. just in case, scream&shout.
-       */ 
+       */
       /*      printf(" h_cue clobbered. this is a bug. blip.\n");*/
       exit (-1);
     }
@@ -1171,9 +1171,9 @@ huffman_decode(int tbl,int *x,int *y)
       half_lag = lag >> 1;
 
       if (*h_tab < chunk)
-	h_tab += half_lag;
+        h_tab += half_lag;
       else
-	h_tab -= half_lag;
+        h_tab -= half_lag;
 
       lag -= half_lag;
     }
@@ -1181,10 +1181,10 @@ huffman_decode(int tbl,int *x,int *y)
     len=(*h_tab>>8)&0x1f;
     if ((*h_tab>>(32-len)) != (chunk>>(32-len))) {
       if (*h_tab > chunk)
-	h_tab--;
-      else 
-	h_tab++;
-                  
+        h_tab--;
+      else
+        h_tab++;
+
       len=(*h_tab>>8)&0x1f;
     }
   }
@@ -1263,8 +1263,8 @@ void imdct(int win_type,int sb,int ch)
   if(win_type == 2){
     for(p=0;p<36;p+=9) {
       out[p]   = out[p+1] = out[p+2] = out[p+3] =
-	out[p+4] = out[p+5] = out[p+6] = out[p+7] =
-	out[p+8] = 0.0f;
+        out[p+4] = out[p+5] = out[p+6] = out[p+7] =
+        out[p+8] = 0.0f;
     }
 
     for(ss=0;ss<18;ss+=6) {
@@ -1276,41 +1276,41 @@ void imdct(int win_type,int sb,int ch)
       /* Begin 12 point IDCT */
 
       /* Input aliasing for 12 pt IDCT*/
-				      in[5+ss]+=in[4+ss];in[4+ss]+=in[3+ss];in[3+ss]+=in[2+ss];
-				      in[2+ss]+=in[1+ss];in[1+ss]+=in[0+ss];
+                                      in[5+ss]+=in[4+ss];in[4+ss]+=in[3+ss];in[3+ss]+=in[2+ss];
+                                      in[2+ss]+=in[1+ss];in[1+ss]+=in[0+ss];
 
-				      /* Input aliasing on odd indices (for 6 point IDCT) */
-					   in[5+ss] += in[3+ss];  in[3+ss]  += in[1+ss];
+                                      /* Input aliasing on odd indices (for 6 point IDCT) */
+                                           in[5+ss] += in[3+ss];  in[3+ss]  += in[1+ss];
 
-					   /* 3 point IDCT on even indices */
+                                           /* 3 point IDCT on even indices */
 
-						pp2 = in[4+ss] * 0.500000000f;
-					   pp1 = in[2+ss] * 0.866025403f;
-					   sum = in[0+ss] + pp2;
-					   tmp[1]= in[0+ss] - in[4+ss];
-					   tmp[0]= sum + pp1;
-					   tmp[2]= sum - pp1;
+                                                pp2 = in[4+ss] * 0.500000000f;
+                                           pp1 = in[2+ss] * 0.866025403f;
+                                           sum = in[0+ss] + pp2;
+                                           tmp[1]= in[0+ss] - in[4+ss];
+                                           tmp[0]= sum + pp1;
+                                           tmp[2]= sum - pp1;
 
-					   /* End 3 point IDCT on even indices */
+                                           /* End 3 point IDCT on even indices */
 
-					   /* 3 point IDCT on odd indices (for 6 point IDCT) */
+                                           /* 3 point IDCT on odd indices (for 6 point IDCT) */
 
-						pp2 = in[5+ss] * 0.500000000f;
-					   pp1 = in[3+ss] * 0.866025403f;
-					   sum = in[1+ss] + pp2;
-					   tmp[4] = in[1+ss] - in[5+ss];
-					   tmp[5] = sum + pp1;
-					   tmp[3] = sum - pp1;
+                                                pp2 = in[5+ss] * 0.500000000f;
+                                           pp1 = in[3+ss] * 0.866025403f;
+                                           sum = in[1+ss] + pp2;
+                                           tmp[4] = in[1+ss] - in[5+ss];
+                                           tmp[5] = sum + pp1;
+                                           tmp[3] = sum - pp1;
 
-					   /* End 3 point IDCT on odd indices*/
+                                           /* End 3 point IDCT on odd indices*/
 
-					   /* Twiddle factors on odd indices (for 6 point IDCT)*/
+                                           /* Twiddle factors on odd indices (for 6 point IDCT)*/
 
-						tmp[3] *= 1.931851653f;
-					   tmp[4] *= 0.707106781f;
-					   tmp[5] *= 0.517638090f;
+                                                tmp[3] *= 1.931851653f;
+                                           tmp[4] *= 0.707106781f;
+                                           tmp[5] *= 0.517638090f;
 
-					   /* Output butterflies on 2 3 point IDCT's (for 6 point IDCT)*/
+                                           /* Output butterflies on 2 3 point IDCT's (for 6 point IDCT)*/
 
 save = tmp[0];
 tmp[0] += tmp[5];
@@ -1567,7 +1567,7 @@ res[sb][5] =-tmp[14] * win_bt[5] + s[ch][sb][5];
 res[sb][6] =-tmp[15] * win_bt[6] + s[ch][sb][6];
 res[sb][7] =-tmp[16] * win_bt[7] + s[ch][sb][7];
 res[sb][8] =-tmp[17] * win_bt[8] + s[ch][sb][8];
-           
+
 res[sb][9] = tmp[17] * win_bt[9] + s[ch][sb][9];
 res[sb][10]= tmp[16] * win_bt[10] + s[ch][sb][10];
 res[sb][11]= tmp[15] * win_bt[11] + s[ch][sb][11];
@@ -1605,7 +1605,7 @@ if (sb&1) for (i=1;i<18;i+=2) res[sb][i]=-res[sb][i];
 
 /* fast DCT according to Lee[84]
  * reordering according to Konstantinides[94]
- */ 
+ */
 void poly(mp3Info* ext, const int ch,int f)
 {
 float c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15;
@@ -1673,7 +1673,7 @@ d16= c16+ c20; d20= (c16 - c20) *  b4;
 d17= c17+ c21; d21= (c17 - c21) * b12;
 d18= c18+ c22; d22= (c18 - c22) * b28;
 d19= c19+ c23; d23= (c19 - c23) * b20;
-        
+
 d24= c24+ c28; d28= (c24 - c28) *  b4;
 d25= c25+ c29; d29= (c25 - c29) * b12;
 d26= c26+ c30; d30= (c26 - c30) * b28;
@@ -1690,14 +1690,14 @@ c9 = d9 + d11; c11= ( d9 - d11) * b24;
 /**/    c12= d12+ d14; c14= (d12 - d14) *  b8;
 c13= d13+ d15; c15= (d13 - d15) * b24;
 /**/    c16= d16+ d18; c18= (d16 - d18) *  b8;
-c17= d17+ d19; c19= (d17 - d19) * b24; 
+c17= d17+ d19; c19= (d17 - d19) * b24;
 /**/    c20= d20+ d22; c22= (d20 - d22) *  b8;
-c21= d21+ d23; c23= (d21 - d23) * b24; 
+c21= d21+ d23; c23= (d21 - d23) * b24;
 /**/    c24= d24+ d26; c26= (d24 - d26) *  b8;
-c25= d25+ d27; c27= (d25 - d27) * b24; 
+c25= d25+ d27; c27= (d25 - d27) * b24;
 /**/    c28= d28+ d30; c30= (d28 - d30) *  b8;
-c29= d29+ d31; c31= (d29 - d31) * b24; 
- 
+c29= d29+ d31; c31= (d29 - d31) * b24;
+
 /* step 5: 1-wide butterflies
  */
 d0 = c0 + c1 ; d1 = ( c0 - c1 ) * b16;
@@ -1716,8 +1716,8 @@ d24= c24+ c25; d25= (c24 - c25) * b16;
 d26= c26+ c27; d27= (c26 - c27) * b16;
 d28= c28+ c29; d29= (c28 - c29) * b16;
 d30= c30+ c31; d31= (c30 - c31) * b16;
- 
-/* step 6: final resolving & reordering 
+
+/* step 6: final resolving & reordering
  * the other 32 are stored for use with the next granule
  */
 
@@ -1786,199 +1786,199 @@ u_p[0][0] = -d1;
       u_ptr = (float *) u_p;
 
       for (j=0;j<32;j++) {
-	out  = *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
+        out  = *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 1:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
+        out  = u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ?-32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ?-32768.0f : out;
       }
       break;
 
     case 2:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
+        out  = u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 3:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
+        out  = u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 4:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
+        out  = u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 5:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
+        out  = u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 6:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
+        out  = u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 7:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
+        out  = u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
@@ -1986,231 +1986,231 @@ u_p[0][0] = -d1;
 #if !defined(SMALL_STEREO_CACHE)
     case 8:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
+        out  = u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 9:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
+        out  = u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 10:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
+        out  = u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 11:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
+        out  = u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 12:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
+        out  = u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 13:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
+        out  = u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 14:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
+        out  = u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 15:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
+        out  = u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
 
-	stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 #endif
 #if defined(MEDIUM_STEREO_CACHE) || defined(SMALL_STEREO_CACHE)
     default:
       {
-	int i=start;
+        int i=start;
 
-	for (j=0;j<32;j++) {
-	  u_ptr = u_p[j];
+        for (j=0;j<32;j++) {
+          u_ptr = u_p[j];
 
-	  out  = u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
+          out  = u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
 
-	  stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
-	}
+          stereo_samples[f][j][ch] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        }
       }
       break;
 #endif
@@ -2225,199 +2225,199 @@ u_p[0][0] = -d1;
       u_ptr = (float *) u_p;
 
       for (j=0;j<32;j++) {
-	out  = *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	out += *u_ptr++ * *dewindow++;
-	
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        out  = *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+        out += *u_ptr++ * *dewindow++;
+
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 1:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
+        out  = u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 2:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
+        out  = u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 3:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
+        out  = u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 4:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
+        out  = u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 5:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
+        out  = u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 6:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
+        out  = u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 7:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
+        out  = u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
@@ -2425,231 +2425,231 @@ u_p[0][0] = -d1;
 #if !defined(SMALL_MONO_CACHE)
     case 8:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
+        out  = u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 9:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
+        out  = u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 10:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
+        out  = u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 11:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
+        out  = u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 12:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
+        out  = u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 13:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
+        out  = u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 14:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[14] * *dewindow++;
-	out += u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
+        out  = u_ptr[14] * *dewindow++;
+        out += u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 
     case 15:
       for (j=0;j<32;j++) {
-	u_ptr = u_p[j];
+        u_ptr = u_p[j];
 
-	out  = u_ptr[15] * *dewindow++;
-	out += u_ptr[0] * *dewindow++;
-	out += u_ptr[1] * *dewindow++;
-	out += u_ptr[2] * *dewindow++;
-	out += u_ptr[3] * *dewindow++;
-	out += u_ptr[4] * *dewindow++;
-	out += u_ptr[5] * *dewindow++;
-	out += u_ptr[6] * *dewindow++;
-	out += u_ptr[7] * *dewindow++;
-	out += u_ptr[8] * *dewindow++;
-	out += u_ptr[9] * *dewindow++;
-	out += u_ptr[10] * *dewindow++;
-	out += u_ptr[11] * *dewindow++;
-	out += u_ptr[12] * *dewindow++;
-	out += u_ptr[13] * *dewindow++;
-	out += u_ptr[14] * *dewindow++;
+        out  = u_ptr[15] * *dewindow++;
+        out += u_ptr[0] * *dewindow++;
+        out += u_ptr[1] * *dewindow++;
+        out += u_ptr[2] * *dewindow++;
+        out += u_ptr[3] * *dewindow++;
+        out += u_ptr[4] * *dewindow++;
+        out += u_ptr[5] * *dewindow++;
+        out += u_ptr[6] * *dewindow++;
+        out += u_ptr[7] * *dewindow++;
+        out += u_ptr[8] * *dewindow++;
+        out += u_ptr[9] * *dewindow++;
+        out += u_ptr[10] * *dewindow++;
+        out += u_ptr[11] * *dewindow++;
+        out += u_ptr[12] * *dewindow++;
+        out += u_ptr[13] * *dewindow++;
+        out += u_ptr[14] * *dewindow++;
 
-	mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
       }
       break;
 #endif
 #if defined(MEDIUM_MONO_CACHE) || defined(SMALL_MONO_CACHE)
     default:
       {
-	int i=start;
+        int i=start;
 
-	for (j=0;j<32;j++) {
-	  u_ptr = u_p[j];
+        for (j=0;j<32;j++) {
+          u_ptr = u_p[j];
 
-	  out  = u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
-	  out += u_ptr[i++ & 0xf] * *dewindow++;
+          out  = u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
+          out += u_ptr[i++ & 0xf] * *dewindow++;
 
-	  mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
-	}
+          mono_samples[f][j] = out > 32767.0f ? 32767.0f : out < -32768.0f ? -32768.0f : out;
+        }
       }
       break;
 #endif
@@ -2687,7 +2687,7 @@ layer3_frame(mp3Info *ext, struct AUDIO_HEADER *header, int len)
 
   /* we need these later, hsize is the size of header+side_info */
 
-  if (header->ID) 
+  if (header->ID)
     if (header->mode==3) {
       nch=1;
       hsize=21;
@@ -2723,7 +2723,7 @@ layer3_frame(mp3Info *ext, struct AUDIO_HEADER *header, int len)
   /* check if mdb is too big for the first few frames. this means that
    * a part of the stream could be missing. We must still fill the buffer
    */
-  if (info.main_data_begin > append) 
+  if (info.main_data_begin > append)
     if (cnt*mean_frame_size < 960) {
       /*printf(" frame %d discarded, incomplete main_data\n",cnt);*/
       fillbfr(mean_frame_size + header->padding_bit - hsize);
@@ -2748,7 +2748,7 @@ layer3_frame(mp3Info *ext, struct AUDIO_HEADER *header, int len)
   /* debug/dump stuff */
   /*  show_header(header,bitrate,fs,mean_frame_size,0);*/
   /*if (A_DUMP_BINARY) dump((int *)info.part2_3_length);*/
-  
+
   /* decode the scalefactors and huffman data
    * this part needs to be enhanced for error robustness
    */
@@ -2767,7 +2767,7 @@ layer3_frame(mp3Info *ext, struct AUDIO_HEADER *header, int len)
     /* antialiasing butterflies */
     for (ch=0;ch<nch;ch++) {
       if(!(info.window_switching_flag[gr][ch] && info.block_type[gr][ch]==2))
-	alias_reduction(ch);
+        alias_reduction(ch);
     }
 
     /* just which window? */
@@ -2775,63 +2775,63 @@ layer3_frame(mp3Info *ext, struct AUDIO_HEADER *header, int len)
       int win_type; /* same as in the standard, long=0, start=1 ,.... */
 
       if (info.window_switching_flag[gr][ch] && info.block_type[gr][ch]==2 && info.mixed_block_flag[gr][ch])
-	win_type=0;
+        win_type=0;
       else if (!info.window_switching_flag[gr][ch]) win_type=0;
       else win_type=info.block_type[gr][ch];
 
       /* imdct ...  */
 
       for (sb=0;sb<2;sb++)
-	imdct(win_type,sb,ch);
+        imdct(win_type,sb,ch);
 
       if (info.window_switching_flag[gr][ch] && info.block_type[gr][ch]==2 && info.mixed_block_flag[gr][ch])
-	win_type=2;
+        win_type=2;
 
       /* no_of_imdcts tells us how many subbands from the top are all zero
        * it is set by the requantize functions in misc2.c
        */
       for (sb=2;sb<no_of_imdcts[ch];sb++)
-	imdct(win_type,sb,ch);
+        imdct(win_type,sb,ch);
 
       /* clear s[][][] first so we don't totally blow the cache */
 
       tmp = sb;
-      for (;sb<32;sb++) 
-	for (i=0;i<18;i++) {
-	  res[sb][i]=s[ch][sb][i];
-	  s[ch][sb][i]=0.0f;
-	}
-	
+      for (;sb<32;sb++)
+        for (i=0;i<18;i++) {
+          res[sb][i]=s[ch][sb][i];
+          s[ch][sb][i]=0.0f;
+        }
+
       /* polyphase filterbank
        */
       /* if (nch == 2) this was a bug, tomislav */
       for (i=0;i<18;i++)
-	poly(ext, ch, i);
+        poly(ext, ch, i);
     }
     if (nch == 2) {
       int l = min(18*32*2*4, len - ext->ind);
       memcpy(&mm[ext->ind], stereo_samples, l);
       ext->ind += l;
       if (l < 18*32*2*4) {
-	memcpy(&rest[ext->restlen],
-	       &((char *)stereo_samples)[l], 18*32*2*4 - l);
-	ext->restlen += (18*32*2*4 - l);
+        memcpy(&rest[ext->restlen],
+               &((char *)stereo_samples)[l], 18*32*2*4 - l);
+        ext->restlen += (18*32*2*4 - l);
       }
     } else {
       int l = min(18*32*4, len - ext->ind);
       memcpy(&mm[ext->ind], mono_samples, l);
       ext->ind += l;
       if (l < 18*32*4) {
-	memcpy(&rest[ext->restlen],
-	       &((char *)mono_samples)[l], 18*32*4 - l);
-	ext->restlen += (18*32*4 - l);
+        memcpy(&rest[ext->restlen],
+               &((char *)mono_samples)[l], 18*32*4 - l);
+        ext->restlen += (18*32*4 - l);
       }
     }
-  }    /*  for (gr... */ 
+  }    /*  for (gr... */
 
   return 0;
 
-} 
+}
 
 static int
 processHeader(Sound *s, struct AUDIO_HEADER *header, int cnt)
@@ -2853,12 +2853,12 @@ processHeader(Sound *s, struct AUDIO_HEADER *header, int cnt)
     if (_fillbfr(4) <= 0) return(1);
   }
   if (header->protection_bit==0) getcrc();
-  
+
   return(0);
 }
 
 #define MAXFRAMESIZE 2106  /* frame size starting at header */
-#define MAXSCANDEPTH 60000 /* How deep to scan into file to find first frame, assume bad after this */
+#define MAXSCANDEPTH 65536 /* How deep to scan into file to find first frame, assume bad after this */
 /* Define a mask such that a seek frame has to match the original frame
    some data changes from frame to frame so ignore those changes
    at a minimum the
@@ -2912,8 +2912,8 @@ GuessMP3File(char *buf, int len)
   while (offset <= depth - 4) {
     /* Validate frame sync and other data to make sure this is a good header */
     if ((buf[offset]   & 0xff) == 0xff && (buf[offset+1] & 0xe0) == 0xe0 &&
-	(buf[offset+2] & 0x0c) != 0x0c && (buf[offset+2] & 0xf0) != 0x00 &&
-	(buf[offset+2] & 0xf0) != 0xf0 && (buf[offset+1] & 0x06) != 0x00) {
+        (buf[offset+2] & 0x0c) != 0x0c && (buf[offset+2] & 0xf0) != 0x00 &&
+        (buf[offset+2] & 0xf0) != 0xf0 && (buf[offset+1] & 0x06) != 0x00) {
       int layer = (buf[offset+1] & 0x06) >> 1;
       int br_index = (buf[offset+2] & 0xf0) >> 4;
       int sr_index = (buf[offset+2] & 0x0c) >> 2;
@@ -2921,38 +2921,38 @@ GuessMP3File(char *buf, int len)
       int bitrate = t_bitrate[id][3 - layer][br_index];
       int fs = t_sampling_frequency[id][sr_index];
       int mean_frame_size;
-      
+
       if (id) mean_frame_size = 144000 * bitrate / fs;
       else mean_frame_size = 72000 * bitrate / fs;
-      
+
       if (mean_frame_size > MAXFRAMESIZE) {
-	mean_frame_size = MAXFRAMESIZE;
-      }
-      
-      if (offset == 0 || offset == 72) {
-	return(MP3_STRING);
-      }
-      if (offset + mean_frame_size + 4 >= len && len > 1000) {
-	return(NULL);
+        mean_frame_size = MAXFRAMESIZE;
       }
 
-      /* A valid MP3 should have a header at the next location, 
-	 and they should nearly match (sync + ID/Layer/Pro bit 
-	 just to make sure we need two additional matches.
+      if (offset == 0 || offset == 72) {
+        return(MP3_STRING);
+      }
+      if (offset + mean_frame_size + 4 >= len && len > 1000) {
+        return(NULL);
+      }
+
+      /* A valid MP3 should have a header at the next location,
+         and they should nearly match (sync + ID/Layer/Pro bit
+         just to make sure we need two additional matches.
       */
       p = &buf[offset];
       q = p + mean_frame_size;
       if (p[0] == q[0] && p[1] == q[1]) {
-	matches++;
-	/* Require at least three frames have this kind of match */
-	if (matches > 2) {
-	  return(MP3_STRING);
-	}
+        matches++;
+        /* Require at least three frames have this kind of match */
+        if (matches > 2) {
+          return(MP3_STRING);
+        }
       }
     }
     offset++;
   }
-  if (offset < 1000) {
+  if (offset < 1001) {
     return(QUE_STRING);
   } else {
     return(NULL);
@@ -2971,220 +2971,280 @@ InitMP3()
 extern struct Snack_FileFormat *snackFileFormats;
 
 #define SNACK_MP3_INT 18
+static int ExtractI4(unsigned char *buf)
+{
+   int x;
+   /*  big endian extract  */
+   x = buf[0];
+   x <<= 8;
+   x |= buf[1];
+   x <<= 8;
+   x |= buf[2];
+   x <<= 8;
+   x |= buf[3];
+   return x;
+}
+#define FRAMES_FLAG     0x0001
+#define BYTES_FLAG      0x0002
+#define TOC_FLAG        0x0004
+#define VBR_SCALE_FLAG  0x0008
 
 int
 GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 	     char *buf)
 {
   int offset = 0, okHeader = 0, i, j;
-  int mean_frame_size = 0, bitrate = 0, fs;
-  int layer, prot, br_index, sr_index, pad, mode, totalFrames;
-  int passes = 0;
-  mp3Info *Si = (mp3Info *)S->extHead;
-  
-  if (S->debug > 2) Snack_WriteLog("    Enter GetMP3Header\n");
-  
-  if (S->extHead != NULL && S->extHeadType != SNACK_MP3_INT) {
-    Snack_FileFormat *ff;
-    
-    for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
-      if (strcmp(S->fileType, ff->name) == 0) {
-	if (ff->freeHeaderProc != NULL) {
-	  (ff->freeHeaderProc)(S);
-	}
+   int mean_frame_size = 0, bitrate = 0, fs, ID3Extra = 0;
+   int layer, prot, br_index, sr_index, pad, mode, totalFrames=0;
+   int passes = 0;
+   int head_flags;
+   int xFrames=0, xBytes=0, xAvgBitrate=0, xAvgFrameSize=0 ;
+   mp3Info *Si = (mp3Info *)S->extHead;
+
+   if (S->debug > 2) Snack_WriteLog("    Enter GetMP3Header\n");
+
+   if (S->extHead != NULL && S->extHeadType != SNACK_MP3_INT) {
+      Snack_FileFormat *ff;
+
+      for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
+         if (strcmp(S->fileType, ff->name) == 0) {
+            if (ff->freeHeaderProc != NULL) {
+               (ff->freeHeaderProc)(S);
+            }
+         }
       }
-    }
-  }
-  
-  if (Si == NULL) {
-    Si = (mp3Info *) ckalloc(sizeof(mp3Info));
-    for (i = 0; i < 32; i++) {
-      for (j = 0; j < 16; j++) {
-	Si->u[0][0][i][j] = 0.0f;
-	Si->u[0][1][i][j] = 0.0f;
-	Si->u[1][0][i][j] = 0.0f;
-	Si->u[1][1][i][j] = 0.0f;
+   }
+
+   if (Si == NULL) {
+      Si = (mp3Info *) ckalloc(sizeof(mp3Info));
+      for (i = 0; i < 32; i++) {
+         for (j = 0; j < 16; j++) {
+            Si->u[0][0][i][j] = 0.0f;
+            Si->u[0][1][i][j] = 0.0f;
+            Si->u[1][0][i][j] = 0.0f;
+            Si->u[1][1][i][j] = 0.0f;
+         }
       }
-    }
-    for (i = 0; i < 32; i++) {
-      for (j = 0; j < 18; j++) {
-	s[0][i][j] = 0.0f;
-	s[1][i][j] = 0.0f;
+      for (i = 0; i < 32; i++) {
+         for (j = 0; j < 18; j++) {
+            s[0][i][j] = 0.0f;
+            s[1][i][j] = 0.0f;
+         }
       }
-    }
-    Si->u_start[0] = 0;
-    Si->u_start[1] = 0;
-    Si->u_div[0] = 0;
-    Si->u_div[1] = 0;
-    Si->cnt = 0;
-    
-    if (!initDone) {
-      InitMP3();
-      initDone = 1;
-    } 
-  }
+      Si->u_start[0] = 0;
+      Si->u_start[1] = 0;
+      Si->u_div[0] = 0;
+      Si->u_div[1] = 0;
+      Si->cnt = 0;
+
+      if (!initDone) {
+         InitMP3();
+         initDone = 1;
+      }
+   }
   /**
    * TFW: If any ID3V2 info is to be got, it can be read here
    * Insert code as needed.
    * See: http://www.id3.org/id3v2-00.txt for more details.
+   * TFW Potential problem: if the buffer length actually passed in
+   * is less than MAXSCANDEPTH the a crash may occur here. It
+   * should normally be larger but on a very small file it won't
+   * be.
    */
-  if (strncmp("ID3", buf, strlen("ID3")) == 0) {
+   S->length = -1;
+   if (strncmp("ID3", buf, strlen("ID3")) == 0) {
     /* ID3 size uses 28 packed bits, or 7 LSBs of words 6-9 */
     /* The extra 10 bytes account for this header length)*/
-    long idOffset = (int )((long)(buf[6]&0x7F)*2097152l
-			   + (long)(buf[7]&0x7F)*16384l
-			   + (long)(buf[8]&0x7F)*128l
-			   + (long)buf[9] + 10);
-    offset = idOffset;
-    /* Don't check for extended header yet */
-    if (offset > MAXSCANDEPTH) {
-      if (S->debug > 0) Snack_WriteLogInt("ID3 Tag is too big", offset);
-      Tcl_AppendResult(interp, "ID3 Tag is too big", NULL);
-      return TCL_ERROR;
-    }
-  }
-  else if (strncasecmp("RIFF", buf, strlen("RIFF")) == 0) {
-    if (buf[20] == 0x55) {
-      offset = 72;
-      if (S->storeType == SOUND_IN_CHANNEL) {
-	Tcl_Read(ch, &buf[S->firstNRead], 76-S->firstNRead);
+      long idOffset = (int )((long)(buf[6]&0x7F)*2097152l
+                             + (long)(buf[7]&0x7F)*16384l
+                             + (long)(buf[8]&0x7F)*128l
+                             + (long)buf[9] + 10);
+      /* Attempt to read beyond the ID3 offset if it is too large */
+      if (idOffset > MAXSCANDEPTH) {
+
+         if (Tcl_Seek(ch, idOffset, SEEK_SET) > 0) {
+            if (Tcl_Read(ch, &buf[0], MAXSCANDEPTH) > 0) {
+               /* local buffer is now at end of ID3 tag */
+               offset = 0;
+               ID3Extra = idOffset;
+            } else {
+               if (S->debug > 0) Snack_WriteLogInt("ID3 size is in error is too big", offset);
+                  Tcl_AppendResult(interp, "ID3 size is in error is too big", NULL);
+                  return TCL_ERROR;
+               }
+
+         } else {
+            if (S->debug > 0) Snack_WriteLogInt("ID3 Tag is bigger than file size", offset);
+            Tcl_AppendResult(interp, "ID3 Tag is bigger than file size", NULL);
+            return TCL_ERROR;
+         }
+
+      } else {
+         offset = idOffset;
       }
-    }
-  }
-  S->length = -1;
+   }
+   else if (strncasecmp("RIFF", buf, strlen("RIFF")) == 0) {
+      if (buf[20] == 0x55) {
+         offset = 72;
+         if (S->storeType == SOUND_IN_CHANNEL) {
+            Tcl_Read(ch, &buf[S->firstNRead], 76-S->firstNRead);
+         }
+      }
+   }
   /* Continue to scan until a satisfactory frame is found */
-  do {
+   do {
     /* Valid Frame sync
        Bit Rate not 0000 or 1111 (which are invalid)
        Layer 00 (reserved)
        Sample Rate 11 (reserved)
     */
-    if ((buf[offset]   & 0xff) == 0xff && (buf[offset+1] & 0xe0) == 0xe0 &&
-	(buf[offset+2] & 0x0c) != 0x0c && (buf[offset+2] & 0xf0) != 0x00 &&
-	(buf[offset+2] & 0xf0) != 0xf0 && (buf[offset+1] & 0x06) != 0x00) {
+      if ((buf[offset]   & 0xff) == 0xff && (buf[offset+1] & 0xe0) == 0xe0 &&
+          (buf[offset+2] & 0x0c) != 0x0c && (buf[offset+2] & 0xf0) != 0x00 &&
+          (buf[offset+2] & 0xf0) != 0xf0 && (buf[offset+1] & 0x06) != 0x00) {
       /* Have a good frame sync and the header data passed the initial checks */
-      char *p = &buf[offset], *q = NULL;
-      
-      if (((buf[offset + 3] & 0xc0) >> 6) != 3) {
-	S->nchannels = 2;
-      } else {
-	S->nchannels = 1;
-      }
-      S->encoding = LIN16;
-      S->sampsize = 2;
-      S->samprate = t_sampling_frequency[(buf[offset + 1] & 0x08)>>3][(buf[offset + 2] & 0x0c)>>2];
-      
-      Si->id = (buf[offset+1] & 0x08) >> 3;
-      layer = (buf[offset+1] & 0x06) >> 1;
-      prot = (buf[offset+1] & 0x01);
-      
-      br_index = (buf[offset+2] & 0xf0) >> 4;
-      sr_index = (buf[offset+2] & 0x0c) >> 2;
-      pad = (buf[offset+2] & 0x02) >> 1;
-      mode = (buf[offset+3] & 0xc0) >> 6;
-      /* hsize not referenced
-	 if (Si->id) 
-	 if (mode==3) {
-	 hsize=21;
-	 } else {
-	 hsize=36;
-	 }
-	 else
-	 if (mode==3) {
-	 hsize=13;
-	 } else {
-	 hsize=21;
-	 }
+	char *p = &buf[offset], *q = NULL;
+	unsigned char *xBuf = (unsigned char *)p;
+
+         if (((buf[offset + 3] & 0xc0) >> 6) != 3) {
+            S->nchannels = 2;
+         } else {
+            S->nchannels = 1;
+         }
+         S->encoding = LIN16;
+         S->sampsize = 2;
+
+         Si->id = (buf[offset+1] & 0x08) >> 3;
+         sr_index = (buf[offset+2] & 0x0c) >> 2;
+         S->samprate = t_sampling_frequency[Si->id][sr_index];
+         layer = (buf[offset+1] & 0x06) >> 1;
+         prot = (buf[offset+1] & 0x01);
+
+         br_index = (buf[offset+2] & 0xf0) >> 4;
+         pad = (buf[offset+2] & 0x02) >> 1;
+         mode = (buf[offset+3] & 0xc0) >> 6;
 	 
-	 if (prot == 0) hsize += 2;
-      */
-      
-      bitrate = t_bitrate[Si->id][3 - layer][br_index];
-      fs = t_sampling_frequency[Si->id][sr_index];
-      if (Si->id) mean_frame_size = 144000*bitrate / fs;
-      else mean_frame_size = 72000 * bitrate / fs;
-      
+         bitrate = t_bitrate[Si->id][3 - layer][br_index];
+         fs = t_sampling_frequency[Si->id][sr_index];
+         /* Xing VBR Check
+          * If a Xing VBR header exists, then use the info from there
+          * otherwise the length and average bitrate estimate will
+          * be incorrect.
+          *
+          * First, determine offset of header into Aux section
+          */
+         if ( Si->id ) {                         /* mpeg1 */
+            xBuf += 4 + (mode != 3 ? 32 : 17);
+         } else {                                /* mpeg */
+            xBuf += 4 + (mode != 3 ? 17 : 9);
+         }
+
+         if (strncmp("Xing",xBuf,4)==0) {
+         /* We have a Xing VBR header */
+            xBuf+=4;
+            head_flags = ExtractI4(xBuf);
+            xBuf+=4;
+            if ( head_flags & FRAMES_FLAG ) {
+	      xFrames   = ExtractI4(xBuf);  /* Number of frames in file */
+	      xBuf+=4;
+            }
+            if ( head_flags & BYTES_FLAG ) {
+	      xBytes = ExtractI4(xBuf);    /* File size (at encoding) */
+	      xBuf+=4;
+            }
+            /* Enough info to compute average VBR bitrate and framesize*/
+            if ( xFrames > 0 && xBytes > 0 && (head_flags & (BYTES_FLAG | FRAMES_FLAG))) {
+               xAvgFrameSize =  xBytes/xFrames;
+               xAvgBitrate =  (xAvgFrameSize*fs)/(Si->id ? 144000:72000);   /* Layer 1 */
+            }
+         }
+
+      /* End XING stuff */
+
+         mean_frame_size = (bitrate * (Si->id ? 144000:72000) / fs);   /* This frame size */
+
       /* Max should be 2926 */
-      
-      if (mean_frame_size > MAXFRAMESIZE) {
-	mean_frame_size = MAXFRAMESIZE;
-      }
-      
-      /* TFW: note to self
-	 If we didn't find a header where we first expected it
-	 then the next valid one must match the following on.
-      */
-      if (passes > 0) {
-	q = p + mean_frame_size;
-	/* Verify this frame and next frame headers match */
-	if (p[0] == q[0] && p[1] == q[1] && (p[2] & 0xfd) == (q[2]& 0xfd)
-	    && (p[3] & 0xdf) == (q[3] & 0xdf)) {
-	  okHeader = 1;
-	} else {
-	  offset++;
-	}
+
+         if (mean_frame_size > MAXFRAMESIZE) {
+            mean_frame_size = MAXFRAMESIZE;
+         }
+
+         /*
+            If we didn't find a header where we first expected it
+            then the next valid one must match the following on.
+         */
+         if (passes > 0) {
+            q = p + mean_frame_size;
+            /* Verify this frame and next frame headers match */
+            if (p[0] == q[0] && p[1] == q[1] && (p[2] & 0xfd) == (q[2]& 0xfd)
+                && (p[3] & 0xdf) == (q[3] & 0xdf)) {
+               okHeader = 1;
+            } else {
+               offset++;
+            }
+         } else {
+            okHeader = 1;
+         }
       } else {
-	okHeader = 1;
+         offset++;
       }
-    } else {
-      offset++;
-    }
-    if (offset > MAXSCANDEPTH) {
-      if (S->debug > 0) Snack_WriteLogInt("Could not find MP3 header", offset);
-      Tcl_AppendResult(interp, "Could not find MP3 header", NULL);
-      return TCL_ERROR;
-    }
-    passes++;
-  } while (okHeader == 0);
-  
-  if (S->debug > 0) Snack_WriteLogInt("Found MP3 header at offset", offset);
-  Si->bytesPerFrame = mean_frame_size;
-  
-  if (ch != NULL) {
-    if (Tcl_Seek(ch, 0, SEEK_END) > 0) {
-      totalFrames = (Tcl_Tell(ch) - offset) / Si->bytesPerFrame;
-      if (Si->id) {
-	S->length = totalFrames * 18 * 32 * 2;
-      } else {
-	S->length = totalFrames * 18 * 32;
+      if (offset > MAXSCANDEPTH) {
+         if (S->debug > 0) Snack_WriteLogInt("Could not find MP3 header", offset);
+         Tcl_AppendResult(interp, "Could not find MP3 header", NULL);
+         return TCL_ERROR;
       }
-    }
-  }
-  if (obj != NULL) {
-    if (useOldObjAPI) {
-      totalFrames = (obj->length - offset) / 
-	Si->bytesPerFrame;
-    } else {
+      passes++;
+   } while (okHeader == 0);
+
+   if (S->debug > 0) Snack_WriteLogInt("Found MP3 header at offset", offset);
+   Si->bytesPerFrame = xAvgFrameSize ? xAvgFrameSize : mean_frame_size;
+   /* Compute length */
+   if (ch != NULL) {
+      if (xFrames == 0) {
+         if (Tcl_Seek(ch, 0, SEEK_END) > 0) {
+            totalFrames = (Tcl_Tell(ch) - (offset + ID3Extra)) / Si->bytesPerFrame;
+         }
+      }
+      else {
+         totalFrames = xFrames;
+      }
+      S->length = (totalFrames * 18 * 32) * (Si->id ? 2:1);
+   }
+   if (obj != NULL) {
+      if (xFrames > 0) {
+         totalFrames = xFrames;
+      }
+      else {
+         if (useOldObjAPI) {
+            totalFrames = (obj->length - (offset + ID3Extra)) / Si->bytesPerFrame;
+         } else {
 #ifdef TCL_81_API
-      int length = 0;
-      
-      Tcl_GetByteArrayFromObj(obj, &length);
-      totalFrames = (length - offset) / Si->bytesPerFrame;
+            int length = 0;
+            Tcl_GetByteArrayFromObj(obj, &length);
+            totalFrames = (length - (offset + ID3Extra)) / Si->bytesPerFrame;
 #endif
-    }
-    if (Si->id) {
-      S->length = totalFrames * 18 * 32 * 2;
-    } else {
-      S->length = totalFrames * 18 * 32;
-    }
-  }
-  
-  S->headSize = offset;
-  S->swap = 0;
-  Si->bufind = offset;
-  Si->restlen = 0;
-  Si->gotHeader = 1;
-  Si->append = 0;
-  Si->data = 0;
-  Si->bitrate = 1000 * bitrate;
-  memcpy((char *)&Si->headerInt, &buf[offset], 4);
+         }
+      }
+      S->length = (totalFrames * 18 * 32) * (Si->id ? 2:1);
+   }
 
-  S->extHead = (char *) Si;
-  S->extHeadType = SNACK_MP3_INT;
+   S->headSize = offset + ID3Extra;
+   S->swap = 0;
+   Si->bufind = offset + ID3Extra;
+   Si->restlen = 0;
+   Si->gotHeader = 1;
+   Si->append = 0;
+   Si->data = 0;
+  /* If Xing header, then use an average bitrate, otherwise use this frames bitrate */
+   Si->bitrate = 1000 * (xAvgBitrate ? xAvgBitrate : bitrate);
 
-  if (S->debug > 2) Snack_WriteLogInt("    Exit GetMP3Header", S->length);
+   memcpy((char *)&Si->headerInt, &buf[offset], 4);
 
-  return TCL_OK;
+   S->extHead = (char *) Si;
+   S->extHeadType = SNACK_MP3_INT;
+
+   if (S->debug > 2) Snack_WriteLogInt("    Exit GetMP3Header", S->length);
+
+   return TCL_OK;
 }
 
 #define HMASK 0xfffffddf
@@ -3192,7 +3252,7 @@ GetMP3Header(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, Tcl_Obj *obj,
 int
 SeekMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, int pos)
 {
-  int filepos, i, j, depth=0;
+  int seekpos, filepos, i, j, depth=0;
   unsigned char tmp[4];
   unsigned int hInt = 0;
   unsigned int hmask, smask;
@@ -3206,7 +3266,7 @@ SeekMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, int pos)
     hmask = leHMASK;
     smask = leSMASK;
   }
-  
+
   if (S->debug > 2) Snack_WriteLogInt("    Enter SeekMP3File", pos);
 
   Si->bufind = S->headSize;
@@ -3235,12 +3295,12 @@ SeekMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, int pos)
 
   /* Get approximate position */
   /* TFW Note to self: ID3 Tag is accounted for in headSize */
- 
-  pos = S->headSize + pos * S->sampsize * S->nchannels;
+
+  seekpos =  pos * S->sampsize * S->nchannels;
   if (Si->id) {
-    filepos = (Si->bytesPerFrame * (pos / (18 * 32 * 2 * 2 * 2)))&0xfffffffc;
+    filepos = (S->headSize + (Si->bytesPerFrame * (seekpos / (18 * 32 * 2 * 2 * 2))))&0xfffffffc;
   } else {
-    filepos = (Si->bytesPerFrame * (pos / (18 * 32 * 2)))&0xfffffffc;
+    filepos = (S->headSize + (Si->bytesPerFrame * (seekpos / (18 * 32 * 2))))&0xfffffffc;
   }
 
   /* Sync up to next frame */
@@ -3250,25 +3310,28 @@ SeekMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, int pos)
     while (filepos == Tcl_Seek(ch, filepos, SEEK_SET)) {
       res = Tcl_Read(ch, (char *) tmp, 4);
       if (res <= 0) {
-	if (S->debug > 0) Snack_WriteLogInt("    Seek beyond EOF", filepos);
-	return((pos - S->headSize) / (S->sampsize * S->nchannels));
+        if (S->debug > 0) Snack_WriteLogInt("    Seek beyond EOF", filepos);
+        return(res); /* Denote seek beyond eof */
       }
       if ((hInt & smask) == ((((unsigned int *)tmp)[0]) & smask)) {
-	/* we have a sync, not make sure the layer info matches */
-	if ((hInt & hmask) == ((((unsigned int *)tmp)[0]) & hmask)) {
-	  memcpy((char *)&Si->headerInt, tmp, 4);
-	  Si->gotHeader = 1;
-	  if (S->debug > 2) Snack_WriteLogInt("    Seek done after", depth);
-	  break;
-	} else {
-	  depth++;      /* debugging */
-	}
+        /* we have a sync, not make sure the layer info matches */
+        if ((hInt & hmask) == ((((unsigned int *)tmp)[0]) & hmask)) {
+          memcpy((char *)&Si->headerInt, tmp, 4);
+          Si->gotHeader = 1;
+          if (S->debug > 2) Snack_WriteLogInt("    Seek done after", depth);
+          return (pos);
+        } else {
+          depth++;      /* debugging */
+        }
       }
       filepos++;
     }
+    /* If we got here, we went past the eof */
+    if (S->debug > 0) Snack_WriteLogInt("    Seek beyond EOF", filepos);
+    pos = -1;
   }
-  
-  pos = (pos - S->headSize) / (S->sampsize * S->nchannels);
+
+  /*  pos = (pos - S->headSize) / (S->sampsize * S->nchannels);*/
 
   if (S->debug > 2) Snack_WriteLogInt("    Exit SeekMP3File", pos);
 
@@ -3277,7 +3340,7 @@ SeekMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel ch, int pos)
 
 int
 ReadMP3Samples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf,
-	       float *obuf, int len)
+               float *obuf, int len)
 {
   struct AUDIO_HEADER header;
   int last = -1;
@@ -3314,7 +3377,7 @@ ReadMP3Samples(Sound *s, Tcl_Interp *interp, Tcl_Channel ch, char *ibuf,
   for (;; Si->cnt++) {
     if (Si->ind >= len) break;
     if (Si->ind == last &&
-	Si->ind > 0) break;    
+        Si->ind > 0) break;
     last = Si->ind;
     if (processHeader(s, &header, Si->cnt)) break;
     if (layer3_frame((mp3Info *)s->extHead, &header, len)) break;
@@ -3346,17 +3409,17 @@ OpenMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel *ch, char *mode)
 {
   int i, j;
   mp3Info *Si = NULL;
-  
+
   if (S->debug > 2) Snack_WriteLog("    Enter OpenMP3File\n");
 
   if (S->extHead != NULL && S->extHeadType != SNACK_MP3_INT) {
     Snack_FileFormat *ff;
-    
+
     for (ff = snackFileFormats; ff != NULL; ff = ff->nextPtr) {
       if (strcmp(S->fileType, ff->name) == 0) {
-	if (ff->freeHeaderProc != NULL) {
-	  (ff->freeHeaderProc)(S);
-	}
+        if (ff->freeHeaderProc != NULL) {
+          (ff->freeHeaderProc)(S);
+        }
       }
     }
   }
@@ -3400,7 +3463,7 @@ OpenMP3File(Sound *S, Tcl_Interp *interp, Tcl_Channel *ch, char *mode)
 #endif
 
   if (S->debug > 2) Snack_WriteLog("    Exit OpenMP3File\n");
-  
+
   return TCL_OK;
 }
 
@@ -3433,7 +3496,7 @@ FreeMP3Header(Sound *s)
 
 int
 ConfigMP3Header(Sound *s, Tcl_Interp *interp, int objc,
-		Tcl_Obj *CONST objv[])
+                Tcl_Obj *CONST objv[])
 {
   mp3Info *si = (mp3Info *)s->extHead;
   int arg, index;
@@ -3443,43 +3506,43 @@ ConfigMP3Header(Sound *s, Tcl_Interp *interp, int objc,
   enum options {
     BITRATE
   };
-  
+
   if (si == NULL || objc < 3) return 0;
 
   if (objc == 3) { /* get option */
     if (Tcl_GetIndexFromObj(interp, objv[2], optionStrings, "option", 0,
-			    &index) != TCL_OK) {
+                            &index) != TCL_OK) {
       Tcl_AppendResult(interp, ", or\n", NULL);
       return 0;
     }
-    
+
     switch ((enum options) index) {
     case BITRATE:
       {
-	Tcl_SetObjResult(interp, Tcl_NewIntObj(si->bitrate));
-	break;
+        Tcl_SetObjResult(interp, Tcl_NewIntObj(si->bitrate));
+        break;
       }
     }
   } else {
     for (arg = 2; arg < objc; arg+=2) {
       int index;
-      
+
       if (Tcl_GetIndexFromObj(interp, objv[arg], optionStrings, "option", 0,
-			      &index) != TCL_OK) {
-	return TCL_ERROR;
+                              &index) != TCL_OK) {
+        return TCL_ERROR;
       }
-      
+
       if (arg + 1 == objc) {
-	Tcl_AppendResult(interp, "No argument given for ",
-			 optionStrings[index], " option\n", (char *) NULL);
-	return 0;
+        Tcl_AppendResult(interp, "No argument given for ",
+                         optionStrings[index], " option\n", (char *) NULL);
+        return 0;
       }
-      
+
       switch ((enum options) index) {
       case BITRATE:
-	{
-	  break;
-	}
+        {
+          break;
+        }
       }
     }
   }

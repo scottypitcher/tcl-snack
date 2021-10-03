@@ -30,7 +30,7 @@ snack::menuCommand File Mixer... snack::mixerDialog
 snack::menuCommand File Quit exit
 
 proc CheckV token {
-  set ::version "Your version of Snack was released June 21, 2001. \
+  set ::version "Your version of Snack was released March 7, 2002. \
       Latest version released [::http::data $token]."
 }
 
@@ -103,21 +103,33 @@ pack [button .f3.b4 -text "See Code" -command {Browse Section.tcl}] -side left
 pack [frame  .f4] -pady 2
 pack [label  .f4.l -text "Filter examples:"] -side left
 pack [button .f4.b1 -text "Channel Map" -command {Run mapChan.tcl}] -side left
-pack [button .f4.b3 -text "Echo" -command {Run echo.tcl}] -side left
-pack [button .f4.b4 -text "Composite" -command {Run compose.tcl}] -side left
-pack [button .f4.b5 -text "Synthesis" -command {Run formant.tcl}] -side left
-pack [button .f4.b6 -text "Generator" -command {Run generator.tcl}] -side left
-pack [button .f4.b7 -text "Notescale" -command {Run notescale.tcl}] -side left
+pack [button .f4.b2 -text "Echo" -command {Run echo.tcl}] -side left
+pack [button .f4.b3 -text "Composite" -command {Run compose.tcl}] -side left
+pack [button .f4.b4 -text "Generator" -command {Run generator.tcl}] -side left
+pack [button .f4.b5 -text "Generator2" -command {Run generator2.tcl}] -side left
+pack [button .f4.b6 -text "Notescale" -command {Run notescale.tcl}] -side left
 pack [frame  .f5] -pady 2
 pack [label  .f5.l -text "Sound tools:"] -side left
 pack [button .f5.b1 -text "Simple" -command {Run cool.tcl}] -side left
-pack [button .f5.b2 -text "record" -command {Run record.tcl}] -side left
-pack [button .f5.b3 -text "xs" -command {Run xs.tcl demo}] -side left
+pack [button .f5.b2 -text "dbrec" -command {Run dbrec.tcl}] -side left
+pack [button .f5.b3 -text "record" -command {Run record.tcl}] -side left
+pack [button .f5.b4 -text "xs" -command {Run xs.tcl demo}] -side left
 pack [label  .f5.l2 -text "MP3 player:"] -side left
-pack [button .f5.b4 -text "tomAmp" -command {Run tomAmp.tcl}] -side left
+pack [button .f5.b5 -text "tomAmp" -command {Run tomAmp.tcl}] -side left
 pack [label  .f5.l3 -text "Mixer:"] -side left
-pack [button .f5.b5 -text "mixer" -command {Run mixer.tcl}] -side left
-pack [label .v -textvar version]
+pack [button .f5.b6 -text "mixer" -command {Run mixer.tcl}] -side left
+pack [frame  .f6] -pady 2
+pack [label  .f6.l -text "Speech toys:"] -side left
+pack [button .f6.b1 -text "Synthesis" -command {Run formant.tcl}] -side left
+pack [button .f6.b2 -text "Pitch" -command {Run pitch.tcl}] -side left
+pack [button .f6.b3 -text "Phonetogram" -command {Run phonetogram.tcl}] -side left
+pack [button .f6.b4 -text "Spectrum" -command {Run polarspec.tcl}] -side left
+if {$::tcl_platform(platform) == "unix" || \
+    $::tcl_platform(platform) == "windows"} {
+  pack [label  .f6.l2 -text "Script compiler:"] -side left
+  pack [button .f6.b5 -text "wrap" -command {Run wrap.tcl}] -side left
+  pack [label .v -textvar version]
+}
 
 proc Run {script {demoFlag 0}} {
   set i [interp create]

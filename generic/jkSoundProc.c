@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2001 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2002 Kare Sjolander <kare@speech.kth.se>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
@@ -353,7 +353,7 @@ dBPowerSpectrumCmd(Sound *s, Tcl_Interp *interp, int objc,
   }
 
   if (type != 0 && n > 0) { /* LPC + FFT */
-    if (siglen == 0) siglen = fftlen;
+    if (siglen < fftlen) siglen = fftlen;
     sig_lpc = (float *) ckalloc(siglen * sizeof(float));
 
     GetFloatMonoSig(s, &info, sig_lpc, startpos, siglen, channel);
@@ -623,4 +623,266 @@ void PreEmphase(float *sig, float presample, int len, float preemph) {
     sig[i] = temp - preemph * presample;
     presample = temp;
   }
+}
+
+#define SNACK_DEFAULT_POWERWINTYPE SNACK_WIN_HAMMING
+#define DB 4.34294481903251830000000 /*  = 10 / ln(10)  */
+
+int
+powerCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  double dpreemph = 0.0, dscale = 1.0, dframelen = -1.0;
+  float preemph = 0.0, scale = 1.0;
+  int i, j, n = 0;
+  int channel = 0, winlen = 256;
+  int arg, startpos = 0, endpos = -1, framelen;
+  float *powers = NULL;
+  Tcl_Obj *list;
+  SnackLinkedFileInfo info;
+  SnackWindowType wintype = SNACK_DEFAULT_POWERWINTYPE;
+  static char *subOptionStrings[] = {
+    "-start", "-end", "-channel", "-framelength", "-windowlength",
+    "-windowtype", "-preemphasisfactor", "-scale", "-progress", NULL
+  };
+  enum subOptions {
+    START, END, CHANNEL, FRAMELEN, WINDOWLEN, WINTYPE, PREEMPH, SCALE,
+    PROGRESS
+  };
+
+  if (s->debug > 0) { Snack_WriteLog("Enter powerCmd\n"); }
+
+  if (s->cmdPtr != NULL) {
+    Tcl_DecrRefCount(s->cmdPtr);
+    s->cmdPtr = NULL;
+  }
+
+  for (arg = 2; arg < objc; arg += 2) {
+    int index;
+	
+    if (Tcl_GetIndexFromObj(interp, objv[arg], subOptionStrings,
+			    "option", 0, &index) != TCL_OK) {
+      return TCL_ERROR;
+    }
+
+    if (arg + 1 == objc) {
+      Tcl_AppendResult(interp, "No argument given for ",
+		       subOptionStrings[index], " option", (char *) NULL);
+      return TCL_ERROR;
+    }
+    
+    switch ((enum subOptions) index) {
+    case START:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &startpos) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case END:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &endpos) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case CHANNEL:
+      {
+	char *str = Tcl_GetStringFromObj(objv[arg+1], NULL);
+	if (GetChannel(interp, str, s->nchannels, &channel) != TCL_OK) {
+	  return TCL_ERROR;
+	}
+	break;
+      }
+    case FRAMELEN:
+      {
+	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &dframelen) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case WINDOWLEN:
+      {
+	if (Tcl_GetIntFromObj(interp, objv[arg+1], &winlen) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case WINTYPE:
+      {
+	char *str = Tcl_GetStringFromObj(objv[arg+1], NULL);
+	if (GetWindowType(interp, str, &wintype) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case PREEMPH:
+      {
+	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &dpreemph) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case SCALE:
+      {
+	if (Tcl_GetDoubleFromObj(interp, objv[arg+1], &dscale) != TCL_OK)
+	  return TCL_ERROR;
+	break;
+      }
+    case PROGRESS:
+      {
+	char *str = Tcl_GetStringFromObj(objv[arg+1], NULL);
+	
+	if (strlen(str) > 0) {
+	  Tcl_IncrRefCount(objv[arg+1]);
+	  s->cmdPtr = objv[arg+1];
+	}
+	break;
+      }
+    }
+  } 
+
+  if (winlen < 1) {
+    Tcl_AppendResult(interp, "-windowlength must be > 0", NULL);
+    return TCL_ERROR;
+  }
+  if (winlen > NMAX) {
+    char str[10];
+
+    sprintf(str, "%d", NMAX);
+    Tcl_AppendResult(interp, "-windowlength must be <= ", str, NULL);
+    return TCL_ERROR;
+  }
+  
+  preemph = (float) dpreemph;
+  scale   = (float) dscale;
+  
+  if (startpos < 0) startpos = 0;
+  if (endpos >= (s->length - 1) || endpos == -1)
+    endpos = s->length - 1;
+  if (startpos > endpos) return TCL_OK;
+
+  if (s->storeType != SOUND_IN_MEMORY) {
+    if (OpenLinkedFile(s, &info) != TCL_OK) {
+      return TCL_OK;
+    }
+  }
+
+  Snack_InitWindow(hamwin, winlen, winlen, wintype);
+
+  if (dframelen == -1.0) {
+    dframelen = 0.01;
+  }
+  framelen = (int) (dframelen * s->samprate);
+  n = (endpos - startpos - winlen / 2) / framelen + 1;
+  if (n < 1) {
+    n = 1;
+  }
+  if (s->nchannels == 1) {
+    channel = 0;
+  }
+
+  powers = (float *) ckalloc(sizeof(float) * n);
+
+  Snack_ProgressCallback(s->cmdPtr, interp, "Computing power", 0.0);
+
+  for (j = 0; j < n; j++) {
+    float power;
+    int winstart = 0;
+    if (s->storeType == SOUND_IN_MEMORY) {
+      if (s->nchannels == 1 || channel != -1) {
+	int p = (startpos + j * framelen - winlen/2) * s->nchannels + channel;
+
+	if (p < 0) p = 0;
+	if (p < winlen / 2) winstart = winlen / 2 - p;	
+	for (i = winstart; i < winlen; i++) {
+	  xfft[i] = (float) ((FSAMPLE(s, p + s->nchannels)
+			      - preemph * FSAMPLE(s, p))
+			     * hamwin[i]);
+	  p += s->nchannels;
+	}
+      } else {
+	int c;
+	
+	for (i = 0; i < winlen; i++) {
+	  xfft[i] = 0.0;
+	}
+	for (c = 0; c < s->nchannels; c++) {
+	  int p = (startpos + j * framelen - winlen/2) * s->nchannels + c;
+	  
+	  if (p < 0) p = 0;
+	  if (p < winlen / 2) winstart = winlen / 2 - p;	
+	  for (i = winstart; i < winlen; i++) {
+	    xfft[i] += (float) ((FSAMPLE(s, p + s->nchannels)
+				 - preemph * FSAMPLE(s, p))
+				* hamwin[i]);
+	    p += s->nchannels;
+	  }
+	}
+	for (i = 0; i < winlen; i++) {
+	  xfft[i] /= s->nchannels;
+	}
+      }
+    } else { /* storeType != SOUND_IN_MEMORY */
+      if (s->nchannels == 1 || channel != -1) {
+	int p = (startpos + j * framelen - winlen/2) * s->nchannels + channel;
+	
+	if (p < 0) p = 0;
+	if (p < winlen / 2) winstart = winlen / 2 - p;	
+	for (i = winstart; i < winlen; i++) {
+	  xfft[i] = (float) ((GetSample(&info, p + s->nchannels)
+			      - preemph * GetSample(&info, p))
+			     * hamwin[i]);
+	  p += s->nchannels;
+	}
+      } else {
+	int c;
+	
+	for (i = 0; i < winlen; i++) {
+	  xfft[i] = 0.0;
+	}
+	for (c = 0; c < s->nchannels; c++) {
+	  int p = (startpos + j * framelen - winlen/2) * s->nchannels + c;
+	  
+	  if (p < 0) p = 0;
+	  if (p < winlen / 2) winstart = winlen / 2 - p;	
+	  for (i = winstart; i < winlen; i++) {
+	    xfft[i] += (float) ((GetSample(&info, p + s->nchannels)
+				 - preemph * GetSample(&info, p))
+				* hamwin[i]);
+	    p += s->nchannels;
+	  }
+	}
+	for (i = 0; i < winlen; i++) {
+	  xfft[i] /= s->nchannels;
+	}
+      }
+    }
+
+    power = 0.0f;
+    for (i = winstart; i < winlen; i++) {
+      power += xfft[i] * xfft[i];
+    }
+    if (power < 1.0) power = 1.0;
+    powers[j] = (float) (DB * log(scale * power / (float)(winlen - winstart)));
+
+    if ((j % 10000) == 9999) {
+      int res = Snack_ProgressCallback(s->cmdPtr, interp, "Computing power", 
+				       (double) j / n);
+      if (res != TCL_OK) {
+	ckfree((char *) powers);
+	return TCL_ERROR;
+      }
+    }
+  }
+
+  Snack_ProgressCallback(s->cmdPtr, interp, "Computing power", 1.0);
+
+  list = Tcl_NewListObj(0, NULL);
+  for (i = 0; i < n; i++) {
+    Tcl_ListObjAppendElement(interp,list, Tcl_NewDoubleObj((double)powers[i]));
+  }
+  Tcl_SetObjResult(interp, list);
+
+  if (s->storeType != SOUND_IN_MEMORY) {
+    CloseLinkedFile(&info);
+  }
+  ckfree((char *) powers);
+
+  if (s->debug > 0) { Snack_WriteLog("Exit powerCmd\n"); }
+
+  return TCL_OK;
 }

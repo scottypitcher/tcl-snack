@@ -67,7 +67,7 @@ static double theta, wpr, wpi;
 #define  SNACK_PI2  6.283185307179586
 #define  P7   0.707106781186548
 #define  LN2  0.6931471805599453
-#define  DB   4.34294481903251830000000
+#define  DB   4.34294481903251830000000 /*  = 10 / ln(10)  */
 #define  WMIN 1.0
 #define  CORRN (float) 138.308998699
 #define  CORR0 (float) 132.288396199

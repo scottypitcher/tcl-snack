@@ -20,7 +20,7 @@
 #define SCRIPT_RELEASE_SERIAL 0 	/* Really minor number! */
 #define RELEASE_LEVEL         final	/* alpha, beta, or final */
 #define SCRIPT_VERSION        "2.1"
-#define SCRIPT_PATCH_LEVEL    "2.1"
+#define SCRIPT_PATCH_LEVEL    "2.1.6"
 #define FINAL                 1		/* Change to 1 if final version. */
 
 #if FINAL
