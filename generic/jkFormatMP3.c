@@ -31,7 +31,10 @@ must retain this copyright notice.
 #include <string.h>
 #define FRAS2(is,a) ((is) > 0 ? t_43[(is)]*(a):-t_43[-(is)]*(a))
 #define MAXFRAMESIZE 2106  /* frame size starting at header */
+/* SVP 21SEP2021: For mingw this is defined in /usr/include/math.h */
+#ifdef NEEDS_ROUNDF
 #define roundf(x) (floor((x)+(float )0.5f))
+#endif
 static char *gblOutputbuf;
 static char *gblReadbuf;
 static int gblBufind = 0;

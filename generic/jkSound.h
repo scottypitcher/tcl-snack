@@ -603,7 +603,8 @@ extern void Snack_RemoveOptions(int objc, Tcl_Obj *CONST objv[],
 
 extern void SnackPauseAudio();
 
-#if TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION < 4
+/* SVP 21SEP2021: 8.6 doesn't have Tcl_SeekOld or TellOld */
+#if TCL_MAJOR_VERSION == 8 && (TCL_MINOR_VERSION < 4 || TCL_MINOR_VERSION > 5)
 #define TCL_SEEK Tcl_Seek
 #define TCL_TELL Tcl_Tell
 #else

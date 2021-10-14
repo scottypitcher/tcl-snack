@@ -58,6 +58,8 @@ static MIXERCAPS     wMixCaps;
 /*static ADesc  winad;*/
 static int    correction = 1;
 
+/* SVP 21SEP2021: For mingw this is defined in /usr/include/w32api/ksmedia.h */
+#ifdef NEEDS_KSDATAFORMAT_SUBTYPE_PCM
 const static GUID  KSDATAFORMAT_SUBTYPE_PCM = {0x00000001,0x0000,0x0010,
                                                 {0x80,
                                                 0x00,
@@ -67,6 +69,7 @@ const static GUID  KSDATAFORMAT_SUBTYPE_PCM = {0x00000001,0x0000,0x0010,
                                                 0x38,
                                                 0x9b,
                                                 0x71}};
+#endif
 #define SNACK_NUMBER_MIXERS 1
 
 struct MixerLink mixerLinks[SNACK_NUMBER_MIXERS][2];

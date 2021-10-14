@@ -1694,7 +1694,7 @@ current_positionCmd(Sound *s, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
 
   if (soundQueue != NULL) {
     for (p = soundQueue; p != NULL && p->sound != s; p = p->next);
-    if (p->sound == s) {
+    if (p && p->sound == s) {
       n = p->startPos + p->nWritten;
     }
   }

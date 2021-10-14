@@ -5,6 +5,7 @@ dnl	to configure the system for the local environment.
 AC_INIT(../generic/snack.h)
 
 SNACK_VERSION=`sh $srcdir/sver.sh $srcdir/../generic/snack.h`
+SNACK_PATCH_LEVEL=`sh $srcdir/sver.sh $srcdir/../generic/snack.h --patchlevel`
 SNACK_NODOT_VERSION=`echo $SNACK_VERSION | tr -d .`
 
 AC_CHECK_HEADER(stdint.h)
@@ -87,6 +88,7 @@ AC_SUBST(srcdir)
 AC_SUBST(CFLAGS)
 
 AC_SUBST(SNACK_VERSION)
+AC_SUBST(SNACK_PATCH_LEVEL)
 AC_SUBST(SNACK_NODOT_VERSION)
 
 AC_SUBST(TCL_INCLUDE_SPEC)

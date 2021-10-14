@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = @CFLAGS@
 
 INSTALL_DIR = @prefix@
-SNACK_INSTALL_DIR = $(INSTALL_DIR)/lib/snack@SNACK_VERSION@
+SNACK_INSTALL_DIR = $(INSTALL_DIR)/lib/snack@SNACK_PATCH_LEVEL@
 
 # NOTE: You will need to update this path if DX6 is not installed in /mingw/dx6!
 # DX6 for Mingw: http://people.montana.com/%7Ebowman/Software/ming.zip
