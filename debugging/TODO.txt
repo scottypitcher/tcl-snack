@@ -1,0 +1,3 @@
+1. test cget-1.2 fails when the ex1.wav sample is missing from current directory.
+    This causes a segfault in CleanSound(). Looks like accessing deleted memory.
+

@@ -1,0 +1,267 @@
+    scottyw@OfficeWinVM MINGW64 /c/Users/scottyw/Desktop/src/tcltk/tcl-snack
+    $ debugging/run_gdb.sh
+    GNU gdb (GDB) 10.2
+    Copyright (C) 2021 Free Software Foundation, Inc.
+    License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+    This is free software: you are free to change and redistribute it.
+    There is NO WARRANTY, to the extent permitted by law.
+    Type "show copying" and "show warranty" for details.
+    This GDB was configured as "x86_64-w64-mingw32".
+    Type "show configuration" for configuration details.
+    For bug reporting instructions, please see:
+    <https://www.gnu.org/software/gdb/bugs/>.
+    Find the GDB manual and other documentation resources online at:
+	<http://www.gnu.org/software/gdb/documentation/>.
+
+    For help, type "help".
+    Type "apropos word" to search for commands related to "word"...
+    Reading symbols from C:/Tcl8.6.10-amd64-Debug/bin/tclsh86g.exe...
+    1: x/3i $pc
+    <error: No registers.>
+    Starting program: C:\Tcl8.6.10-amd64-Debug\bin\tclsh86g.exe tests/all.tcl
+    [New Thread 3192.0xe80]
+    [New Thread 3192.0xf0c]
+    [New Thread 3192.0x980]
+    [New Thread 3192.0xa90]
+    Tcl 8.6.10 tests running in interp:  C:/Tcl8.6.10-amd64-Debug/bin/tclsh86g.exe
+    Tests running in working dir:  C:/Users/scottyw/Desktop/src/tcltk/tcl-snack/tests
+    Only running tests that match:  *
+    Skipping test files that match:  l.*.test
+    Only sourcing test files that match:  *.test
+    Tests began at Thu Oct 14 23:14:48 +1100 2021
+    audio.test
+    [New Thread 4052.0x84c]
+    [New Thread 4052.0x938]
+    [New Thread 4052.0x774]
+    [New Thread 4052.0x9e8]
+    [New Thread 4052.0x794]
+    [New Thread 4052.0x6f8]
+    cget.test
+    ---- cget-1.1 start
+    ++++ cget-1.1 PASSED
+    ---- cget-1.2 start
+    [Thread 4052.0x774 exited with code 0]
+    [Thread 4052.0x938 exited with code 0]
+    [Thread 4052.0x6f8 exited with code 0]
+
+
+    Thread 1 received signal SIGSEGV, Segmentation fault.
+    0x000007fee414a8c1 in CleanSound (s=s@entry=0x30f3470,
+	interp=interp@entry=0x68a6c0, name=name@entry=0x3284340 "snd")
+	at ../win/../generic/jkSound.c:1662
+    1662      Tcl_DeleteHashEntry(Tcl_FindHashEntry(s->soundTable, name));
+    0x000007fee414a8bb <CleanSound+42>:  48 89 f2       mov    %rsi,%rdx
+    0x000007fee414a8be <CleanSound+45>:  48 89 c1       mov    %rax,%rcx
+    => 0x000007fee414a8c1 <CleanSound+48>:  ff 50 40       call   *0x40(%rax)
+    0x000007fee414a8c4 <CleanSound+51>:  48 89 c1       mov    %rax,%rcx
+    0x000007fee414a8c7 <CleanSound+54>:  ff d7   call   *%rdi
+    0x000007fee414a8c9 <CleanSound+56>:  90      nop
+    1: x/3i $pc
+    => 0x7fee414a8c1 <CleanSound+48>:       call   *0x40(%rax)
+    0x7fee414a8c4 <CleanSound+51>:       mov    %rax,%rcx
+    0x7fee414a8c7 <CleanSound+54>:       call   *%rdi
+
+    (gdb) info r
+    rax            0xfeeefeeefeeefeee  -76843841185972498
+    rbx            0x30f3470           51328112
+    rcx            0xfeeefeeefeeefeee  -76843841185972498
+    rdx            0x3284340           52970304
+    rsi            0x3284340           52970304
+    rdi            0x7fee4801a26       8791336688166
+    rbp            0x68a6c0            0x68a6c0
+    rsp            0x34f570            0x34f570
+    r8             0x8000              32768
+    r9             0x40                64
+    r10            0x68026c            6816364
+    r11            0x34f038            3469368
+    r12            0x2f8afd0           49852368
+    r13            0x3284340           52970304
+    r14            0x3284340           52970304
+    r15            0xffffffff          4294967295
+    rip            0x7fee414a8c1       0x7fee414a8c1 <CleanSound+48>
+    eflags         0x10202             [ IF RF ]
+    cs             0x33                51
+    ss             0x2b                43
+    ds             0x2b                43
+    es             0x2b                43
+    fs             0x53                83
+    gs             0x2b                43
+    (gdb)
+    
+    
+    
+    
+    
+    #0  0x000007fee414a8c1 in CleanSound (s=s@entry=0x30f3470,
+	interp=interp@entry=0x68a6c0, name=name@entry=0x3284340 "snd")
+	at ../win/../generic/jkSound.c:1662
+    No locals.
+    #1  0x000007fee414c33d in ParseSoundCmd (cdata=0x2f8afd0,
+	interp=interp@entry=0x68a6c0, objc=<optimized out>, objv=0x511088,
+	namep=namep@entry=0x34f6d8, sp=sp@entry=0x34f6d0)
+	at ../win/../generic/jkSound.c:1941
+	    type = <optimized out>
+	    s = 0x30f3470
+	    arg = <optimized out>
+	    arg1 = <optimized out>
+	    filearg = 3
+	    flag = 1
+	    id = 0
+	    samprate = 16000
+	    nchannels = 1
+	    encoding = 1
+	    sampsize = 2
+	    storeType = 0
+	    guessEncoding = -1
+	    guessRate = -1
+	    forceFormat = -1
+	    skipBytes = -1
+	    buffersize = -1
+	    guessProps = 0
+	    swapIfBE = -1
+	    debug = -1
+	    precision = -1
+	    fileType = 0x0
+	    ids = '\000' <repeats 19 times>
+	    name = 0x3284340 "snd"
+	    hTab = 0x2f8afd0
+	    hPtr = <optimized out>
+	    length = 3
+	    string = <optimized out>
+	    cmdPtr = 0x0
+	    optionStrings = {0x7fee4192c68 <t_slen1+2744> "-load",
+	    0x7fee4192c6e <t_slen1+2750> "-file",
+	    0x7fee4192c74 <t_slen1+2756> "-rate",
+	    0x7fee4192c7a <t_slen1+2762> "-frequency",
+	    0x7fee4192c85 <t_slen1+2773> "-channels",
+	    0x7fee4192af6 <t_slen1+2374> "-encoding",
+	    0x7fee4192c8f <t_slen1+2783> "-format",
+	    0x7fee4192c97 <t_slen1+2791> "-channel",
+	    0x7fee4192ca0 <t_slen1+2800> "-byteorder",
+	    0x7fee4192cab <t_slen1+2811> "-buffersize",
+	    0x7fee4192cb7 <t_slen1+2823> "-skiphead",
+	    0x7fee4192cc1 <t_slen1+2833> "-guessproperties",
+	    0x7fee4192cd2 <t_slen1+2850> "-fileformat",
+	    0x7fee4192cde <t_slen1+2862> "-precision",
+	    0x7fee4192ce9 <t_slen1+2873> "-changecommand",
+	    0x7fee4192cf8 <t_slen1+2888> "-debug", 0x0}
+	    OPTLOAD = OPTLOAD
+	    OPTFILE = OPTFILE
+	    RATE = RATE
+	    FREQUENCY = FREQUENCY
+	    CHANNELS = CHANNELS
+	    ENCODING = ENCODING
+	    FORMAT = FORMAT
+	    CHANNEL = CHANNEL
+	    BYTEORDER = BYTEORDER
+	    BUFFERSIZE = BUFFERSIZE
+	    SKIPHEAD = SKIPHEAD
+	    GUESSPROPS = GUESSPROPS
+	    FILEFORMAT = FILEFORMAT
+	    PRECISION = PRECISION
+	    CHGCMD = CHGCMD
+	    OPTDEBUG = OPTDEBUG
+    #2  0x000007fee414c479 in Snack_SoundCmd (cdata=<optimized out>,
+	interp=0x68a6c0, objc=<optimized out>, objv=<optimized out>)
+	at ../win/../generic/jkSound.c:2004
+	    name = 0x3284340 "snd"
+	    s = 0x30f3470
+    #3  0x000007fee46ff303 in Dispatch (data=0x30f2e28, interp=0x68a6c0, result=0)
+	at C:/Users/scottyw/Desktop/src/tcltk/build-tcltk/tcl8.6.10/generic/tclBasic.c:4456
+	    objProc = 0x7fee414c44d <Snack_SoundCmd>
+	    clientData = 0x2f8afd0
+	    objc = 4
+	    objv = 0x511088
+	    iPtr = 0x68a6c0
+    #4  0x000007fee46ff391 in TclNRRunCallbacks (interp=0x68a6c0, result=0,
+	rootPtr=0x0)
+	at C:/Users/scottyw/Desktop/src/tcltk/build-tcltk/tcl8.6.10/generic/tclBasic.c:4492
+	    callbackPtr = 0x30f2e20
+	    procPtr = 0x7fee46ff280 <Dispatch>
+	    iPtr = 0x68a6c0
+    #5  0x000007fee46febaf in Tcl_EvalObjv (interp=0x68a6c0, objc=4,
+	objv=0x510390, flags=2097168)
+	at C:/Users/scottyw/Desktop/src/tcltk/build-tcltk/tcl8.6.10/generic/tclBasic.c:4215
+	    result = 0
+	    rootPtr = 0x0
+    #6  0x000007fee470105e in TclEvalEx (interp=0x68a6c0,
+	script=0x2562ca0 "# all.tcl --\n#\n# This file contains a top-level script to run all of the Tcl\n# tests.  Execute it by invoking \"source all.test\" when running tcltest\n# in this directory.\n#\n# Copyright (c) 1998-1999 by"...,
+	numBytes=1469, flags=0, line=39, clNextOuter=0x0,
+	outerScript=0x2562ca0 "# all.tcl --\n#\n# This file contains a top-level script to run all of the Tcl\n# tests.  Execute it by invoking \"source all.test\" when running tcltest\n# in this directory.\n#\n# Copyright (c) 1998-1999 by"...)
+	at C:/Users/scottyw/Desktop/src/tcltk/build-tcltk/tcl8.6.10/generic/tclBasic.c:5361
+	    wordLine = 39
+	    wordCLNext = 0x0
+	    objectsNeeded = 4
+	    wordStart = 0x2563184 "{\n    set tail [file tail $file]\n    puts stdout $tail\n    if {[catch {source $file} msg]} {\n\tputs stdout $msg\n    }\n}\n\n# cleanup\nputs stdout \"\\nTests ended at [eval $timeCmd]\"\n::tcltest::cleanupTests"...
+	    numWords = 4
+	    iPtr = 0x68a6c0
+	    p = 0x256312b "\n# source each of the specified tests\nforeach file [lsort [::tcltest::getMatchingFiles]] {\n    set tail [file tail $file]\n    puts stdout $tail\n    if {[catch {source $file} msg]} {\n\tputs stdout $msg\n"...
+	    next = 0x256312b "\n# source each of the specified tests\nforeach file [lsort [::tcltest::getMatchingFiles]] {\n    set tail [file tail $file]\n    puts stdout $tail\n    if {[catch {source $file} msg]} {\n\tputs stdout $msg\n"...
+	    minObjs = 20
+	    objv = 0x510390
+	    objvSpace = 0x510390
+	    expand = 0x510440
+	    lines = 0x5104a0
+	    lineSpace = 0x5104a0
+	    tokenPtr = 0x510200
+	    commandLength = 0
+	    bytesLeft = 306
+	    expandRequested = 0
+	    code = 0
+	    savedVarFramePtr = 0x68da00
+	    allowExceptions = 0
+	    gotParse = 1
+	    i = 3
+	    objectsUsed = 4
+	    parsePtr = 0x5100e0
+	    eeFramePtr = 0x510330
+	    stackObjArray = 0x510390
+	    expandStack = 0x510440
+	    linesStack = 0x5104a0
+	    clNext = 0x0
+    #7  0x000007fee48277a1 in Tcl_FSEvalFileEx (interp=0x68a6c0,
+	pathPtr=0x5f5e50, encodingName=0x0)
+	at C:/Users/scottyw/Desktop/src/tcltk/build-tcltk/tcl8.6.10/generic/tclIOUtil.c:1824
+	    length = 1469
+	    result = 1
+	    statBuf = {st_dev = 2, st_ino = 53198, st_mode = 33206, st_nlink = 1,
+	    st_uid = 0, st_gid = 0, st_rdev = 2, st_size = 1469,
+	    st_atime = 1634212586, st_mtime = 1634121899, st_ctime = 1634121899}
+	    oldScriptFile = 0x0
+	    iPtr = 0x68a6c0
+	    string = 0x2562ca0 "# all.tcl --\n#\n# This file contains a top-level script to run all of the Tcl\n# tests.  Execute it by invoking \"source all.test\" when running tcltest\n# in this directory.\n#\n# Copyright (c) 1998-1999 by"...
+	    chan = 0x5ebac0
+	    objPtr = 0x256ded0
+    #8  0x000007fee48325b6 in Tcl_MainExW (argc=-1, argv=0x685130,
+	appInitProc=0x13f5315d8 <Tcl_AppInit>, interp=0x68a6c0)
+	at C:/Users/scottyw/Desktop/src/tcltk/build-tcltk/tcl8.6.10/generic/tclMain.c:403
+	    path = 0x5f5e50
+	    resultPtr = 0x599010
+	    argvPtr = 0x5f6960
+	    appName = 0x5f5e50
+	    encodingName = 0x0
+	    code = 0
+	    exitCode = 0
+	    mainLoopProc = 0x68abc8
+	    chan = 0x51a6e0
+	    is = {input = 0x7fe00000001, tty = 0, commandPtr = 0x5f5bf0,
+	    prompt = PROMPT_START, interp = 0x68a6c0}
+    #9  0x000000013f5315cd in wmain (argc=2, argv=0x685120)
+	at C:/Users/scottyw/Desktop/src/tcltk/build-tcltk/tcl8.6.10/win/tclAppInit.c:131
+	    p = 0x6851c2 L""
+    #10 0x000000013f5313d4 in __tmainCRTStartup ()
+	at C:/_/M/mingw-w64-crt-git/src/mingw-w64/mingw-w64-crt/crt/crtexe.c:318
+	    lock_free = <optimized out>
+	    fiberid = <optimized out>
+	    nested = <optimized out>
+	    lpszCommandLine = <optimized out>
+	    StartupInfo = {cb = 0, lpReserved = 0x0, lpDesktop = 0x0,
+	    lpTitle = 0x0, dwX = 0, dwY = 0, dwXSize = 0, dwYSize = 0,
+	    dwXCountChars = 0, dwYCountChars = 0, dwFillAttribute = 0,
+	    dwFlags = 0, wShowWindow = 0, cbReserved2 = 0, lpReserved2 = 0x0,
+	    hStdInput = 0x0, hStdOutput = 0x0, hStdError = 0x0}
+	    inDoubleQuote = <optimized out>
+    #11 0x000000013f531506 in mainCRTStartup ()
+	at C:/_/M/mingw-w64-crt-git/src/mingw-w64/mingw-w64-crt/crt/crtexe.c:202
+	    ret = 255
+    (gdb)
