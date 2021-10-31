@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2002 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 2001-2002 Kare Sjolander <xxxxxxxxxxxxxxxxxx>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/

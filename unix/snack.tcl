@@ -1,5 +1,5 @@
 # 
-# Copyright (C) 1997-99 Kare Sjolander <kare@speech.kth.se>
+# Copyright (C) 1997-99 Kare Sjolander <xxxxxxxxxxxxxxxxxx>
 #
 # This file is part of the Snack sound extension for Tcl/Tk.
 # The latest version can be found at http://www.speech.kth.se/snack/

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1997-2003 Kare Sjolander <kare@speech.kth.se>
+ * Copyright (C) 1997-2003 Kare Sjolander <xxxxxxxxxxxxxxxxxx>
  *
  * This file contains a sample module which demonstrates how to write
  * extensions to the Snack sound extension for Tcl/Tk.

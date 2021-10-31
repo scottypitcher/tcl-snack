@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2002 Jonas Beskow <beskow@speech.kth.se>
+ * Copyright (C) 2001-2002 Jonas Beskow <xxxxxxxxxxxxxxx>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/

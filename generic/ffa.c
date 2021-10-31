@@ -9,7 +9,7 @@
  *   described in "Programs for Digital Signal Processing", Bergland & Dolan *
  *   (1979) Ed. by the DSP committee IEEE Acoustics, Speech and Signal       *
  *   Processing Society. Wiley, New York.                                    *
- *   Roger Lindell, rog@speech.kth.se                                        * 
+ *   Roger Lindell, xxxxxxxxxxxxxxxxx                                        * 
  *                                                                           * 
  *   KTH                                                                     * 
  *   Institutionen foer Tal, musik och hoersel                               * 

@@ -35,7 +35,7 @@ resource 'vers' (1) {
 	SCRIPT_MAJOR_VERSION, MINOR_VERSION,
 	RELEASE_LEVEL, 0x00, verUS,
 	SCRIPT_PATCH_LEVEL,
-	SCRIPT_PATCH_LEVEL ", by Kare Sjolander <kare@speech.kth.se>"
+	SCRIPT_PATCH_LEVEL ", by Kare Sjolander <xxxxxxxxxxxxxxxxxx>"
 };
 
 resource 'vers' (2) {

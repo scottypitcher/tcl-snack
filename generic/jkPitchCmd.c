@@ -1,6 +1,6 @@
 /* 
- * Copyright (C) 2000-2004 Kåre Sjölander <kare@speech.kth.se>
- * Copyright (C) 1997 Philippe Langlais <felipe@speech.kth.se>
+ * Copyright (C) 2000-2004 Kåre Sjölander <xxxxxxxxxxxxxxxxxx>
+ * Copyright (C) 1997 Philippe Langlais <xxxxxxxxxxxxx>
  *
  * This file is part of the Snack Sound Toolkit.
  * The latest version can be found at http://www.speech.kth.se/snack/
