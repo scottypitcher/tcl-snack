@@ -1027,3 +1027,7 @@ build Snack on the Macintosh.
 
 ----------------- Released 2.2.10, 14/12/05 -----------------------
 
+14OCT2021: generic/jkSoundEngine.c: Fixed SEGV in current_positionCmd() (Ralf Fassel)
+14OCT2021: Fixed some build errors for MINGW 32 & 64, and builds on Windows 32 & 6 bit.
+
+----------------- Released 2.2.11, 31OCT2021 -----------------------

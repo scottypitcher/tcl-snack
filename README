@@ -1,3 +1,30 @@
+Snack v2.2.11 - a sound toolkit for scripting languages
+
+Update by Scott Pitcher, 31OCT2021.
+
+This archive contains an updated version of the Snack sounds library.
+I've incorporated some bug fixes which included correcting build errors
+when building with MINGW32 or 64, some SEGV errors have been corrected
+and I've incorporated at least one bugfix that was emailed to me.
+
+I'm putting this archive on Github so (1) binary version for Windows
+are readily available and (2) the source can be maintained in one place.
+
+Now, before I put this source archive together I did email both KTH and
+KTH Division of Speech, Music and Hearing looking for someone who either
+maintains Snack or knows anything about it, but the only reply I received
+was from info@kth.se suggesting I email the second group, but I didn't
+receive any reply from them. So I've included the few old source versions
+I was able to find for completeness, and I've build this 2.2.11 ontop of
+2.2.10.
+
+I've uploaded binary builds for Windows 32 and 64.
+
+Please email me if you have any trouble with these.
+Please email me if you have any other patches I should include.
+
+
+---------------------------------------------------------------------
 Snack v2.2 - a sound toolkit for scripting languages
 
 Kåre Sjölander
