@@ -15,7 +15,7 @@ KTH Division of Speech, Music and Hearing looking for someone who either
 maintains Snack or knows anything about it, but the only reply I received
 was from info@kth.se suggesting I email the second group, but I didn't
 receive any reply from them. So I've included the few old source versions
-I was able to find for completeness, and I've build this 2.2.11 ontop of
+I was able to find for completeness, and I've built this 2.2.11 ontop of
 2.2.10.
 
 I've uploaded binary builds for Windows 32 and 64.
@@ -27,7 +27,7 @@ Please email me if you have any other patches I should include.
 ---------------------------------------------------------------------
 Snack v2.2 - a sound toolkit for scripting languages
 
-Kåre Sjölander
+KÃ¥re SjÃ¶lander
 
 Email address:
 There are several anti-spam methods between me and anybody trying to contact
@@ -339,7 +339,7 @@ Mel
 Alexandre Ferrieux
 Daryl Vertigan
 David van Leeuwen
-Stefan Karnebäck
+Stefan KarnebÃ¤ck
 Simon Arnfield
 Magnus Lundeberg
 Zhibiao Wu
@@ -383,7 +383,7 @@ Steve Renals
 Michel Scheffers
 Reinhard Max
 Brian Theado
-Håkan Melin
+HÃ¥kan Melin
 Scott T. Silliman
 Mo DeJong
 Richard Dobson
