@@ -7,6 +7,13 @@
 mkdir -p $BUILDDIR
 pushd $BUILDDIR
 
-../win/configure --srcdir=$SRCDIR --prefix=$TCL_DIR --with-tcl=$TCL_DIR/lib --with-tk=$TCL_DIR/lib
+CFLAGS=$SNACK_CFLAGS
+export CFLAGS
+configure="../$BUILD_PLATFORM/configure $CONFIGURE"
+if [ -n "$SRCDIR" ]; then
+    configure="$configure --srcdir=$SRCDIR"
+fi
+echo "$configure"
+$configure
 
 popd

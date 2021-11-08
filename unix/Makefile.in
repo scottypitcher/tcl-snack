@@ -21,7 +21,8 @@ GENERIC_DIR = @srcdir@/../generic
 UNIX_DIR    = @srcdir@/../unix
 MAC_DIR     = @srcdir@/../mac
 
-VERSION = 2.2
+# VERSION = 2.2
+VERSION = @SNACK_PATCH_LEVEL@
 
 DESTDIR	=
 
@@ -31,7 +32,7 @@ CC        = @CC@
 
 INCLUDES  = ${XINCLUDES} @TCL_INCLUDE_SPEC@ -I${TCL_INCPATH} -I${TK_INCPATH} @AINC@ @NISTINC@
 
-CFLAGS    = -O @CFLAGS@ @AFLAG@ ${INCLUDES} @TCLAPI@ -I${GENERIC_DIR} @DEFS@
+CFLAGS    += -O @CFLAGS@ @AFLAG@ ${INCLUDES} @TCLAPI@ -I${GENERIC_DIR} @DEFS@
 
 LIBSO     = -lc @ALIB@ @TCL_LIB_SPEC@
 
@@ -40,7 +41,8 @@ LIBSN     = -lc @TK_LIBS@ @ALIB@ @TCL_LIB_SPEC@ @TK_LIB_SPEC@
 SHLIB_LD     = @SHLIB_LD@
 SHLIB_SUFFIX = @SHLIB_SUFFIX@
 
-all: libsound${SHLIB_SUFFIX} libsnack${SHLIB_SUFFIX} @DOSTUBLIB@ @LIBNIST@ @LIBOGG@ editversion
+all: libsound${SHLIB_SUFFIX} libsnack${SHLIB_SUFFIX} @DOSTUBLIB@ @LIBNIST@ @LIBOGG@
+# editversion
 
 OBJSO = sound.o jkSound.o jkSoundEngine.o jkSoundEdit.o jkSoundFile.o \
 	g711.o @AOBJ@ jkFormatMP3.o jkSoundProc.o ffa.o jkPitchCmd.o \
@@ -168,6 +170,7 @@ libsnack${SHLIB_SUFFIX}: ${OBJSN}
 stublib: ${OBJSNST}
 	ar cr libsnackstub${VERSION}.a ${OBJSNST}
 
+# SVP 7NOV2021: There should be a better way of doing this.
 editversion: ${OBJSN}
 	if test "$(TCL_VERSION)" != "8.4"; then\
 	    cd $(UNIX_DIR)/../demos/tcl/ ;\

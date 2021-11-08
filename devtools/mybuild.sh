@@ -6,6 +6,8 @@
 
 pushd $BUILDDIR
 
+CFLAGS=$SNACK_CFLAGS
+export CFLAGS
 make all
 
 popd
