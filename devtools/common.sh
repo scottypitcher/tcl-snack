@@ -4,7 +4,7 @@
 #
 
 # Change to '1' for a debug build.
-DEBUG=1
+DEBUG=0
 
 TCLVERSION=8.6.9
 
